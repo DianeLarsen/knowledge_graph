@@ -3,10 +3,10 @@ import { db } from "../index";
 import { eq, sql } from 'drizzle-orm';
 
 
-export async function createNote(title: string, content: string) {
+export async function createNote(title: string, content: string, userId: string) {
   const result = await db
     .insert(notes)
-    .values({ title, content })
+    .values({ title, content, userId })
     .returning();
   return result[0];
 } 

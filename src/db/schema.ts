@@ -13,6 +13,9 @@ export const notes = sqliteTable("notes", {
     .$defaultFn(() => crypto.randomUUID()),
   title: text("title").notNull(),
   content: text("content"),
+  userId: text("user_id")
+  .notNull()
+  .references(() => users.id, { onDelete: "cascade" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -82,3 +85,13 @@ export const noteLinks = sqliteTable(
     ),
   ],
 );
+
+export const users = sqliteTable("users", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
