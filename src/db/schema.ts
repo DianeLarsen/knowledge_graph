@@ -95,3 +95,9 @@ export const users = sqliteTable("users", {
     .notNull()
     .$defaultFn(() => new Date()),
 });
+
+export type Note = typeof notes.$inferSelect;
+export type Tag = typeof tags.$inferSelect;
+export type NoteTag = typeof noteTags.$inferSelect;
+export type NoteLink = typeof noteLinks.$inferSelect;
+export type User = typeof users.$inferSelect;

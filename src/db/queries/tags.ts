@@ -21,6 +21,8 @@ export async function getTagByName(name: string) {
   return result[0];
 }
 
+
+
 export async function updateTag(id: string, name: string) {
   const result = await db
     .update(tags)
@@ -35,3 +37,4 @@ export async function deleteTag(id: string) {
   const result = await db.delete(tags).where(eq(tags.id, id)).returning();
   return result[0];
 }
+

@@ -2,6 +2,7 @@ import { notes, noteTags, tags } from "../schema";
 import { db } from "../index";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { getBacklinks, getOutgoingLinks } from "./noteLinks";
+import { getTagsForNote } from "./notetags";
 import { alias } from "drizzle-orm/sqlite-core";
 
 export async function createNote(title: string, content: string, userId: string) {
@@ -19,6 +20,22 @@ export async function getAllNotes() {
 export async function getNoteById(id: string) {
   const result = await db.select().from(notes).where(eq(notes.id, id));
   return result[0];
+}
+
+export async function getNoteDetailsById(id: string) {
+  const note = await getNoteById(id);
+  const tags = await getTagsForNote(id);
+  const outgoingLinks = await getOutgoingLinks(id);
+  const backlinks = await getBacklinks(id);
+  const sharedTags = await getNotesSharingTags(id);
+
+  return {
+    note,
+    tags,
+    outgoingLinks,
+    backlinks,
+    sharedTags,
+  };
 }
 
 export async function updateNote(id: string, title: string, content: string) {
