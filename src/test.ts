@@ -7,6 +7,8 @@ import {
   deleteNote,
   searchNotes,
   getOrphanNotes,
+  getRelatedNotes,
+  getNotesSharingTags,
 } from "./db/queries/notes";
 import {
   createNoteLink,
@@ -14,6 +16,8 @@ import {
   getBacklinks,
   removeNoteLink,
 } from "./db/queries/noteLinks";
+import { addTagToNote } from "./db/queries/notetags";
+import { createTag } from "./db/queries/tags";
 
 async function runTests() {
   console.log("=== START TESTS ===");
@@ -193,6 +197,75 @@ async function runTests() {
   if (foundConnectedSource || foundConnectedTarget) {
     throw new Error("Orphan test failed: connected notes incorrectly included");
   }
+
+  // --- SHARED TAG / RELATED NOTES TESTS ---
+
+  const sharedTag = await createTag(`systems-${Date.now()}`);
+
+  const taggedSourceNote = await createNote(
+    "Tagged Source Note",
+    "This note has a systems tag",
+    user.id
+  );
+
+  const taggedRelatedNote = await createNote(
+    "Tagged Related Note",
+    "This note shares the systems tag",
+    user.id
+  );
+
+  const untaggedNote = await createNote(
+    "Untagged Note",
+    "This note should not appear in shared tag results",
+    user.id
+  );
+
+  await addTagToNote(taggedSourceNote.id, sharedTag.id);
+  await addTagToNote(taggedRelatedNote.id, sharedTag.id);
+
+  const sharedTagResults = await getNotesSharingTags(taggedSourceNote.id);
+  console.log("Shared Tag Results:", sharedTagResults);
+
+  const foundSharedTagNote = sharedTagResults.some(
+    (n) =>
+      n.id === taggedRelatedNote.id &&
+      n.sharedTagId === sharedTag.id &&
+      n.sharedTagName === sharedTag.name
+  );
+
+  const foundOriginalNote = sharedTagResults.some(
+    (n) => n.id === taggedSourceNote.id
+  );
+
+  const foundUntaggedNote = sharedTagResults.some(
+    (n) => n.id === untaggedNote.id
+  );
+
+  if (!foundSharedTagNote) {
+    throw new Error("Shared tag test failed: related tagged note not found");
+  }
+
+  if (foundOriginalNote) {
+    throw new Error("Shared tag test failed: original note was included");
+  }
+
+  if (foundUntaggedNote) {
+    throw new Error("Shared tag test failed: untagged note was included");
+  }
+
+  const relatedNotes = await getRelatedNotes(taggedSourceNote.id);
+  console.log("Related Notes:", relatedNotes);
+
+  const foundInRelatedSharedTags = relatedNotes.sharedTags.some(
+    (n) => n.id === taggedRelatedNote.id && n.sharedTagId === sharedTag.id
+  );
+
+  if (!foundInRelatedSharedTags) {
+    throw new Error("Related notes test failed: shared tag result missing");
+  }
+
+
+
   // Soft delete one and verify it disappears from search
   await deleteNote(searchTitleNote.id);
 
