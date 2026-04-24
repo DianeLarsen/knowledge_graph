@@ -46,3 +46,12 @@ export async function searchNotes(query: string) {
       sql`${notes.deletedAt} IS NULL AND (LOWER(${notes.title}) LIKE LOWER(${`%${query}%`}) OR LOWER(${notes.content}) LIKE LOWER(${`%${query}%`}))`,
     );
 }
+
+export async function getOrphanNotes() {
+  return await db
+    .select()
+    .from(notes)
+    .where(
+      sql`${notes.deletedAt} IS NULL AND NOT EXISTS (SELECT 1 FROM note_links WHERE note_links.source_note_id = ${notes.id} OR note_links.target_note_id = ${notes.id})`
+    );
+}

@@ -5,7 +5,8 @@ import {
   getNoteById,
   updateNote,
   deleteNote,
-  searchNotes
+  searchNotes,
+  getOrphanNotes,
 } from "./db/queries/notes";
 import {
   createNoteLink,
@@ -52,7 +53,7 @@ async function runTests() {
     throw new Error("Update note failed");
   }
 
-    const targetNote = await createNote("Target Note", "Target Content", user.id);
+  const targetNote = await createNote("Target Note", "Target Content", user.id);
   console.log("Created Target Note:", targetNote);
 
   if (!targetNote?.id) {
@@ -72,7 +73,7 @@ async function runTests() {
   const hasOutgoingLink = outgoingLinks.some(
     (link) =>
       link.targetNoteId === targetNote.id &&
-      link.relationshipType === "related"
+      link.relationshipType === "related",
   );
 
   if (!hasOutgoingLink) {
@@ -85,7 +86,7 @@ async function runTests() {
   const hasBacklink = backlinks.some(
     (link) =>
       link.sourceTitle === "Updated Title" &&
-      link.relationshipType === "related"
+      link.relationshipType === "related",
   );
 
   if (!hasBacklink) {
@@ -103,7 +104,7 @@ async function runTests() {
   console.log("Outgoing Links After Remove:", outgoingAfterRemove);
 
   const linkStillExists = outgoingAfterRemove.some(
-    (link) => link.targetNoteId === targetNote.id
+    (link) => link.targetNoteId === targetNote.id,
   );
 
   if (linkStillExists) {
@@ -115,13 +116,13 @@ async function runTests() {
   const searchTitleNote = await createNote(
     "Binary Tree Basics",
     "Intro content",
-    user.id
+    user.id,
   );
 
   const searchContentNote = await createNote(
     "Data Structures",
     "This note explains tree traversal",
-    user.id
+    user.id,
   );
 
   console.log("Search Test Notes Created:", searchTitleNote, searchContentNote);
@@ -130,17 +131,68 @@ async function runTests() {
   console.log("Search Results:", searchResults);
 
   const foundTitleMatch = searchResults.some(
-    (n) => n.id === searchTitleNote.id
+    (n) => n.id === searchTitleNote.id,
   );
 
   const foundContentMatch = searchResults.some(
-    (n) => n.id === searchContentNote.id
+    (n) => n.id === searchContentNote.id,
   );
 
   if (!foundTitleMatch || !foundContentMatch) {
     throw new Error("Search failed: expected notes not found");
   }
 
+  // --- ORPHAN NOTES TEST ---
+
+  const orphanNote = await createNote(
+    "Lonely Note",
+    "No one links to me",
+    user.id,
+  );
+
+  const connectedSource = await createNote(
+    "Connected Source",
+    "Links out",
+    user.id,
+  );
+
+  const connectedTarget = await createNote(
+    "Connected Target",
+    "Gets linked",
+    user.id,
+  );
+
+  console.log("Orphan Test Notes Created:", {
+    orphanNote,
+    connectedSource,
+    connectedTarget,
+  });
+
+  // Create a connection so these two are NOT orphans
+  await createNoteLink(connectedSource.id, connectedTarget.id, "related");
+
+  const orphanResults = await getOrphanNotes();
+  console.log("Orphan Notes:", orphanResults);
+
+  // Should include orphanNote
+  const foundOrphan = orphanResults.some((n) => n.id === orphanNote.id);
+
+  // Should NOT include connected notes
+  const foundConnectedSource = orphanResults.some(
+    (n) => n.id === connectedSource.id,
+  );
+
+  const foundConnectedTarget = orphanResults.some(
+    (n) => n.id === connectedTarget.id,
+  );
+
+  if (!foundOrphan) {
+    throw new Error("Orphan test failed: orphan note not found");
+  }
+
+  if (foundConnectedSource || foundConnectedTarget) {
+    throw new Error("Orphan test failed: connected notes incorrectly included");
+  }
   // Soft delete one and verify it disappears from search
   await deleteNote(searchTitleNote.id);
 
@@ -148,7 +200,7 @@ async function runTests() {
   console.log("Search After Delete:", searchAfterDelete);
 
   const stillFoundDeleted = searchAfterDelete.some(
-    (n) => n.id === searchTitleNote.id
+    (n) => n.id === searchTitleNote.id,
   );
 
   if (stillFoundDeleted) {
