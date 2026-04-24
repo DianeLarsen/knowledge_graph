@@ -37,3 +37,12 @@ export async function deleteNote(id: string) {
     .returning();
   return result[0];
 }
+
+export async function searchNotes(query: string) {
+  return await db
+    .select()
+    .from(notes)
+    .where(
+      sql`${notes.deletedAt} IS NULL AND (LOWER(${notes.title}) LIKE LOWER(${`%${query}%`}) OR LOWER(${notes.content}) LIKE LOWER(${`%${query}%`}))`,
+    );
+}

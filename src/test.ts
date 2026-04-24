@@ -5,6 +5,7 @@ import {
   getNoteById,
   updateNote,
   deleteNote,
+  searchNotes
 } from "./db/queries/notes";
 import {
   createNoteLink,
@@ -107,6 +108,51 @@ async function runTests() {
 
   if (linkStillExists) {
     throw new Error("Removed link still appears in outgoing links");
+  }
+
+  // --- SEARCH TESTS ---
+
+  const searchTitleNote = await createNote(
+    "Binary Tree Basics",
+    "Intro content",
+    user.id
+  );
+
+  const searchContentNote = await createNote(
+    "Data Structures",
+    "This note explains tree traversal",
+    user.id
+  );
+
+  console.log("Search Test Notes Created:", searchTitleNote, searchContentNote);
+
+  const searchResults = await searchNotes("tree");
+  console.log("Search Results:", searchResults);
+
+  const foundTitleMatch = searchResults.some(
+    (n) => n.id === searchTitleNote.id
+  );
+
+  const foundContentMatch = searchResults.some(
+    (n) => n.id === searchContentNote.id
+  );
+
+  if (!foundTitleMatch || !foundContentMatch) {
+    throw new Error("Search failed: expected notes not found");
+  }
+
+  // Soft delete one and verify it disappears from search
+  await deleteNote(searchTitleNote.id);
+
+  const searchAfterDelete = await searchNotes("tree");
+  console.log("Search After Delete:", searchAfterDelete);
+
+  const stillFoundDeleted = searchAfterDelete.some(
+    (n) => n.id === searchTitleNote.id
+  );
+
+  if (stillFoundDeleted) {
+    throw new Error("Search failed: deleted note still appears");
   }
 
   const deleted = await deleteNote(note.id);
