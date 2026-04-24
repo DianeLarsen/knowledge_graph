@@ -124,3 +124,32 @@ export async function getRelatedNotes(noteId: string) {
     sharedTags
   }
 }
+
+export async function getNotesByUser(userId: string) {
+  return await db
+    .select()
+    .from(notes)
+    .where(and(eq(notes.userId, userId), sql`${notes.deletedAt} IS NULL`));
+}
+export async function searchNotesByUser(userId: string, query: string) {
+  return await db
+    .select()
+    .from(notes)
+    .where(
+      and(
+        eq(notes.userId, userId),
+        sql`${notes.deletedAt} IS NULL AND (LOWER(${notes.title}) LIKE LOWER(${`%${query}%`}) OR LOWER(${notes.content}) LIKE LOWER(${`%${query}%`}))`
+      )
+    );
+}
+export async function getOrphanNotesByUser(userId: string) {
+  return await db
+    .select()
+    .from(notes)
+    .where(
+      and(
+        eq(notes.userId, userId),
+        sql`${notes.deletedAt} IS NULL AND NOT EXISTS (SELECT 1 FROM note_links WHERE note_links.source_note_id = ${notes.id} OR note_links.target_note_id = ${notes.id})`
+      )
+    );
+}

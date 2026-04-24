@@ -9,6 +9,9 @@ import {
   getOrphanNotes,
   getRelatedNotes,
   getNotesSharingTags,
+  getNotesByUser,
+  searchNotesByUser,
+  getOrphanNotesByUser,
 } from "./db/queries/notes";
 import {
   createNoteLink,
@@ -171,6 +174,80 @@ async function runTests() {
     connectedSource,
     connectedTarget,
   });
+
+  // --- USER-SCOPED NOTE TESTS ---
+
+  const userA = await createUser("User Scope A");
+  const userB = await createUser("User Scope B");
+
+  const userANote = await createNote(
+    "Private Apple Note",
+    "This belongs to user A",
+    userA.id
+  );
+
+  const userBNote = await createNote(
+    "Private Apple Note",
+    "This belongs to user B",
+    userB.id
+  );
+
+  console.log("User Scope Test Notes:", { userANote, userBNote });
+
+  const userANotes = await getNotesByUser(userA.id);
+  console.log("User A Notes:", userANotes);
+
+  const foundUserANote = userANotes.some((n) => n.id === userANote.id);
+  const foundUserBNoteInUserAList = userANotes.some(
+    (n) => n.id === userBNote.id
+  );
+
+  if (!foundUserANote) {
+    throw new Error("User scoped notes test failed: User A note not found");
+  }
+
+  if (foundUserBNoteInUserAList) {
+    throw new Error(
+      "User scoped notes test failed: User B note appeared in User A notes"
+    );
+  }
+
+  const userASearchResults = await searchNotesByUser(userA.id, "apple");
+  console.log("User A Search Results:", userASearchResults);
+
+  const foundUserASearchNote = userASearchResults.some(
+    (n) => n.id === userANote.id
+  );
+
+  const foundUserBSearchNote = userASearchResults.some(
+    (n) => n.id === userBNote.id
+  );
+
+  if (!foundUserASearchNote) {
+    throw new Error("User scoped search failed: User A note not found");
+  }
+
+  if (foundUserBSearchNote) {
+    throw new Error(
+      "User scoped search failed: User B note appeared in User A search"
+    );
+  }
+
+  const userAOrphans = await getOrphanNotesByUser(userA.id);
+  console.log("User A Orphan Notes:", userAOrphans);
+
+  const foundUserAOrphan = userAOrphans.some((n) => n.id === userANote.id);
+  const foundUserBOrphan = userAOrphans.some((n) => n.id === userBNote.id);
+
+  if (!foundUserAOrphan) {
+    throw new Error("User scoped orphan test failed: User A orphan not found");
+  }
+
+  if (foundUserBOrphan) {
+    throw new Error(
+      "User scoped orphan test failed: User B orphan appeared for User A"
+    );
+  }
 
   // Create a connection so these two are NOT orphans
   await createNoteLink(connectedSource.id, connectedTarget.id, "related");
