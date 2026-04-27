@@ -15,6 +15,13 @@
       "when": 1777048317850,
       "tag": "0001_cute_moon_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1777324945968,
+      "tag": "0002_youthful_talisman",
+      "breakpoints": true
     }
   ]
 }

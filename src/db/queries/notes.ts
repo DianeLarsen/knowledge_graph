@@ -1,17 +1,98 @@
-import { notes, noteTags, tags } from "../schema";
+import { notes, noteTags, tags, noteLinks  } from "../schema";
 import { db } from "../index";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { getBacklinks, getOutgoingLinks } from "./noteLinks";
 import { getTagsForNote } from "./notetags";
 import { alias } from "drizzle-orm/sqlite-core";
 
-export async function createNote(title: string, content: string, userId: string) {
-  const result = await db
+type CreateNoteInput = {
+  title: string;
+  content: string;
+  contentJson?: string;
+  userId: string;
+  selectedTagIds?: string[];
+  newTagName?: string;
+  linkedNoteIds?: string[];
+};
+
+export async function createNote(input: CreateNoteInput) {
+  const title = input.title.trim();
+  const content = input.content.trim();
+  const contentJson = input.contentJson ?? "";
+  const selectedTagIds = input.selectedTagIds ?? [];
+  const linkedNoteIds = input.linkedNoteIds ?? [];
+  const newTagName = input.newTagName?.trim();
+
+  if (!title) {
+    throw new Error("Title is required.");
+  }
+
+  const result = db.transaction((tx) => {
+  const newNote = tx
     .insert(notes)
-    .values({ title, content, userId })
-    .returning();
-  return result[0];
-} 
+    .values({
+      title,
+      content,
+      contentJson,
+      userId: input.userId,
+    })
+    .returning()
+    .get();
+
+  let tagIds = [...selectedTagIds];
+
+  if (newTagName) {
+    const existingTag = tx
+      .select()
+      .from(tags)
+      .where(eq(tags.name, newTagName))
+      .get();
+
+    if (existingTag) {
+      tagIds.push(existingTag.id);
+    } else {
+      const createdTag = tx
+        .insert(tags)
+        .values({
+          name: newTagName,
+        })
+        .returning()
+        .get();
+
+      tagIds.push(createdTag.id);
+    }
+  }
+
+  tagIds = [...new Set(tagIds)];
+
+  if (tagIds.length > 0) {
+    tx.insert(noteTags)
+      .values(
+        tagIds.map((tagId) => ({
+          noteId: newNote.id,
+          tagId,
+        })),
+      )
+      .run();
+  }
+
+  if (linkedNoteIds.length > 0) {
+    tx.insert(noteLinks)
+      .values(
+        linkedNoteIds.map((targetNoteId) => ({
+          sourceNoteId: newNote.id,
+          targetNoteId,
+          relationshipType: "related",
+        })),
+      )
+      .run();
+  }
+
+  return newNote;
+});
+
+  return result;
+}
 
 export async function getAllNotes() {
   return await db.select().from(notes).where(sql`${notes.deletedAt} IS NULL`);;

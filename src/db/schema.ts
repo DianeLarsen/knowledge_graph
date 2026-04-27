@@ -13,6 +13,7 @@ export const notes = sqliteTable("notes", {
     .$defaultFn(() => crypto.randomUUID()),
   title: text("title").notNull(),
   content: text("content"),
+  contentJson: text("content_json"),
   userId: text("user_id")
   .notNull()
   .references(() => users.id, { onDelete: "cascade" }),
@@ -96,8 +97,108 @@ export const users = sqliteTable("users", {
     .$defaultFn(() => new Date()),
 });
 
+export const referencesTable = sqliteTable("references", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+
+  type: text("type", {
+    enum: ["book", "website", "article", "conversation", "video", "other"],
+  }).notNull(),
+
+  title: text("title").notNull(),
+
+  author: text("author"),
+
+  url: text("url"),
+
+  citation: text("citation"),
+
+  notes: text("notes"),
+
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date()),
+});
+
+export const noteReferences = sqliteTable(
+  "note_references",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+
+    noteId: text("note_id")
+      .notNull()
+      .references(() => notes.id, { onDelete: "cascade" }),
+
+    referenceId: text("reference_id")
+      .notNull()
+      .references(() => referencesTable.id, { onDelete: "cascade" }),
+
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [unique("unique_note_reference").on(t.noteId, t.referenceId)],
+);
+
+export const noteReferenceDetails = sqliteTable(
+  "note_reference_details",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+
+    noteId: text("note_id")
+      .notNull()
+      .references(() => notes.id, { onDelete: "cascade" }),
+
+    referenceId: text("reference_id")
+      .notNull()
+      .references(() => referencesTable.id, { onDelete: "cascade" }),
+
+    pageNumber: text("page_number"),
+
+    quote: text("quote"),
+
+    summary: text("summary"),
+
+    location: text("location"),
+
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    unique("unique_note_reference_detail").on(t.noteId, t.referenceId),
+  ],
+);
+
 export type Note = typeof notes.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
 export type NoteTag = typeof noteTags.$inferSelect;
 export type NoteLink = typeof noteLinks.$inferSelect;
 export type User = typeof users.$inferSelect;
+export type Reference = typeof referencesTable.$inferSelect;
+export type NewReference = typeof referencesTable.$inferInsert;
+
+export type NoteReference = typeof noteReferences.$inferSelect;
+export type NewNoteReference = typeof noteReferences.$inferInsert;
+
+export type NoteReferenceDetail = typeof noteReferenceDetails.$inferSelect;
+export type NewNoteReferenceDetail = typeof noteReferenceDetails.$inferInsert;
