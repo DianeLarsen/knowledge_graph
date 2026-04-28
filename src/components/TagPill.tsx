@@ -21,7 +21,7 @@ type TagPillProps = {
 
 export default function TagPill({ tag, stats }: TagPillProps) {
   const [open, setOpen] = useState(false);
- const ref = useRef<HTMLDivElement>(null);
+ const ref = useRef<HTMLSpanElement>(null);
 
  useEffect(() => {
    function handleClickOutside(event: MouseEvent) {
@@ -37,28 +37,33 @@ export default function TagPill({ tag, stats }: TagPillProps) {
    };
  }, []);
   return (
-    <div ref={ref} className="relative">
+    <span
+      ref={ref}
+      className="relative inline-flex align-middle"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
         className="
-          rounded-full border border-gray-300 bg-white px-3 py-1
-          text-sm font-medium text-gray-700 shadow-sm
-          hover:bg-gray-100
-          dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200
-          dark:hover:bg-gray-800
-        "
+        inline-flex rounded-full border border-gray-300 bg-white px-3 py-1
+        text-sm font-medium text-gray-700 shadow-sm
+        hover:bg-gray-100
+        dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200
+        dark:hover:bg-gray-800
+      "
       >
         #{tag.name}
       </button>
 
       {open && (
-        <div
+        <span
           className="
-            absolute left-0 top-9 z-20 w-56 rounded-xl border border-gray-200
-            bg-white p-4 shadow-lg
-            dark:border-gray-700 dark:bg-gray-900
-          "
+          absolute left-0 top-full z-50 mt-2 w-56 rounded-xl border border-gray-200
+          bg-white p-4 text-left shadow-lg
+          dark:border-gray-700 dark:bg-gray-900
+        "
         >
           <p className="font-semibold text-gray-900 dark:text-gray-100">
             #{tag.name}
@@ -74,8 +79,8 @@ export default function TagPill({ tag, stats }: TagPillProps) {
           >
             View all cards
           </Link>
-        </div>
+        </span>
       )}
-    </div>
+    </span>
   );
 }

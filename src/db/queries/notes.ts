@@ -13,6 +13,7 @@ type CreateNoteInput = {
   selectedTagIds?: string[];
   newTagName?: string;
   linkedNoteIds?: string[];
+  inlineTagNames?: string[];
 };
 
 export async function createNote(input: CreateNoteInput) {
@@ -41,6 +42,11 @@ export async function createNote(input: CreateNoteInput) {
 
   let tagIds = [...selectedTagIds];
 
+const inlineTagNames = input.inlineTagNames ?? [];
+const cleanedInlineTagNames = [
+  ...new Set(inlineTagNames.map((name) => name.trim()).filter(Boolean)),
+];
+
   if (newTagName) {
     const existingTag = tx
       .select()
@@ -62,6 +68,25 @@ export async function createNote(input: CreateNoteInput) {
       tagIds.push(createdTag.id);
     }
   }
+    for (const tagName of cleanedInlineTagNames) {
+  const existingTag = tx
+    .select()
+    .from(tags)
+    .where(eq(tags.name, tagName))
+    .get();
+
+  if (existingTag) {
+    tagIds.push(existingTag.id);
+  } else {
+    const createdTag = tx
+      .insert(tags)
+      .values({ name: tagName })
+      .returning()
+      .get();
+
+    tagIds.push(createdTag.id);
+  }
+}
 
   tagIds = [...new Set(tagIds)];
 
@@ -119,13 +144,72 @@ export async function getNoteDetailsById(id: string) {
   };
 }
 
-export async function updateNote(id: string, title: string, content: string) {
-  const result = await db
-    .update(notes)
-    .set({ title, content })
-    .where(eq(notes.id, id))
-    .returning();
-  return result[0];
+export async function updateNote(
+  id: string,
+  title: string,
+  content: string,
+  contentJson?: string,
+  inlineTagNames: string[] = [],
+) {
+  const result = db.transaction((tx) => {
+    const updatedNote = tx
+      .update(notes)
+      .set({
+        title,
+        content,
+        contentJson,
+        updatedAt: new Date(),
+      })
+      .where(eq(notes.id, id))
+      .returning()
+      .get();
+
+    const cleanedTagNames = [...new Set(
+      inlineTagNames
+        .map((name) => name.trim())
+        .filter(Boolean),
+    )];
+
+    for (const tagName of cleanedTagNames) {
+      let tag = tx
+        .select()
+        .from(tags)
+        .where(eq(tags.name, tagName))
+        .get();
+
+      if (!tag) {
+        tag = tx
+          .insert(tags)
+          .values({ name: tagName })
+          .returning()
+          .get();
+      }
+
+      const existingNoteTag = tx
+        .select()
+        .from(noteTags)
+        .where(
+          and(
+            eq(noteTags.noteId, id),
+            eq(noteTags.tagId, tag.id),
+          ),
+        )
+        .get();
+
+      if (!existingNoteTag) {
+        tx.insert(noteTags)
+          .values({
+            noteId: id,
+            tagId: tag.id,
+          })
+          .run();
+      }
+    }
+
+    return updatedNote;
+  });
+
+  return result;
 }
 
 export async function deleteNote(id: string) {

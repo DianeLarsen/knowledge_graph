@@ -21,7 +21,7 @@ export default function NewNoteComposer({ notes, tags }: NewNoteComposerProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
   const [hasSaved, setHasSaved] = useState(false);
-
+const [inlineTagNames, setInlineTagNames] = useState<string[]>([]);
   const router = useRouter();
   function toggleTag(tagId: string) {
     setSelectedTagIds((current) =>
@@ -38,7 +38,8 @@ export default function NewNoteComposer({ notes, tags }: NewNoteComposerProps) {
     setNewTagName("");
     setLinkedNoteIds([]);
     setHasSaved(false);
-    setSavedMessage("");
+      setSavedMessage("");
+      setInlineTagNames([]);
   }
   function toggleLinkedNote(noteId: string) {
     setLinkedNoteIds((current) =>
@@ -63,6 +64,7 @@ export default function NewNoteComposer({ notes, tags }: NewNoteComposerProps) {
         selectedTagIds,
         newTagName,
         linkedNoteIds,
+        inlineTagNames,
       });
 
       setHasSaved(true);
@@ -91,6 +93,12 @@ export default function NewNoteComposer({ notes, tags }: NewNoteComposerProps) {
       />
 
       <RichNoteEditor
+        tags={tags}
+        onTagUsed={(tagName) => {
+          setInlineTagNames((current) =>
+            current.includes(tagName) ? current : [...current, tagName],
+          );
+        }}
         onChange={({ plainText, json }) => {
           setContent(plainText);
           setContentJson(json);

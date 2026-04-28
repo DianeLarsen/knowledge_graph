@@ -27,12 +27,18 @@ export default async function NoteDetailsPage({
 
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-8 dark:bg-gray-950">
-      <div className="mx-auto mb-6 max-w-3xl">
+      <div className="mx-auto mb-6 flex max-w-3xl items-center justify-between">
         <Link
           href="/notes"
           className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
         >
           ← Back to notes
+        </Link>
+        <Link
+          href={`/notes/${id}/edit`}
+          className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+        >
+          Edit note
         </Link>
       </div>
 

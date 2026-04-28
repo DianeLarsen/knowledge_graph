@@ -44,3 +44,14 @@ export async function getNotesForTag(tagId: string) {
     .innerJoin(notes, eq(noteTags.noteId, notes.id))
     .where(and(eq(noteTags.tagId, tagId), sql`${notes.deletedAt} IS NULL`));
 }
+
+export async function getNoteTagsByUser(userId: string) {
+  return await db
+    .select({
+      noteId: noteTags.noteId,
+      tagId: noteTags.tagId,
+    })
+    .from(noteTags)
+    .innerJoin(notes, eq(noteTags.noteId, notes.id))
+    .where(and(eq(notes.userId, userId), sql`${notes.deletedAt} IS NULL`));
+}
