@@ -107,17 +107,16 @@ export const referencesTable = sqliteTable("references", {
     .references(() => users.id, { onDelete: "cascade" }),
 
   type: text("type", {
-    enum: ["book", "website", "article", "conversation", "video", "other"],
+    enum: ["book", "website", "article", "video", "conversation", "other"],
   }).notNull(),
 
   title: text("title").notNull(),
-
   author: text("author"),
-
   url: text("url"),
+  publisher: text("publisher"),
+  publishedDate: text("published_date"),
 
   citation: text("citation"),
-
   notes: text("notes"),
 
   createdAt: integer("created_at", { mode: "timestamp" })
@@ -145,11 +144,23 @@ export const noteReferences = sqliteTable(
       .notNull()
       .references(() => referencesTable.id, { onDelete: "cascade" }),
 
+    pageNumber: text("page_number"),
+    location: text("location"),
+    quote: text("quote"),
+    summary: text("summary"),
+
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
+
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
   },
-  (t) => [unique("unique_note_reference").on(t.noteId, t.referenceId)],
+  (t) => [
+    unique("unique_note_reference").on(t.noteId, t.referenceId),
+  ],
 );
 
 export const noteReferenceDetails = sqliteTable(

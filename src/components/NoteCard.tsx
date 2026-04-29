@@ -43,17 +43,17 @@ console.log(note)
         )}
 
         <IndexLine isRed>
-          <h1 className="font-['Comic_Sans_MS','Bradley_Hand',cursive] text-4xl font-semibold text-gray-950 dark:text-gray-100">
+          <h1 className="font-['Comic_Sans_MS','Bradley_Hand',cursive] text-2xl font-semibold text-gray-950 dark:text-gray-100">
             {note.title}
           </h1>
         </IndexLine>
 
         <div
           className="
-    min-h-40 px-4 pl-12 py-3
-    bg-[linear-gradient(to_bottom,transparent_39px,#93c5fd_40px)]
-    bg-[length:100%_40px]
-    dark:bg-[linear-gradient(to_bottom,transparent_39px,#60a5fa_40px)]
+    min-h-40 px-4 py-0
+bg-[linear-gradient(to_bottom,transparent_31px,#93c5fd_32px)]
+bg-[length:100%_32px]
+dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
   "
         >
           <ReadOnlyNoteContent content={note.contentJson} />
@@ -75,7 +75,7 @@ function IndexLine({
   return (
     <div
       className={`
-        flex min-h-10 items-end px-4 pl-12
+        flex min-h-10 items-end px-4 pl-4
         border-b
         ${
           isRed

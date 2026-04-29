@@ -3,6 +3,7 @@
 import { useState } from "react";
 import NewNoteComposer from "@/components/NewNoteComposer";
 import { Note, Tag } from "@/db/schema";
+import ReadOnlyNoteContent from "@/components/ReadOnlyNoteContent"
 
 type NoteTagSummary = {
   noteId: string;
@@ -144,7 +145,12 @@ export default function NotesWorkspace({
               Close all
             </button>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div
+            className="
+    grid gap-4
+    [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]
+  "
+          >
             {openNotes.length > 0 ? (
               openNotes.map((note) => (
                 <div key={note.id} className="relative w-full">
@@ -204,10 +210,10 @@ function MiniIndexCard({
         ×
       </button>
 
-      <div className="h-6" />
+      <div className="h-5" />
 
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 px-3 pb-2">
+        <div className="flex flex-wrap gap-1 px-3 pb-1">
           {tags.map((tag) => (
             <span
               key={tag.id}
@@ -226,20 +232,23 @@ function MiniIndexCard({
         </div>
       )}
 
-      <div className="flex h-10 items-end border-b border-red-400 px-3 pr-10">
-        <h3 className="translate-y-1 truncate font-['Comic_Sans_MS','Bradley_Hand',cursive] text-2xl font-semibold dark:text-gray-100">
+      <div className="flex h-8 items-end border-b border-red-400 px-3 pr-10">
+        <h3 className="translate-y-0.5 truncate font-['Comic_Sans_MS','Bradley_Hand',cursive] text-lg font-semibold dark:text-gray-100">
           {note.title}
         </h3>
       </div>
 
-      <div className="flex min-h-10 items-end border-b border-blue-300 px-3">
-        <p className="translate-y-1 font-['Comic_Sans_MS','Bradley_Hand',cursive] text-xl dark:text-gray-100">
-          {note.content || "No content yet."}
-        </p>
+      <div
+        className="
+    min-h-40 px-4 py-0
+bg-[linear-gradient(to_bottom,transparent_31px,#93c5fd_32px)]
+bg-[length:100%_32px]
+dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
+  "
+      >
+        <ReadOnlyNoteContent content={note.contentJson} />
       </div>
 
-      <div className="h-10 border-b border-blue-300" />
-      <div className="h-10 border-b border-blue-300" />
       <div className="h-10 border-b border-blue-300" />
     </article>
   );

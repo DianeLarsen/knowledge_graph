@@ -44,7 +44,7 @@ export default function ReadOnlyNoteContent({
       }).configure({
         HTMLAttributes: {
           class:
-            "inline-flex cursor-help rounded bg-blue-100 px-1 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200",
+            "mention inline-flex cursor-help rounded bg-blue-100 px-1 text-blue-700 align-baseline leading-none dark:bg-blue-900/40 dark:text-blue-200",
         },
 
         renderText({ node }) {
@@ -58,7 +58,7 @@ export default function ReadOnlyNoteContent({
             "span",
             {
               class:
-                "inline-flex cursor-help rounded bg-blue-100 px-1 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200",
+                "mention inline-flex cursor-help rounded bg-blue-100 px-1 text-blue-700 align-baseline leading-none dark:bg-blue-900/40 dark:text-blue-200",
               title: tagName ? `#${tagName}` : "Tag",
               "data-tag-name": tagName,
             },
@@ -78,17 +78,24 @@ export default function ReadOnlyNoteContent({
     <EditorContent
       editor={editor}
       className="
-        font-['Comic_Sans_MS','Bradley_Hand',cursive]
-        text-2xl text-gray-900 dark:text-gray-100
+ font-['Comic_Sans_MS','Bradley_Hand',cursive]
+    text-lg text-gray-900 dark:text-gray-100
 
-        [&_.ProseMirror]:outline-none
-        [&_.ProseMirror]:whitespace-pre-wrap
-        [&_.ProseMirror_p]:my-0
+    [&_.ProseMirror]:outline-none
+    [&_.ProseMirror]:whitespace-pre-wrap
+    [&_.ProseMirror]:leading-[32px]
+    [&_.ProseMirror]:pt-[7px]
 
-        [&_mark]:rounded
-        [&_mark]:bg-yellow-200
-        [&_mark]:px-1
-        dark:[&_mark]:bg-yellow-800
+    [&_.ProseMirror_p]:my-0
+    [&_.ProseMirror_p]:leading-[32px]
+
+    [&_mark]:rounded
+    [&_mark]:bg-yellow-200
+    [&_mark]:px-1
+    dark:[&_mark]:bg-yellow-800
+
+    [&_.mention]:align-baseline
+    [&_.mention]:leading-none
       "
     />
   );
