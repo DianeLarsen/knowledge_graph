@@ -1,17 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { Note, Tag } from "@/db/schema";
+import { Note, Tag, Reference } from "@/db/schema";
 import RichNoteEditor from "./RichNoteEditor";
 import { createNoteAction } from "@/app/actions/notes";
 import { useRouter } from "next/navigation";
+import ReferenceComposer from "./ReferenceComposer";
+
 
 type NewNoteComposerProps = {
   notes: Note[];
   tags: Tag[];
+  references: Reference[];
+  userId: string;
 };
 
-export default function NewNoteComposer({ notes, tags }: NewNoteComposerProps) {
+export default function NewNoteComposer({
+  notes,
+  tags,
+  references,
+  userId,
+}: NewNoteComposerProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -21,7 +30,13 @@ export default function NewNoteComposer({ notes, tags }: NewNoteComposerProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
   const [hasSaved, setHasSaved] = useState(false);
-const [inlineTagNames, setInlineTagNames] = useState<string[]>([]);
+  const [inlineTagNames, setInlineTagNames] = useState<string[]>([]);
+  const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>(
+    [],
+  );
+  const [availableReferences, setAvailableReferences] =
+    useState<Reference[]>(references);
+
   const router = useRouter();
   function toggleTag(tagId: string) {
     setSelectedTagIds((current) =>
@@ -38,8 +53,9 @@ const [inlineTagNames, setInlineTagNames] = useState<string[]>([]);
     setNewTagName("");
     setLinkedNoteIds([]);
     setHasSaved(false);
-      setSavedMessage("");
-      setInlineTagNames([]);
+    setSavedMessage("");
+    setInlineTagNames([]);
+    setSelectedReferenceIds([]);
   }
   function toggleLinkedNote(noteId: string) {
     setLinkedNoteIds((current) =>
@@ -51,7 +67,10 @@ const [inlineTagNames, setInlineTagNames] = useState<string[]>([]);
 
   async function handleSave() {
     if (isSaving || hasSaved) return;
-
+if (selectedReferenceIds.length === 0) {
+  setSavedMessage("Add at least one reference before saving.");
+  return;
+}
     try {
       setIsSaving(true);
       setSavedMessage("");
@@ -65,6 +84,7 @@ const [inlineTagNames, setInlineTagNames] = useState<string[]>([]);
         newTagName,
         linkedNoteIds,
         inlineTagNames,
+        selectedReferenceIds,
       });
 
       setHasSaved(true);
@@ -77,6 +97,13 @@ const [inlineTagNames, setInlineTagNames] = useState<string[]>([]);
     } finally {
       setIsSaving(false);
     }
+  }
+  function toggleReference(referenceId: string) {
+    setSelectedReferenceIds((current) =>
+      current.includes(referenceId)
+        ? current.filter((id) => id !== referenceId)
+        : [...current, referenceId],
+    );
   }
 
   return (
@@ -183,10 +210,47 @@ const [inlineTagNames, setInlineTagNames] = useState<string[]>([]);
           References
         </h3>
 
-        <input
-          disabled
-          placeholder="References coming next"
-          className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm opacity-60 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+        <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-gray-200 p-2 dark:border-gray-700">
+          {availableReferences.length > 0 ? (
+            availableReferences.map((reference) => {
+              const selected = selectedReferenceIds.includes(reference.id);
+
+              return (
+                <button
+                  key={reference.id}
+                  type="button"
+                  onClick={() => toggleReference(reference.id)}
+                  className={`block w-full rounded-lg px-3 py-2 text-left text-sm ${
+                    selected
+                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
+                      : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  <span className="block font-medium">{reference.title}</span>
+                  {reference.author && (
+                    <span className="block text-xs opacity-75">
+                      {reference.author}
+                    </span>
+                  )}
+                </button>
+              );
+            })
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              No references yet.
+            </p>
+          )}
+        </div>
+        <ReferenceComposer
+userId={userId}
+          onReferenceCreated={(reference) => {
+            setAvailableReferences((current) => [reference, ...current]);
+            setSelectedReferenceIds((current) =>
+              current.includes(reference.id)
+                ? current
+                : [...current, reference.id],
+            );
+          }}
         />
       </section>
 

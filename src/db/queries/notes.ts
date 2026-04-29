@@ -1,4 +1,4 @@
-import { notes, noteTags, tags, noteLinks  } from "../schema";
+import { notes, noteTags, tags, noteLinks, noteReferences, referencesTable, } from "../schema";
 import { db } from "../index";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { getBacklinks, getOutgoingLinks } from "./noteLinks";
@@ -14,6 +14,7 @@ type CreateNoteInput = {
   newTagName?: string;
   linkedNoteIds?: string[];
   inlineTagNames?: string[];
+  selectedReferenceIds?: string[];
 };
 
 export async function createNote(input: CreateNoteInput) {
@@ -23,6 +24,7 @@ export async function createNote(input: CreateNoteInput) {
   const selectedTagIds = input.selectedTagIds ?? [];
   const linkedNoteIds = input.linkedNoteIds ?? [];
   const newTagName = input.newTagName?.trim();
+  const selectedReferenceIds = input.selectedReferenceIds ?? [];
 
   if (!title) {
     throw new Error("Title is required.");
@@ -112,7 +114,16 @@ const cleanedInlineTagNames = [
       )
       .run();
   }
-
+if (selectedReferenceIds.length > 0) {
+  tx.insert(noteReferences)
+    .values(
+      selectedReferenceIds.map((referenceId) => ({
+        noteId: newNote.id,
+        referenceId,
+      })),
+    )
+    .run();
+}
   return newNote;
 });
 
@@ -127,13 +138,39 @@ export async function getNoteById(id: string) {
   const result = await db.select().from(notes).where(eq(notes.id, id));
   return result[0];
 }
+export async function getReferencesForNote(noteId: string) {
+  return await db
+    .select({
+      id: referencesTable.id,
+      type: referencesTable.type,
+      title: referencesTable.title,
+      author: referencesTable.author,
+      url: referencesTable.url,
+      publisher: referencesTable.publisher,
+      publishedDate: referencesTable.publishedDate,
+      citation: referencesTable.citation,
+      notes: referencesTable.notes,
 
+      noteReferenceId: noteReferences.id,
+      pageNumber: noteReferences.pageNumber,
+      location: noteReferences.location,
+      quote: noteReferences.quote,
+      summary: noteReferences.summary,
+    })
+    .from(noteReferences)
+    .innerJoin(
+      referencesTable,
+      eq(noteReferences.referenceId, referencesTable.id),
+    )
+    .where(eq(noteReferences.noteId, noteId));
+}
 export async function getNoteDetailsById(id: string) {
   const note = await getNoteById(id);
   const tags = await getTagsForNote(id);
   const outgoingLinks = await getOutgoingLinks(id);
   const backlinks = await getBacklinks(id);
   const sharedTags = await getNotesSharingTags(id);
+  const references = await getReferencesForNote(id);
 
   return {
     note,
@@ -141,6 +178,7 @@ export async function getNoteDetailsById(id: string) {
     outgoingLinks,
     backlinks,
     sharedTags,
+    references,
   };
 }
 
@@ -150,6 +188,7 @@ export async function updateNote(
   content: string,
   contentJson?: string,
   inlineTagNames: string[] = [],
+  selectedReferenceIds: string[] = [],
 ) {
   const result = db.transaction((tx) => {
     const updatedNote = tx
@@ -205,7 +244,20 @@ export async function updateNote(
           .run();
       }
     }
+tx.delete(noteReferences)
+  .where(eq(noteReferences.noteId, id))
+  .run();
 
+if (selectedReferenceIds.length > 0) {
+  tx.insert(noteReferences)
+    .values(
+      selectedReferenceIds.map((referenceId) => ({
+        noteId: id,
+        referenceId,
+      })),
+    )
+    .run();
+}
     return updatedNote;
   });
 

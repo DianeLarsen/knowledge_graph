@@ -97,6 +97,7 @@ export const users = sqliteTable("users", {
     .$defaultFn(() => new Date()),
 });
 
+
 export const referencesTable = sqliteTable("references", {
   id: text("id")
     .primaryKey()
@@ -163,42 +164,7 @@ export const noteReferences = sqliteTable(
   ],
 );
 
-export const noteReferenceDetails = sqliteTable(
-  "note_reference_details",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
 
-    noteId: text("note_id")
-      .notNull()
-      .references(() => notes.id, { onDelete: "cascade" }),
-
-    referenceId: text("reference_id")
-      .notNull()
-      .references(() => referencesTable.id, { onDelete: "cascade" }),
-
-    pageNumber: text("page_number"),
-
-    quote: text("quote"),
-
-    summary: text("summary"),
-
-    location: text("location"),
-
-    createdAt: integer("created_at", { mode: "timestamp" })
-      .notNull()
-      .$defaultFn(() => new Date()),
-
-    updatedAt: integer("updated_at", { mode: "timestamp" })
-      .notNull()
-      .$defaultFn(() => new Date())
-      .$onUpdate(() => new Date()),
-  },
-  (t) => [
-    unique("unique_note_reference_detail").on(t.noteId, t.referenceId),
-  ],
-);
 
 export type Note = typeof notes.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
@@ -211,5 +177,3 @@ export type NewReference = typeof referencesTable.$inferInsert;
 export type NoteReference = typeof noteReferences.$inferSelect;
 export type NewNoteReference = typeof noteReferences.$inferInsert;
 
-export type NoteReferenceDetail = typeof noteReferenceDetails.$inferSelect;
-export type NewNoteReferenceDetail = typeof noteReferenceDetails.$inferInsert;

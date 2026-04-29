@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import NewNoteComposer from "@/components/NewNoteComposer";
-import { Note, Tag } from "@/db/schema";
-import ReadOnlyNoteContent from "@/components/ReadOnlyNoteContent"
+import { Note, Reference, Tag, } from "@/db/schema";
+import ReadOnlyNoteContent from "@/components/ReadOnlyNoteContent";
 
 type NoteTagSummary = {
   noteId: string;
@@ -14,12 +14,16 @@ type WorkspaceProps = {
   notes: Note[];
   tags: Tag[];
   noteTags: NoteTagSummary[];
+  references: Reference[];
+  userId: string;
 };
 
 export default function NotesWorkspace({
   notes,
   tags,
   noteTags,
+  references,
+  userId
 }: WorkspaceProps) {
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
 
@@ -175,7 +179,7 @@ export default function NotesWorkspace({
           </div>
         </section>
 
-        <NewNoteComposer notes={notes} tags={tags} />
+        <NewNoteComposer notes={notes} tags={tags} references={references} userId={userId} />
       </div>
     </main>
   );

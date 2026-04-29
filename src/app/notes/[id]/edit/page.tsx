@@ -1,8 +1,10 @@
 import EditNoteForm from "@/components/EditNoteForm";
-import { getNoteById } from "@/db/queries/notes";
-import { getTagsByUser } from "@/db/queries/tags";
-import { getTagsForNote } from "@/db/queries/notetags";
+import { getNoteDetailsById } from "@/db/queries/notes";
+import { getAllTags } from "@/db/queries/tags";
+
 import Link from "next/link";
+import { getCurrentUserId } from "@/lib/currentUser";
+import { getReferencesByUserId } from "@/db/queries/references";
 
 type EditNotePageProps = {
   params: Promise<{
@@ -12,15 +14,10 @@ type EditNotePageProps = {
 
 export default async function EditNotePage({ params }: EditNotePageProps) {
   const { id } = await params;
-
-  const note = await getNoteById(id);
-
-  if (!note) {
-    return <div>Note not found.</div>;
-  }
-
-  const tags = await getTagsByUser(note.userId);
-  const noteTags = await getTagsForNote(note.id);
+const userId = await getCurrentUserId();
+const details = await getNoteDetailsById(id);
+const tags = await getAllTags();
+const references = await getReferencesByUserId(userId);
 
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-8 dark:bg-gray-950">
@@ -33,7 +30,14 @@ export default async function EditNotePage({ params }: EditNotePageProps) {
         </Link>
       </div>
 
-      <EditNoteForm note={note} tags={tags} noteTags={noteTags} />
+      <EditNoteForm
+        note={details.note}
+        tags={tags}
+        noteTags={details.tags}
+        references={references}
+        noteReferences={details.references}
+        userId={userId}
+      />
     </main>
   );
 }

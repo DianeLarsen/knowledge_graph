@@ -10,8 +10,9 @@ type CreateNoteActionInput = {
   contentJson?: string;
   selectedTagIds?: string[];
   newTagName?: string;
-    linkedNoteIds?: string[];
+  linkedNoteIds?: string[];
   inlineTagNames?: string[];
+  selectedReferenceIds?: string[];
 };
 
 type UpdateNoteActionInput = {
@@ -20,6 +21,7 @@ type UpdateNoteActionInput = {
   content: string;
   contentJson?: string;
   inlineTagNames?: string[];
+  selectedReferenceIds?: string[];
 };
 
 export async function updateNoteAction(input: UpdateNoteActionInput) {
@@ -29,6 +31,7 @@ export async function updateNoteAction(input: UpdateNoteActionInput) {
     input.content,
     input.contentJson,
     input.inlineTagNames,
+    input.selectedReferenceIds,
   );
 
   revalidatePath(`/notes/${input.id}`);
