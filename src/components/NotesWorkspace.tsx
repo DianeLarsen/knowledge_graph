@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import NewNoteComposer from "@/components/NewNoteComposer";
 import { Note, Reference, Tag } from "@/db/schema";
 import ReadOnlyNoteContent from "@/components/ReadOnlyNoteContent";
@@ -244,12 +244,28 @@ function MiniIndexCard({
   onClose: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [currentNote, setCurrentNote] = useState(note);
+  const cardRef = useRef<HTMLElement | null>(null);
+
+function closeEditMode() {
+  setIsEditing(false);
+  requestAnimationFrame(() => {
+    cardRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  });
+}
+
   return (
-    <article className="relative border bg-white shadow-[6px_6px_0_rgba(0,0,0,0.06)] dark:border-gray-800 dark:bg-gray-950">
+    <article
+      ref={cardRef}
+      className="relative border bg-white shadow-[6px_6px_0_rgba(0,0,0,0.06)] dark:border-gray-800 dark:bg-gray-950"
+    >
       <button
         type="button"
         onClick={onClose}
-        aria-label={`Close ${note.title}`}
+        aria-label={`Close ${currentNote.title}`}
         className="
           absolute right-2 top-2 z-10
           flex h-6 w-6 items-center justify-center
@@ -301,7 +317,7 @@ function MiniIndexCard({
 
       <div className="flex h-8 items-end border-b border-red-400 px-3 pr-10">
         <h3 className="translate-y-0.5 truncate font-['Comic_Sans_MS','Bradley_Hand',cursive] text-lg font-semibold dark:text-gray-100">
-          {note.title}
+          {currentNote.title}
         </h3>
       </div>
 
@@ -315,16 +331,20 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
       >
         {isEditing ? (
           <EditNoteForm
-            note={note}
+            note={currentNote}
             tags={allTags}
             noteTags={tags}
             references={references}
             noteReferences={noteReferences}
             userId={userId}
-            onCancel={() => setIsEditing(false)}
+            onCancel={closeEditMode}
+            onSave={(updatedNote) => {
+              setCurrentNote(updatedNote);
+              closeEditMode();
+            }}
           />
         ) : (
-          <ReadOnlyNoteContent content={note.contentJson} />
+          <ReadOnlyNoteContent content={currentNote.contentJson} />
         )}
       </div>
 

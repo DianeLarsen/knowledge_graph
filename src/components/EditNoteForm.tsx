@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+
 import { Note, Tag, Reference } from "@/db/schema";
 import RichNoteEditor from "@/components/RichNoteEditor";
 import { updateNoteAction } from "@/app/actions/notes";
@@ -33,6 +33,7 @@ type EditNoteFormProps = {
   userId: string;
   noteReferences: NoteReferenceSummary[];
   onCancel?: () => void;
+  onSave?: (updatedNote: Note) => void;
 };
 
 export default function EditNoteForm({
@@ -43,8 +44,9 @@ export default function EditNoteForm({
   noteReferences,
   userId,
   onCancel,
+  onSave,
 }: EditNoteFormProps) {
-  const router = useRouter();
+
 
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content ?? "");
@@ -67,7 +69,7 @@ export default function EditNoteForm({
       setIsSaving(true);
       setMessage("");
 
-      await updateNoteAction({
+      const result = await updateNoteAction({
         id: note.id,
         title,
         content,
@@ -77,7 +79,10 @@ export default function EditNoteForm({
       });
 
       setMessage("Note saved.");
-      router.refresh();
+      if (onSave) {
+        onSave(result); // whatever your updated note return is
+      }
+
     } catch (error) {
       console.error(error);
       setMessage("Something went wrong. Note was not saved.");
