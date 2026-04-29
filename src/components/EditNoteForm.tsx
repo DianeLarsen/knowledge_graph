@@ -32,6 +32,7 @@ type EditNoteFormProps = {
   references: Reference[];
   userId: string;
   noteReferences: NoteReferenceSummary[];
+  onCancel?: () => void;
 };
 
 export default function EditNoteForm({
@@ -41,6 +42,7 @@ export default function EditNoteForm({
   references,
   noteReferences,
   userId,
+  onCancel,
 }: EditNoteFormProps) {
   const router = useRouter();
 
@@ -92,10 +94,27 @@ export default function EditNoteForm({
   }
   return (
     <section className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <h1 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
-        Edit Note
-      </h1>
-
+      <div className="relative">
+        <h1 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
+          Edit Note
+        </h1>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="
+      absolute right-2 top-2 z-10
+      rounded-full border border-gray-300 bg-white px-2 py-0.5
+      text-xs text-gray-600 shadow-sm transition
+      hover:border-red-400 hover:bg-red-50 hover:text-red-600
+      dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300
+      dark:hover:border-red-400 dark:hover:bg-red-900/40
+    "
+          >
+            ×
+          </button>
+        )}
+      </div>
       <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
         Title
       </label>
@@ -201,7 +220,19 @@ export default function EditNoteForm({
       >
         {isSaving ? "Saving..." : "Save Changes"}
       </button>
-
+      {onCancel && (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="
+    px-3 py-1.5 text-sm
+    text-gray-500 hover:text-gray-700
+    dark:text-gray-400 dark:hover:text-gray-200
+  "
+        >
+          Cancel
+        </button>
+      )}
       {message && (
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
           {message}

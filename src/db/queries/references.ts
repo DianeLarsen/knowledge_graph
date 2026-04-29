@@ -79,6 +79,8 @@ export async function getReferencesForNote(noteId: string) {
       notes: referencesTable.notes,
 
       noteReferenceId: noteReferences.id,
+      noteId: noteReferences.noteId,
+      referenceId: noteReferences.referenceId,
       pageNumber: noteReferences.pageNumber,
       location: noteReferences.location,
       quote: noteReferences.quote,
@@ -117,4 +119,33 @@ export async function removeReferenceFromNote(noteId: string, referenceId: strin
     .returning();
 
   return result;
+}
+
+export async function getNoteReferencesByUserId(userId: string) {
+  return db
+    .select({
+      id: referencesTable.id,
+      type: referencesTable.type,
+      title: referencesTable.title,
+      author: referencesTable.author,
+      url: referencesTable.url,
+      publisher: referencesTable.publisher,
+      publishedDate: referencesTable.publishedDate,
+      citation: referencesTable.citation,
+      notes: referencesTable.notes,
+
+      noteReferenceId: noteReferences.id,
+      noteId: noteReferences.noteId,
+      referenceId: noteReferences.referenceId,
+      pageNumber: noteReferences.pageNumber,
+      location: noteReferences.location,
+      quote: noteReferences.quote,
+      summary: noteReferences.summary,
+    })
+    .from(noteReferences)
+    .innerJoin(
+      referencesTable,
+      eq(noteReferences.referenceId, referencesTable.id),
+    )
+    .where(eq(referencesTable.userId, userId));
 }

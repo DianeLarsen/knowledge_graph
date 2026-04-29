@@ -2,19 +2,39 @@
 
 import { useState } from "react";
 import NewNoteComposer from "@/components/NewNoteComposer";
-import { Note, Reference, Tag, } from "@/db/schema";
+import { Note, Reference, Tag } from "@/db/schema";
 import ReadOnlyNoteContent from "@/components/ReadOnlyNoteContent";
+import EditNoteForm from "@/components/EditNoteForm";
 
 type NoteTagSummary = {
   noteId: string;
   tagId: string;
 };
+type WorkspaceNoteReferenceSummary = {
+  id: string;
+  type: Reference["type"];
+  title: string;
+  author: string | null;
+  url: string | null;
+  publisher: string | null;
+  publishedDate: string | null;
+  citation: string | null;
+  notes: string | null;
 
+  noteReferenceId: string;
+  noteId: string;
+  referenceId: string;
+  pageNumber: string | null;
+  location: string | null;
+  quote: string | null;
+  summary: string | null;
+};
 type WorkspaceProps = {
   notes: Note[];
   tags: Tag[];
   noteTags: NoteTagSummary[];
   references: Reference[];
+  noteReferences: WorkspaceNoteReferenceSummary[];
   userId: string;
 };
 
@@ -23,12 +43,28 @@ export default function NotesWorkspace({
   tags,
   noteTags,
   references,
-  userId
+  noteReferences,
+  userId,
 }: WorkspaceProps) {
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
 
-  const openNotes =
-    notes && notes.filter((note) => openNoteIds.includes(note.id));
+const openNotes = notes
+  .filter((note) => openNoteIds.includes(note.id))
+  .map((note) => {
+    const tagsForThisNote = tags.filter((tag) =>
+      noteTags.some((nt) => nt.noteId === note.id && nt.tagId === tag.id),
+    );
+
+  const referencesForThisNote = noteReferences.filter(
+    (reference) => reference.noteId === note.id,
+  );
+
+    return {
+      note,
+      tagsForThisNote,
+      referencesForThisNote,
+    };
+  });
 
   function toggleNote(noteId: string) {
     setOpenNoteIds((current) =>
@@ -156,21 +192,21 @@ export default function NotesWorkspace({
   "
           >
             {openNotes.length > 0 ? (
-              openNotes.map((note) => (
-                <div key={note.id} className="relative w-full">
-                  <MiniIndexCard
-                    note={note}
-                    tags={tags.filter((tag) =>
-                      noteTags.some(
-                        (noteTag) =>
-                          noteTag.noteId === note.id &&
-                          noteTag.tagId === tag.id,
-                      ),
-                    )}
-                    onClose={() => closeNote(note.id)}
-                  />
-                </div>
-              ))
+              openNotes.map(
+                ({ note, tagsForThisNote, referencesForThisNote }) => (
+                  <div key={note.id} className="relative w-full">
+                    <MiniIndexCard
+                      note={note}
+                      tags={tagsForThisNote}
+                      allTags={tags}
+                      references={references}
+                      noteReferences={referencesForThisNote}
+                      userId={userId}
+                      onClose={() => closeNote(note.id)}
+                    />
+                  </div>
+                ),
+              )
             ) : (
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Select notes to open cards.
@@ -179,7 +215,12 @@ export default function NotesWorkspace({
           </div>
         </section>
 
-        <NewNoteComposer notes={notes} tags={tags} references={references} userId={userId} />
+        <NewNoteComposer
+          notes={notes}
+          tags={tags}
+          references={references}
+          userId={userId}
+        />
       </div>
     </main>
   );
@@ -188,12 +229,21 @@ export default function NotesWorkspace({
 function MiniIndexCard({
   note,
   tags,
+  allTags,
+  references,
+  noteReferences,
+  userId,
   onClose,
 }: {
   note: Note;
   tags: Tag[];
+  allTags: Tag[];
+  references: Reference[];
+  noteReferences: WorkspaceNoteReferenceSummary[];
+  userId: string;
   onClose: () => void;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
   return (
     <article className="relative border bg-white shadow-[6px_6px_0_rgba(0,0,0,0.06)] dark:border-gray-800 dark:bg-gray-950">
       <button
@@ -213,7 +263,20 @@ function MiniIndexCard({
       >
         ×
       </button>
-
+      <button
+        type="button"
+        onClick={() => setIsEditing((current) => !current)}
+        className="
+    absolute right-10 top-2 z-10
+    rounded-full border border-gray-300 bg-white px-2 py-0.5
+    text-xs text-gray-600 shadow-sm transition
+    hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700
+    dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300
+    dark:hover:border-blue-400 dark:hover:bg-blue-900/40
+  "
+      >
+        {isEditing ? "View" : "Edit"}
+      </button>
       <div className="h-5" />
 
       {tags.length > 0 && (
@@ -250,7 +313,19 @@ bg-[length:100%_32px]
 dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
   "
       >
-        <ReadOnlyNoteContent content={note.contentJson} />
+        {isEditing ? (
+          <EditNoteForm
+            note={note}
+            tags={allTags}
+            noteTags={tags}
+            references={references}
+            noteReferences={noteReferences}
+            userId={userId}
+            onCancel={() => setIsEditing(false)}
+          />
+        ) : (
+          <ReadOnlyNoteContent content={note.contentJson} />
+        )}
       </div>
 
       <div className="h-10 border-b border-blue-300" />
