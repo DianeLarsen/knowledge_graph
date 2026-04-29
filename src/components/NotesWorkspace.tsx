@@ -5,6 +5,7 @@ import NewNoteComposer from "@/components/NewNoteComposer";
 import { Note, Reference, Tag } from "@/db/schema";
 import ReadOnlyNoteContent from "@/components/ReadOnlyNoteContent";
 import EditNoteForm from "@/components/EditNoteForm";
+import { updateNoteAction } from "@/app/actions/notes";
 
 type NoteTagSummary = {
   noteId: string;
@@ -245,6 +246,9 @@ function MiniIndexCard({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [currentNote, setCurrentNote] = useState(note);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(currentNote.title);
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
   const cardRef = useRef<HTMLElement | null>(null);
 
 function closeEditMode() {
@@ -256,7 +260,36 @@ function closeEditMode() {
     });
   });
 }
+async function saveTitle() {
+  const trimmedTitle = titleDraft.trim();
 
+  if (!trimmedTitle || trimmedTitle === currentNote.title) {
+    setTitleDraft(currentNote.title);
+    setIsEditingTitle(false);
+    return;
+  }
+
+  try {
+    setIsSavingTitle(true);
+
+    const updatedNote = await updateNoteAction({
+      id: currentNote.id,
+      title: trimmedTitle,
+      content: currentNote.content ?? "",
+      contentJson: currentNote.contentJson ?? "",
+      inlineTagNames: [],
+      selectedReferenceIds: noteReferences.map((reference) => reference.id),
+    });
+
+    setCurrentNote(updatedNote);
+    setIsEditingTitle(false);
+  } catch (error) {
+    console.error(error);
+    setTitleDraft(currentNote.title);
+  } finally {
+    setIsSavingTitle(false);
+  }
+}
   return (
     <article
       ref={cardRef}
@@ -317,7 +350,47 @@ function closeEditMode() {
 
       <div className="flex h-8 items-end border-b border-red-400 px-3 pr-10">
         <h3 className="translate-y-0.5 truncate font-['Comic_Sans_MS','Bradley_Hand',cursive] text-lg font-semibold dark:text-gray-100">
-          {currentNote.title}
+          {isEditingTitle ? (
+            <input
+              value={titleDraft}
+              autoFocus
+              disabled={isSavingTitle}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={saveTitle}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  saveTitle();
+                }
+
+                if (e.key === "Escape") {
+                  setTitleDraft(currentNote.title);
+                  setIsEditingTitle(false);
+                }
+              }}
+              className="
+      w-full rounded-md border border-blue-300 bg-white px-2 py-1
+      text-lg font-semibold text-gray-900
+      focus:outline-none focus:ring-2 focus:ring-blue-400
+      dark:border-blue-700 dark:bg-gray-900 dark:text-gray-100
+    "
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setTitleDraft(currentNote.title);
+                setIsEditingTitle(true);
+              }}
+              className="
+      block w-full text-left text-lg font-semibold text-gray-900
+      hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400
+    "
+              title="Click to edit title"
+            >
+              {currentNote.title}
+            </button>
+          )}
         </h3>
       </div>
 
