@@ -164,7 +164,40 @@ export const noteReferences = sqliteTable(
   ],
 );
 
+export const tasks = sqliteTable("tasks", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
 
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+
+  noteId: text("note_id")
+    .references(() => notes.id, { onDelete: "set null" }),
+
+  title: text("title").notNull(),
+  description: text("description"),
+
+  status: text("status", {
+    enum: ["todo", "in_progress", "awaiting", "done", "archived"],
+  }).notNull().default("todo"),
+
+  priority: text("priority", {
+    enum: ["low", "medium", "high"],
+  }).default("medium"),
+
+  dueDate: text("due_date"),
+
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date()),
+});
 
 export type Note = typeof notes.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
@@ -177,3 +210,5 @@ export type NewReference = typeof referencesTable.$inferInsert;
 export type NoteReference = typeof noteReferences.$inferSelect;
 export type NewNoteReference = typeof noteReferences.$inferInsert;
 
+export type Task = typeof tasks.$inferSelect;
+export type NewTask = typeof tasks.$inferInsert;

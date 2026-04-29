@@ -4,6 +4,7 @@ import { createTag } from "./queries/tags";
 import { addTagToNote } from "./queries/notetags";
 import { createNoteLink } from "./queries/noteLinks";
 import { createReference, addReferenceToNote } from "./queries/references";
+import { createTask } from "./queries/tasks";
 
 function makeContentJson(content: string) {
   return JSON.stringify({
@@ -95,7 +96,60 @@ async function seed() {
     backlinks,
     searchqueries,
   });
+const task1 = await createTask({
+  userId: user.id,
+  noteId: sqljoins.id,
+  title: "Review SQL join examples",
+  description: "Add examples for INNER JOIN, LEFT JOIN, and many-to-many joins.",
+  status: "todo",
+  priority: "medium",
+  dueDate: "2026-05-01",
+});
 
+const task2 = await createTask({
+  userId: user.id,
+  noteId: drizzleorm.id,
+  title: "Add Drizzle query examples",
+  description: "Create examples for select, insert, update, delete, and joins.",
+  status: "in_progress",
+  priority: "high",
+  dueDate: "2026-05-03",
+});
+
+const task3 = await createTask({
+  userId: user.id,
+  noteId: sqlite.id,
+  title: "Document SQLite reset behavior",
+  description: "Explain delete order and foreign key constraints.",
+  status: "todo",
+  priority: "medium",
+});
+
+const task4 = await createTask({
+  userId: user.id,
+  noteId: knowledgegraphs.id,
+  title: "Sketch note relationship map",
+  description: "Show how notes, tags, links, references, and tasks connect.",
+  status: "todo",
+  priority: "high",
+});
+
+const task5 = await createTask({
+  userId: user.id,
+  noteId: backlinks.id,
+  title: "Display backlinks on note cards",
+  description: "Show a small backlink count or related note preview.",
+  status: "done",
+  priority: "low",
+});
+
+console.log("Created tasks:", {
+  task1,
+  task2,
+  task3,
+  task4,
+  task5,
+});
   const database = await createTag("database");
   const typescript = await createTag("typescript");
   const notes = await createTag("notes");

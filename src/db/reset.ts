@@ -3,6 +3,7 @@ import {
   noteLinks,
   noteTags,
   noteReferences,
+  tasks,
   notes,
   tags,
   referencesTable,
@@ -21,7 +22,7 @@ export async function resetDatabase() {
   await db.delete(notes);
   await db.delete(tags);
   await db.delete(referencesTable);
-
+await db.delete(tasks);
   // Finally users (top-level parent)
   await db.delete(users);
 
