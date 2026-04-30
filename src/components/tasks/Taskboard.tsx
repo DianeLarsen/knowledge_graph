@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Task } from "@/db/schema";
 import { createTaskAction, updateTaskAction } from "@/app/actions/tasks";
 
@@ -27,8 +27,38 @@ const baseColumns: { status: VisibleTaskStatus; title: string }[] = [
 
 export default function TaskBoard({ userId, initialTasks }: TaskBoardProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
-    const [showArchived, setShowArchived] = useState(false);
-    const [openMenuTaskId, setOpenMenuTaskId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [openMenuTaskId, setOpenMenuTaskId] = useState<string | null>(null);
+
+  const [duplicateTasks, setDuplicateTasks] = useState<Task[]>([]);
+const [hoveredDuplicateTaskId, setHoveredDuplicateTaskId] = useState<
+  string | null
+  >(null);
+  
+  useEffect(() => {
+    const hash = window.location.hash;
+
+    if (!hash) return;
+
+    const el = document.querySelector(hash);
+
+    if (!el) return;
+
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    el.classList.add(
+      "ring-2",
+      "ring-yellow-400",
+      "ring-offset-2",
+      "animate-pulse",
+    );
+
+    const timeout = setTimeout(() => {
+      el.classList.remove("ring-2", "ring-yellow-400", "ring-offset-2");
+    }, 2000);
+
+    return () => clearTimeout(timeout);
+  }, []);
   const columns = showArchived
     ? [...baseColumns, { status: "archived" as const, title: "Archived" }]
     : baseColumns;
@@ -66,24 +96,34 @@ export default function TaskBoard({ userId, initialTasks }: TaskBoardProps) {
     }
   }
 
-  async function createTask(input: {
-    title: string;
-    description?: string;
-    status: TaskStatus;
-    priority: "low" | "medium" | "high";
-    dueDate?: string;
-  }) {
-    const task = await createTaskAction({
-      userId,
-      title: input.title,
-      description: input.description,
-      status: input.status,
-      priority: input.priority,
-      dueDate: input.dueDate,
-    });
+async function createTask(input: {
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority: "low" | "medium" | "high";
+  dueDate?: string;
+}) {
+  const result = await createTaskAction({
+    userId,
+    title: input.title,
+    description: input.description,
+    status: input.status,
+    priority: input.priority,
+    dueDate: input.dueDate,
+  });
 
-    setTasks((current) => [task, ...current]);
+  if (result.duplicate) {
+    setDuplicateTasks(result.similarTasks);
+    return;
   }
+
+  if (!result.task) {
+    return;
+  }
+
+  setTasks((current) => [result.task!, ...current]);
+  setDuplicateTasks([]);
+}
 
   async function editTask(
     taskId: string,
@@ -161,7 +201,44 @@ export default function TaskBoard({ userId, initialTasks }: TaskBoardProps) {
           {showArchived ? "Hide archive" : "Show archive"}
         </button>
       </div>
+      {duplicateTasks.length > 0 && (
+        <div className="relative rounded-xl border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200">
+          <p className="font-semibold">Possible duplicate task found:</p>
 
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {duplicateTasks.map((task) => (
+              <li key={task.id} className="relative">
+                <a
+                  href={`/tasks#task-${task.id}`}
+                  onMouseEnter={() => setHoveredDuplicateTaskId(task.id)}
+                  onMouseLeave={() => setHoveredDuplicateTaskId(null)}
+                  className="underline decoration-yellow-500 underline-offset-2 hover:text-yellow-600 dark:hover:text-yellow-100"
+                >
+                  {task.title}
+                </a>
+
+                {hoveredDuplicateTaskId === task.id && (
+                  <div className="absolute left-0 top-6 z-20 w-80 rounded-xl border border-gray-200 bg-white p-4 text-gray-800 shadow-lg dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                    <p className="font-semibold">{task.title}</p>
+
+                    {task.description && (
+                      <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
+                        {task.description}
+                      </p>
+                    )}
+
+                    <div className="mt-3 space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                      <p>Priority: {task.priority ?? "medium"}</p>
+                      <p>Status: {task.status}</p>
+                      {task.dueDate && <p>Due: {task.dueDate}</p>}
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <section
         className={`grid gap-4 ${
           showArchived

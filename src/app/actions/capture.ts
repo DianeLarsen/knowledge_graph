@@ -1,26 +1,45 @@
 "use server";
 
-import { db } from "@/db";
-import { captures } from "@/db/schema";
-import { revalidatePath } from "next/cache";
-import { desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { revalidatePath } from "next/cache";
+
 import { getCurrentUserId } from "@/lib/currentUser";
-import { eq } from "drizzle-orm";
 import { analyzeCaptureText } from "@/lib/ai/analyzeCapture";
+import { createTask, findSimilarTasks } from "@/db/queries/tasks";
+
+import {
+  createCapture,
+  getCaptures as getCapturesQuery,
+  getCaptureById,
+  updateCaptureAnalysis,
+  updateCaptureStatus,
+} from "@/db/queries/captures";
+
+
+type TaskPriority = "low" | "medium" | "high";
+
+function parseTaskPriority(value: FormDataEntryValue | null): TaskPriority {
+  if (value === "low" || value === "medium" || value === "high") {
+    return value;
+  }
+
+  return "medium";
+}
+
 
 export async function createCaptureAction(formData: FormData) {
   const rawText = String(formData.get("rawText") ?? "").trim();
-  const userId = await getCurrentUserId();
+
   if (!rawText) {
     return;
   }
 
+  const userId = await getCurrentUserId();
   const now = new Date();
 
-  await db.insert(captures).values({
+  await createCapture({
     id: randomUUID(),
-    userId: userId,
+    userId,
     rawText,
     status: "new",
     createdAt: now,
@@ -30,15 +49,12 @@ export async function createCaptureAction(formData: FormData) {
   revalidatePath("/capture");
 }
 
-export async function getCaptures() {
-  return db.select().from(captures).orderBy(desc(captures.createdAt));
+export async function getCapturesAction() {
+  return getCapturesQuery();
 }
 
 export async function analyzeCaptureAction(captureId: string) {
-  const [capture] = await db
-    .select()
-    .from(captures)
-    .where(eq(captures.id, captureId));
+  const capture = await getCaptureById(captureId);
 
   if (!capture) {
     return;
@@ -46,15 +62,96 @@ export async function analyzeCaptureAction(captureId: string) {
 
   const analysis = await analyzeCaptureText(capture.rawText);
 
-  await db
-    .update(captures)
-    .set({
-      summary: analysis.summary,
-      analysisJson: JSON.stringify(analysis),
-      status: "analyzed",
-      updatedAt: new Date(),
-    })
-    .where(eq(captures.id, captureId));
+  await updateCaptureAnalysis({
+    id: captureId,
+    summary: analysis.summary,
+    analysisJson: JSON.stringify(analysis),
+    status: "analyzed",
+  });
 
   revalidatePath("/capture");
+}
+
+export async function markCaptureProcessedAction(captureId: string) {
+  await updateCaptureStatus({
+    id: captureId,
+    status: "processed",
+  });
+
+  revalidatePath("/capture");
+}
+
+export async function createTaskFromCaptureAction(formData: FormData) {
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const priority = parseTaskPriority(formData.get("priority"));
+  const captureId = String(formData.get("captureId") ?? "");
+  const taskIndex = Number(formData.get("taskIndex"));
+  const userId = await getCurrentUserId();
+
+  if (!title || !captureId || Number.isNaN(taskIndex)) {
+    return;
+  }
+const similarTasks = await findSimilarTasks({
+  userId,
+  title,
+});
+
+if (similarTasks.length > 0) {
+  const capture = await getCaptureById(captureId);
+
+  if (capture?.analysisJson) {
+    const analysis = JSON.parse(capture.analysisJson);
+
+    if (analysis.possibleTasks?.[taskIndex]) {
+      analysis.possibleTasks[taskIndex] = {
+        ...analysis.possibleTasks[taskIndex],
+        duplicateWarning: true,
+        similarTaskId: similarTasks[0].id,
+        similarTaskTitle: similarTasks[0].title,
+      };
+
+      await updateCaptureAnalysis({
+        id: captureId,
+        summary: analysis.summary,
+        analysisJson: JSON.stringify(analysis),
+        status: capture.status,
+      });
+    }
+  }
+
+  revalidatePath("/capture");
+  return;
+}
+  const task = await createTask({
+    title,
+    userId,
+    description,
+    priority,
+    status: "todo",
+  });
+
+  const capture = await getCaptureById(captureId);
+
+  if (capture?.analysisJson) {
+    const analysis = JSON.parse(capture.analysisJson);
+
+    if (analysis.possibleTasks?.[taskIndex]) {
+      analysis.possibleTasks[taskIndex] = {
+        ...analysis.possibleTasks[taskIndex],
+        created: true,
+        taskId: task?.id,
+      };
+
+      await updateCaptureAnalysis({
+        id: captureId,
+        summary: analysis.summary,
+        analysisJson: JSON.stringify(analysis),
+        status: capture.status,
+      });
+    }
+  }
+
+  revalidatePath("/capture");
+  revalidatePath("/tasks");
 }

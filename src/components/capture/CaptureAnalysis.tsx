@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { createTaskFromCaptureAction } from "@/app/actions/capture";
 
 type CaptureAnalysisData = {
   summary: string;
@@ -10,6 +11,11 @@ type CaptureAnalysisData = {
     description: string;
     priority: string;
     status: string;
+    created?: boolean;
+    taskId?: string;
+    duplicateWarning?: boolean;
+    similarTaskId?: string;
+    similarTaskTitle?: string;
   }[];
   possibleNotes: {
     title: string;
@@ -28,8 +34,10 @@ type CaptureAnalysisData = {
 
 export default function CaptureAnalysis({
   analysisJson,
+  captureId,
 }: {
   analysisJson: string;
+  captureId: string;
 }) {
   const [isOpen, setIsOpen] = useState(true);
   const analysis = JSON.parse(analysisJson) as CaptureAnalysisData;
@@ -65,13 +73,74 @@ export default function CaptureAnalysis({
             {analysis.summary}
           </p>
 
-          <AnalysisSection
-            title="Possible Tasks"
-            items={analysis.possibleTasks.map(
-              (task) =>
-                `${task.title} (${task.priority}) - ${task.description}`,
-            )}
-          />
+          {analysis.possibleTasks.length > 0 && (
+            <div className="mt-4">
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-purple-700 dark:text-purple-300">
+                Possible Tasks
+              </h4>
+
+              <div className="space-y-3">
+                {analysis.possibleTasks.map((task, index) => (
+                  <div
+                    key={`${task.title}-${index}`}
+                    className="rounded-lg border border-purple-200 bg-white p-3 dark:border-purple-800 dark:bg-gray-950"
+                  >
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {task.title}
+                    </p>
+
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                      {task.description}
+                    </p>
+
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Priority: {task.priority}
+                    </p>
+
+                    <form action={createTaskFromCaptureAction} className="mt-3">
+                      <input type="hidden" name="captureId" value={captureId} />
+                      <input type="hidden" name="taskIndex" value={index} />
+                      <input type="hidden" name="title" value={task.title} />
+                      <input
+                        type="hidden"
+                        name="description"
+                        value={task.description}
+                      />
+                      <input
+                        type="hidden"
+                        name="priority"
+                        value={task.priority}
+                      />
+                      {task.duplicateWarning && (
+                        <div className="mt-3 rounded-md border border-yellow-300 bg-yellow-50 px-3 py-2 text-xs text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200">
+                          Similar task found:{" "}
+                          <span className="font-semibold">
+                            {task.similarTaskTitle}
+                          </span>
+                        </div>
+                      )}
+                      {task.created ? (
+                        <span className="inline-flex rounded-md bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 dark:bg-green-950 dark:text-green-300">
+                          Task Created
+                        </span>
+                      ) : task.duplicateWarning ? (
+                        <span className="inline-flex rounded-md bg-yellow-100 px-3 py-1.5 text-xs font-semibold text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200">
+                          Possible Duplicate
+                        </span>
+                      ) : (
+                        <button
+                          type="submit"
+                          className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                        >
+                          Create Task
+                        </button>
+                      )}
+                    </form>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <AnalysisSection
             title="Possible Notes"
             items={analysis.possibleNotes.map((note) => note.title)}

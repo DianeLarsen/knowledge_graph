@@ -1,13 +1,14 @@
 import {
   createCaptureAction,
-  getCaptures,
+  getCapturesAction,
   analyzeCaptureAction,
+  markCaptureProcessedAction,
 } from "@/app/actions/capture";
 import { Zap } from "lucide-react";
 import CaptureAnalysis from "@/components/capture/CaptureAnalysis";
 
 export default async function CapturePage() {
-  const captures = await getCaptures();
+  const captures = await getCapturesAction();
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
@@ -70,16 +71,34 @@ export default async function CapturePage() {
                 <p className="whitespace-pre-wrap text-sm leading-6 text-gray-800 dark:text-gray-200">
                   {capture.rawText}
                 </p>
-                <form action={analyzeCaptureAction.bind(null, capture.id)}>
-                  <button
-                    type="submit"
-                    className="mt-4 rounded-lg border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950"
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <form action={analyzeCaptureAction.bind(null, capture.id)}>
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950"
+                    >
+                      Analyze
+                    </button>
+                  </form>
+
+                  <form
+                    action={markCaptureProcessedAction.bind(null, capture.id)}
                   >
-                    Analyze
-                  </button>
-                </form>
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-green-300 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-950"
+                    >
+                      Mark Processed
+                    </button>
+                  </form>
+                </div>
+
                 {capture.analysisJson && (
-                  <CaptureAnalysis analysisJson={capture.analysisJson} />
+                  <CaptureAnalysis
+                    analysisJson={capture.analysisJson}
+                    captureId={capture.id}
+                  />
                 )}
               </article>
             ))}
@@ -89,4 +108,3 @@ export default async function CapturePage() {
     </main>
   );
 }
-

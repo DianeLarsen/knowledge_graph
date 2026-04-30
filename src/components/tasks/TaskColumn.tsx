@@ -137,15 +137,17 @@ export default function TaskColumn({
 
       <div className="space-y-3">
         {tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            onArchiveTask={onArchiveTask}
-            onEditTask={onEditTask}
-            isMenuOpen={openMenuTaskId === task.id}
-            onOpenMenu={() => setOpenMenuTaskId(task.id)}
-            onCloseMenu={() => setOpenMenuTaskId(null)}
-          />
+          <div id={`task-${task.id}`} key={task.id}>
+            <TaskCard
+   
+              task={task}
+              onArchiveTask={onArchiveTask}
+              onEditTask={onEditTask}
+              isMenuOpen={openMenuTaskId === task.id}
+              onOpenMenu={() => setOpenMenuTaskId(task.id)}
+              onCloseMenu={() => setOpenMenuTaskId(null)}
+            />
+          </div>
         ))}
       </div>
     </div>

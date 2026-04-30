@@ -1,25 +1,26 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createTask, updateTask, deleteTask } from "@/db/queries/tasks";
+import {
+  createTask,
+  updateTask,
+  deleteTask,
+  findSimilarTasks,
+} from "@/db/queries/tasks";
 import { type NewTask } from "@/db/schema";
 
 export async function createTaskAction(input: NewTask) {
-  const task = await createTask(input);
+  const result = await createTaskWithDuplicateCheck(input);
 
-  revalidatePath("/tasks");
-  revalidatePath("/workspace");
-  revalidatePath("/notes");
+  revalidateTasks();
 
-  return task;
+  return result;
 }
 
 export async function updateTaskAction(id: string, data: Partial<NewTask>) {
   const task = await updateTask(id, data);
 
-  revalidatePath("/tasks");
-  revalidatePath("/workspace");
-  revalidatePath("/notes");
+  revalidateTasks();
 
   return task;
 }
@@ -27,9 +28,38 @@ export async function updateTaskAction(id: string, data: Partial<NewTask>) {
 export async function deleteTaskAction(id: string) {
   const task = await deleteTask(id);
 
+  revalidateTasks();
+
+  return task;
+}
+
+export async function createTaskWithDuplicateCheck(data: NewTask) {
+  const similarTasks = await findSimilarTasks({
+    userId: data.userId,
+    title: data.title,
+    description: data.description ?? undefined,
+  });
+
+  if (similarTasks.length > 0) {
+    return {
+      duplicate: true,
+      similarTasks,
+      task: null,
+    };
+  }
+
+  const task = await createTask(data);
+
+  return {
+    duplicate: false,
+    similarTasks: [],
+    task,
+  };
+}
+
+function revalidateTasks() {
   revalidatePath("/tasks");
   revalidatePath("/workspace");
   revalidatePath("/notes");
-
-  return task;
+  revalidatePath("/capture");
 }
