@@ -8,7 +8,11 @@ import { deleteEvent } from "@/db/queries/calendar";
 import { redirect } from "next/navigation";
 import { updateEvent } from "@/db/queries/calendar";
 
-export async function getCalendarItems(userId: string, startDate: string, endDate: string) {
+export async function getCalendarItems(
+  userId: string,
+  startDate: string,
+  endDate: string,
+) {
   const [calendarEvents, dueTasks] = await Promise.all([
     getEventsInRange(userId, startDate, endDate),
     getTasksDueInRange(userId, startDate, endDate),
@@ -22,6 +26,8 @@ export async function getCalendarItems(userId: string, startDate: string, endDat
       description: event.description,
       date: event.startDate,
       endDate: event.endDate,
+      startTime: event.startTime,
+      endTime: event.endTime,
       allDay: event.allDay,
       status: event.status,
       source: event,
@@ -33,6 +39,10 @@ export async function getCalendarItems(userId: string, startDate: string, endDat
       title: task.title,
       description: task.description,
       date: task.dueDate,
+      endDate: null,
+      startTime: null,
+      endTime: null,
+      allDay: true,
       priority: task.priority,
       status: task.status,
       source: task,
@@ -50,10 +60,14 @@ export async function createEventAction(formData: FormData) {
   const description = String(formData.get("description") || "").trim();
   const startDate = String(formData.get("startDate") || "").trim();
   const endDate = String(formData.get("endDate") || "").trim();
+  const startTime = String(formData.get("startTime") || "").trim();
+  const endTime = String(formData.get("endTime") || "").trim();
 
   if (!title || !startDate) {
     throw new Error("Title and start date are required.");
   }
+
+  const allDay = !startTime && !endTime;
 
   await createEvent({
     userId,
@@ -61,7 +75,9 @@ export async function createEventAction(formData: FormData) {
     description: description || null,
     startDate,
     endDate: endDate || startDate,
-    allDay: true,
+    startTime: startTime || null,
+    endTime: endTime || null,
+    allDay,
     status: "planned",
   });
 
@@ -89,20 +105,32 @@ export async function updateEventAction(formData: FormData) {
   const description = String(formData.get("description") || "").trim();
   const startDate = String(formData.get("startDate") || "").trim();
   const endDate = String(formData.get("endDate") || "").trim();
+  const startTime = String(formData.get("startTime") || "").trim();
+  const endTime = String(formData.get("endTime") || "").trim();
   const location = String(formData.get("location") || "").trim();
 
   if (!eventId || !title || !startDate) {
     throw new Error("Event ID, title, and start date are required.");
   }
 
+  const allDay = !startTime && !endTime;
+
   await updateEvent(eventId, userId, {
     title,
     description: description || null,
     startDate,
     endDate: endDate || startDate,
+    startTime: startTime || null,
+    endTime: endTime || null,
+    allDay,
     location: location || null,
   });
 
   revalidatePath("/calendar");
-  redirect(`/calendar?year=${startDate.slice(0, 4)}&month=${Number(startDate.slice(5, 7)) - 1}&date=${startDate}`);
+
+  redirect(
+    `/calendar?year=${startDate.slice(0, 4)}&month=${
+      Number(startDate.slice(5, 7)) - 1
+    }&date=${startDate}`,
+  );
 }

@@ -15,8 +15,8 @@ export const notes = sqliteTable("notes", {
   content: text("content"),
   contentJson: text("content_json"),
   userId: text("user_id")
-  .notNull()
-  .references(() => users.id, { onDelete: "cascade" }),
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -97,7 +97,6 @@ export const users = sqliteTable("users", {
     .$defaultFn(() => new Date()),
 });
 
-
 export const referencesTable = sqliteTable("references", {
   id: text("id")
     .primaryKey()
@@ -159,9 +158,7 @@ export const noteReferences = sqliteTable(
       .$defaultFn(() => new Date())
       .$onUpdate(() => new Date()),
   },
-  (t) => [
-    unique("unique_note_reference").on(t.noteId, t.referenceId),
-  ],
+  (t) => [unique("unique_note_reference").on(t.noteId, t.referenceId)],
 );
 
 export const tasks = sqliteTable("tasks", {
@@ -173,15 +170,16 @@ export const tasks = sqliteTable("tasks", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
 
-  noteId: text("note_id")
-    .references(() => notes.id, { onDelete: "set null" }),
+  noteId: text("note_id").references(() => notes.id, { onDelete: "set null" }),
 
   title: text("title").notNull(),
   description: text("description"),
 
   status: text("status", {
     enum: ["todo", "in_progress", "awaiting", "done", "archived"],
-  }).notNull().default("todo"),
+  })
+    .notNull()
+    .default("todo"),
 
   priority: text("priority", {
     enum: ["low", "medium", "high"],
@@ -217,7 +215,8 @@ export const events = sqliteTable("events", {
 
   startDate: text("start_date").notNull(),
   endDate: text("end_date"),
-
+  startTime: text("start_time"),
+  endTime: text("end_time"),
   allDay: integer("all_day", { mode: "boolean" }).notNull().default(true),
 
   location: text("location"),

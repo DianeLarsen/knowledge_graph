@@ -43,6 +43,13 @@
       "when": 1777562041346,
       "tag": "0005_worthless_captain_midlands",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1777564742673,
+      "tag": "0006_gifted_power_man",
+      "breakpoints": true
     }
   ]
 }

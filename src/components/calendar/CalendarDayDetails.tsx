@@ -7,6 +7,10 @@ type CalendarItem = {
   type: "event" | "task";
   title: string;
   date: string | null;
+  endDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  allDay?: boolean | null;
   description?: string | null;
   status?: string;
   priority?: string | null;
@@ -21,7 +25,14 @@ export default function CalendarDayDetails({
   date,
   items,
 }: CalendarDayDetailsProps) {
-  const dayItems = items.filter((item) => item.date?.slice(0, 10) === date);
+  const dayItems = items
+    .filter((item) => item.date?.slice(0, 10) === date)
+    .sort((a, b) => {
+      if (a.allDay && !b.allDay) return -1;
+      if (!a.allDay && b.allDay) return 1;
+
+      return (a.startTime ?? "").localeCompare(b.startTime ?? "");
+    });
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
@@ -44,17 +55,29 @@ export default function CalendarDayDetails({
                 <p className="font-medium text-gray-900 dark:text-gray-100">
                   {item.title}
                 </p>
-
+                {item.type === "event" && (
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {item.allDay
+                      ? "All day"
+                      : `${item.startTime ?? ""}${item.endTime ? ` - ${item.endTime}` : ""}`}
+                  </p>
+                )}
                 <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                   {item.type}
                 </span>
               </div>
+              {item.type === "task" && item.priority && (
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Priority: {item.priority}
+                </p>
+              )}
 
               {item.description && (
                 <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                   {item.description}
                 </p>
               )}
+
               {item.type === "event" && (
                 <div className="mt-3 flex gap-2">
                   <Link

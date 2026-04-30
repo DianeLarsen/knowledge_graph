@@ -99,7 +99,31 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
             />
           </div>
         </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Start time
+            </label>
+            <input
+              type="time"
+              name="startTime"
+              defaultValue={event.startTime ?? ""}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+            />
+          </div>
 
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              End time
+            </label>
+            <input
+              type="time"
+              name="endTime"
+              defaultValue={event.endTime ?? ""}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+            />
+          </div>
+        </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Location

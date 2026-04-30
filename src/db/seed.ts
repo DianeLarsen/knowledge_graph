@@ -289,10 +289,13 @@ const event1 = await createEvent({
   noteId: sqljoins.id,
   taskId: task1.id,
   title: "Study SQL joins",
-  description: "Review SQL join examples and connect them to the SQL Joins note.",
+  description:
+    "Review SQL join examples and connect them to the SQL Joins note.",
   startDate: "2026-05-01",
   endDate: "2026-05-01",
-  allDay: true,
+  startTime: "18:00",
+  endTime: "19:30",
+  allDay: false,
   location: "Portfolio workspace",
   status: "planned",
 });
@@ -305,7 +308,9 @@ const event2 = await createEvent({
   description: "Work on typed query examples for the Drizzle ORM note.",
   startDate: "2026-05-03",
   endDate: "2026-05-03",
-  allDay: true,
+  startTime: "10:00",
+  endTime: "12:00",
+  allDay: false,
   location: "Portfolio workspace",
   status: "planned",
 });
@@ -315,10 +320,12 @@ const event3 = await createEvent({
   noteId: knowledgegraphs.id,
   taskId: task4.id,
   title: "Plan knowledge graph map",
-  description: "Sketch how notes, tags, links, references, tasks, and calendar events connect.",
+  description: "Sketch system connections across notes, tasks, and calendar.",
   startDate: "2026-05-05",
   endDate: "2026-05-05",
-  allDay: true,
+  startTime: "14:00",
+  endTime: "16:00",
+  allDay: false,
   location: "Planning board",
   status: "planned",
 });
@@ -326,19 +333,71 @@ const event3 = await createEvent({
 const event4 = await createEvent({
   userId: user.id,
   title: "Weekly planning review",
-  description: "Review open tasks, due dates, notes, and upcoming work.",
+  description: "Review open tasks, deadlines, and next priorities.",
   startDate: "2026-05-06",
   endDate: "2026-05-06",
-  allDay: true,
+  startTime: "09:00",
+  endTime: "10:00",
+  allDay: false,
   location: "Calendar",
   status: "planned",
 });
+  const event5 = await createEvent({
+    userId: user.id,
+    title: "Deep work session",
+    description: "Focus on calendar + task integration.",
+    startDate: "2026-05-03",
+    endDate: "2026-05-03",
+    startTime: "13:00",
+    endTime: "16:00",
+    allDay: false,
+    location: "Desk",
+    status: "planned",
+  });
+  const event6 = await createEvent({
+    userId: user.id,
+    title: "Quick check-in",
+    description: "Review progress and adjust plan.",
+    startDate: "2026-05-05",
+    endDate: "2026-05-05",
+    startTime: "16:30",
+    endTime: "17:00",
+    allDay: false,
+    location: "Desk",
+    status: "planned",
+  });
+  const event7 = await createEvent({
+    userId: user.id,
+    title: "Feature sprint: Calendar",
+    description: "Build event editing, time support, and UI polish.",
+    startDate: "2026-05-07",
+    endDate: "2026-05-09",
+    startTime: "09:00",
+    endTime: "17:00",
+    allDay: false,
+    location: "Workspace",
+    status: "planned",
+  });
+  const event8 = await createEvent({
+    userId: user.id,
+    title: "Family day",
+    description: "No coding. Try to remember sunlight exists.",
+    startDate: "2026-05-10",
+    endDate: "2026-05-10",
+    allDay: true,
+    location: "Outside (allegedly)",
+    status: "planned",
+  });
 
 console.log("Created events:", {
   event1,
   event2,
   event3,
   event4,
+  event5,
+  event6,
+  event7,
+  event8,
 });
   console.log("Seeding complete.");
 }

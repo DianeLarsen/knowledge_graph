@@ -7,6 +7,11 @@ type CalendarItem = {
   type: "event" | "task";
   title: string;
   date: string | null;
+  endDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  allDay?: boolean | null;
+  description?: string | null;
   status?: string;
   priority?: string | null;
 };
@@ -92,7 +97,7 @@ const isToday = dateKey === todayDate;
                   </div>
 
                   <div className="space-y-1">
-                    {dayItems.map((item) => (
+                    {dayItems.slice(0, 3).map((item) => (
                       <div
                         key={`${item.type}-${item.id}`}
                         className={`truncate rounded-md px-2 py-1 text-xs ${
@@ -101,9 +106,19 @@ const isToday = dateKey === todayDate;
                             : "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200"
                         }`}
                       >
+                        {item.startTime && (
+                          <span className="mr-1 font-semibold">
+                            {item.startTime}
+                          </span>
+                        )}
                         {item.title}
                       </div>
                     ))}
+                    {dayItems.length > 3 && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        +{dayItems.length - 3} more
+                      </div>
+                    )}
                   </div>
                 </Link>
               )}
