@@ -17,7 +17,9 @@ type TaskBoardProps = {
   userId: string;
   initialTasks: Task[];
 };
-
+type SimilarTask = Task & {
+  similarity?: number;
+};
 const baseColumns: { status: VisibleTaskStatus; title: string }[] = [
   { status: "todo", title: "New" },
   { status: "in_progress", title: "In Progress" },
@@ -38,7 +40,7 @@ export default function TaskBoard({ userId, initialTasks }: TaskBoardProps) {
       priority: "low" | "medium" | "high";
       dueDate?: string;
     };
-    similarTasks: Task[];
+    similarTasks: SimilarTask[];
   } | null>(null);
 const [hoveredDuplicateTaskId, setHoveredDuplicateTaskId] = useState<
   string | null
@@ -251,6 +253,11 @@ async function createTaskAnyway() {
                 >
                   {task.title}
                 </a>
+                {typeof task.similarity === "number" && (
+                  <span className="ml-2 text-xs text-yellow-700 dark:text-yellow-300">
+                    {Math.round(task.similarity * 100)}% match
+                  </span>
+                )}
                 {hoveredDuplicateTaskId === task.id && (
                   <div className="absolute left-0 top-full z-50 mt-2 w-80 rounded-xl border border-gray-200 bg-white p-4 text-gray-800 shadow-lg dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
                     <p className="font-semibold">{task.title}</p>
@@ -265,6 +272,9 @@ async function createTaskAnyway() {
                       <p>Priority: {task.priority ?? "medium"}</p>
                       <p>Status: {task.status}</p>
                       {task.dueDate && <p>Due: {task.dueDate}</p>}
+                      {typeof task.similarity === "number" && (
+                        <p>Match: {Math.round(task.similarity * 100)}%</p>
+                      )}
                     </div>
                   </div>
                 )}
