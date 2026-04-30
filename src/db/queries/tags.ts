@@ -1,4 +1,4 @@
-import { eq, count } from "drizzle-orm";
+import { eq, count, and } from "drizzle-orm";
 import { db } from "../index";
 import { notes, tags, noteTags } from "@/db/schema";
 
@@ -38,20 +38,27 @@ export async function deleteTag(id: string) {
   return result[0];
 }
 
-export async function getTagStats(tagId: string) {
-  const result = await db
+export async function getTagStats(tagId: string, userId: string) {
+  const [result] = await db
     .select({
       tagId: tags.id,
       tagName: tags.name,
-      noteCount: count(notes.id),
+      noteCount: count(noteTags.noteId),
     })
     .from(tags)
     .leftJoin(noteTags, eq(tags.id, noteTags.tagId))
     .leftJoin(notes, eq(noteTags.noteId, notes.id))
-    .where(eq(tags.id, tagId))
-    .groupBy(tags.id, tags.name);
+    .where(
+      and(
+        eq(tags.id, tagId),
+        eq(notes.userId, userId),
+        // optional if you soft-delete notes:
+        // isNull(notes.deletedAt),
+      ),
+    )
+    .groupBy(tags.id);
 
-  return result[0] ?? null;
+  return result ?? null;
 }
 
 export async function getTagsByUser(userId: string) {

@@ -69,7 +69,8 @@ export async function getBacklinks(noteId: string) {
         targetNoteId: noteLinks.targetNoteId,
         targetTitle: targetNote.title,
         sourceTitle: sourceNote.title,
-        relationshipType: noteLinks.relationshipType,
+      relationshipType: noteLinks.relationshipType,
+        sourceNoteId: noteLinks.sourceNoteId,
     })
     .from(noteLinks)
     .leftJoin(sourceNote, eq(sourceNote.id, noteLinks.sourceNoteId))

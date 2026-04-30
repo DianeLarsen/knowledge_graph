@@ -5,6 +5,7 @@ import { addTagToNote } from "./queries/notetags";
 import { createNoteLink } from "./queries/noteLinks";
 import { createReference, addReferenceToNote } from "./queries/references";
 import { createTask } from "./queries/tasks";
+import { createEvent } from "./queries/calendar";
 
 function makeContentJson(content: string) {
   return JSON.stringify({
@@ -283,7 +284,62 @@ console.log("Created tasks:", {
     noteLink3,
     noteLink4,
   });
+const event1 = await createEvent({
+  userId: user.id,
+  noteId: sqljoins.id,
+  taskId: task1.id,
+  title: "Study SQL joins",
+  description: "Review SQL join examples and connect them to the SQL Joins note.",
+  startDate: "2026-05-01",
+  endDate: "2026-05-01",
+  allDay: true,
+  location: "Portfolio workspace",
+  status: "planned",
+});
 
+const event2 = await createEvent({
+  userId: user.id,
+  noteId: drizzleorm.id,
+  taskId: task2.id,
+  title: "Build Drizzle examples",
+  description: "Work on typed query examples for the Drizzle ORM note.",
+  startDate: "2026-05-03",
+  endDate: "2026-05-03",
+  allDay: true,
+  location: "Portfolio workspace",
+  status: "planned",
+});
+
+const event3 = await createEvent({
+  userId: user.id,
+  noteId: knowledgegraphs.id,
+  taskId: task4.id,
+  title: "Plan knowledge graph map",
+  description: "Sketch how notes, tags, links, references, tasks, and calendar events connect.",
+  startDate: "2026-05-05",
+  endDate: "2026-05-05",
+  allDay: true,
+  location: "Planning board",
+  status: "planned",
+});
+
+const event4 = await createEvent({
+  userId: user.id,
+  title: "Weekly planning review",
+  description: "Review open tasks, due dates, notes, and upcoming work.",
+  startDate: "2026-05-06",
+  endDate: "2026-05-06",
+  allDay: true,
+  location: "Calendar",
+  status: "planned",
+});
+
+console.log("Created events:", {
+  event1,
+  event2,
+  event3,
+  event4,
+});
   console.log("Seeding complete.");
 }
 

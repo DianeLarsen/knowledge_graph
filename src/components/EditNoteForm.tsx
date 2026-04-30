@@ -46,8 +46,6 @@ export default function EditNoteForm({
   onCancel,
   onSave,
 }: EditNoteFormProps) {
-
-
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content ?? "");
   const [contentJson, setContentJson] = useState(note.contentJson ?? "");
@@ -69,7 +67,7 @@ export default function EditNoteForm({
       setIsSaving(true);
       setMessage("");
 
-      const result = await updateNoteAction({
+      const updatedNote = await updateNoteAction({
         id: note.id,
         title,
         content,
@@ -78,11 +76,11 @@ export default function EditNoteForm({
         selectedReferenceIds,
       });
 
-      setMessage("Note saved.");
-      if (onSave) {
-        onSave(result); // whatever your updated note return is
+      if (updatedNote) {
+        onSave?.(updatedNote);
       }
 
+      setMessage("Note saved.");
     } catch (error) {
       console.error(error);
       setMessage("Something went wrong. Note was not saved.");

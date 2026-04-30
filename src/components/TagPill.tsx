@@ -29,7 +29,7 @@ export default function TagPill({ tag, stats }: TagPillProps) {
        setOpen(false);
      }
    }
-
+console.log("tagStats:", stats);
    document.addEventListener("mousedown", handleClickOutside);
 
    return () => {

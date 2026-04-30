@@ -2,8 +2,9 @@ import { notes, noteTags, tags, noteLinks, noteReferences, referencesTable, } fr
 import { db } from "../index";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { getBacklinks, getOutgoingLinks } from "./noteLinks";
-import { getTagsForNote } from "./notetags";
+import { getNotesForTag, getTagsForNote } from "./notetags";
 import { alias } from "drizzle-orm/sqlite-core";
+import { getTagStats } from "./tags";
 
 type CreateNoteInput = {
   title: string;
@@ -166,15 +167,28 @@ export async function getReferencesForNote(noteId: string) {
 }
 export async function getNoteDetailsById(id: string) {
   const note = await getNoteById(id);
+
+  if (!note) {
+    return null;
+  }
+
   const tags = await getTagsForNote(id);
   const outgoingLinks = await getOutgoingLinks(id);
   const backlinks = await getBacklinks(id);
-  const sharedTags = await getNotesSharingTags(id);
+  const sharedTags = await getNotesForTag(id);
   const references = await getReferencesForNote(id);
+
+  const tagStats = await Promise.all(
+    tags.map(async (tag) => ({
+      tag,
+      stats: await getTagStats(tag.id, note.userId),
+    })),
+  );
 
   return {
     note,
     tags,
+    tagStats,
     outgoingLinks,
     backlinks,
     sharedTags,
@@ -386,4 +400,36 @@ export async function getOrphanNotesByUser(userId: string) {
         sql`${notes.deletedAt} IS NULL AND NOT EXISTS (SELECT 1 FROM note_links WHERE note_links.source_note_id = ${notes.id} OR note_links.target_note_id = ${notes.id})`
       )
     );
+}
+
+export async function getNoteDetailsByUserId(userId: string) {
+  const userNotes = await getNotesByUser(userId);
+
+  return Promise.all(
+    userNotes.map(async (note) => {
+      const tags = await getTagsForNote(note.id);
+
+      const tagStats = await Promise.all(
+        tags.map(async (tag) => ({
+          tag,
+          stats: await getTagStats(tag.id, userId),
+        })),
+      );
+
+      const outgoingLinks = await getOutgoingLinks(note.id);
+      const backlinks = await getBacklinks(note.id);
+      const sharedTags = await getNotesForTag(note.id);
+      const references = await getReferencesForNote(note.id);
+
+      return {
+        note,
+        tags,
+        tagStats,
+        outgoingLinks,
+        backlinks,
+        sharedTags,
+        references,
+      };
+    }),
+  );
 }

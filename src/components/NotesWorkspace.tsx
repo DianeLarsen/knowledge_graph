@@ -1,71 +1,32 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import NewNoteComposer from "@/components/NewNoteComposer";
-import { Note, Reference, Tag } from "@/db/schema";
-import ReadOnlyNoteContent from "@/components/ReadOnlyNoteContent";
-import EditNoteForm from "@/components/EditNoteForm";
-import { updateNoteAction } from "@/app/actions/notes";
+import NoteCard, { NoteDetails } from "@/components/NoteCard";
+import { Reference } from "@/db/schema";
 
-type NoteTagSummary = {
-  noteId: string;
-  tagId: string;
-};
-type WorkspaceNoteReferenceSummary = {
-  id: string;
-  type: Reference["type"];
-  title: string;
-  author: string | null;
-  url: string | null;
-  publisher: string | null;
-  publishedDate: string | null;
-  citation: string | null;
-  notes: string | null;
-
-  noteReferenceId: string;
-  noteId: string;
-  referenceId: string;
-  pageNumber: string | null;
-  location: string | null;
-  quote: string | null;
-  summary: string | null;
-};
 type WorkspaceProps = {
-  notes: Note[];
-  tags: Tag[];
-  noteTags: NoteTagSummary[];
+  dataList: NoteDetails[];
   references: Reference[];
-  noteReferences: WorkspaceNoteReferenceSummary[];
   userId: string;
 };
 
 export default function NotesWorkspace({
-  notes,
-  tags,
-  noteTags,
-  references,
-  noteReferences,
+  dataList,
   userId,
+  references,
 }: WorkspaceProps) {
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
+const notes = dataList.map((data) => data.note);
 
-const openNotes = notes
-  .filter((note) => openNoteIds.includes(note.id))
-  .map((note) => {
-    const tagsForThisNote = tags.filter((tag) =>
-      noteTags.some((nt) => nt.noteId === note.id && nt.tagId === tag.id),
-    );
+const tags = Array.from(
+  new Map(
+    dataList.flatMap((data) => data.tags).map((tag) => [tag.id, tag]),
+  ).values(),
+);
 
-  const referencesForThisNote = noteReferences.filter(
-    (reference) => reference.noteId === note.id,
-  );
 
-    return {
-      note,
-      tagsForThisNote,
-      referencesForThisNote,
-    };
-  });
+const openNotes = dataList.filter((data) => openNoteIds.includes(data.note.id));
 
   function toggleNote(noteId: string) {
     setOpenNoteIds((current) =>
@@ -78,20 +39,25 @@ const openNotes = notes
   function closeNote(noteId: string) {
     setOpenNoteIds((current) => current.filter((id) => id !== noteId));
   }
-  function openCardsByTag(tagId: string) {
-    const noteIdsForTag = noteTags
-      .filter((noteTag) => noteTag.tagId === tagId)
-      .map((noteTag) => noteTag.noteId);
+function openCardsByTag(tagId: string) {
+  const matchingNoteIds = dataList
+    .filter((data) => data.tags.some((tag) => tag.id === tagId))
+    .map((data) => data.note.id);
 
-    setOpenNoteIds((current) => {
-      const combined = [...current, ...noteIdsForTag];
-      return [...new Set(combined)];
-    });
-  }
+  setOpenNoteIds((current) => [...new Set([...current, ...matchingNoteIds])]);
+}
 
   function closeAllCards() {
     setOpenNoteIds([]);
   }
+
+  function openNote(noteId: string) {
+    setOpenNoteIds((current) =>
+      current.includes(noteId) ? current : [...current, noteId],
+    );
+  }
+
+ 
   return (
     <main className="min-h-screen bg-gray-50 p-4 dark:bg-gray-950">
       <section className="mb-4 rounded-2xl border bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
@@ -192,27 +158,18 @@ const openNotes = notes
     [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]
   "
           >
-            {openNotes.length > 0 ? (
-              openNotes.map(
-                ({ note, tagsForThisNote, referencesForThisNote }) => (
-                  <div key={note.id} className="relative w-full">
-                    <MiniIndexCard
-                      note={note}
-                      tags={tagsForThisNote}
-                      allTags={tags}
-                      references={references}
-                      noteReferences={referencesForThisNote}
-                      userId={userId}
-                      onClose={() => closeNote(note.id)}
-                    />
-                  </div>
-                ),
-              )
-            ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Select notes to open cards.
-              </p>
-            )}
+            {openNotes.map((data) => (
+              <NoteCard
+                key={data.note.id}
+                data={data}
+                compact
+                allTags={tags}
+                allReferences={references}
+                userId={userId}
+                onOpenNote={openNote}
+                onClose={() => closeNote(data.note.id)}
+              />
+            ))}
           </div>
         </section>
 
@@ -227,201 +184,3 @@ const openNotes = notes
   );
 }
 
-function MiniIndexCard({
-  note,
-  tags,
-  allTags,
-  references,
-  noteReferences,
-  userId,
-  onClose,
-}: {
-  note: Note;
-  tags: Tag[];
-  allTags: Tag[];
-  references: Reference[];
-  noteReferences: WorkspaceNoteReferenceSummary[];
-  userId: string;
-  onClose: () => void;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentNote, setCurrentNote] = useState(note);
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [titleDraft, setTitleDraft] = useState(currentNote.title);
-  const [isSavingTitle, setIsSavingTitle] = useState(false);
-  const cardRef = useRef<HTMLElement | null>(null);
-
-function closeEditMode() {
-  setIsEditing(false);
-  requestAnimationFrame(() => {
-    cardRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  });
-}
-async function saveTitle() {
-  const trimmedTitle = titleDraft.trim();
-
-  if (!trimmedTitle || trimmedTitle === currentNote.title) {
-    setTitleDraft(currentNote.title);
-    setIsEditingTitle(false);
-    return;
-  }
-
-  try {
-    setIsSavingTitle(true);
-
-    const updatedNote = await updateNoteAction({
-      id: currentNote.id,
-      title: trimmedTitle,
-      content: currentNote.content ?? "",
-      contentJson: currentNote.contentJson ?? "",
-      inlineTagNames: [],
-      selectedReferenceIds: noteReferences.map((reference) => reference.id),
-    });
-
-    setCurrentNote(updatedNote);
-    setIsEditingTitle(false);
-  } catch (error) {
-    console.error(error);
-    setTitleDraft(currentNote.title);
-  } finally {
-    setIsSavingTitle(false);
-  }
-}
-  return (
-    <article
-      ref={cardRef}
-      className="relative border bg-white shadow-[6px_6px_0_rgba(0,0,0,0.06)] dark:border-gray-800 dark:bg-gray-950"
-    >
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label={`Close ${currentNote.title}`}
-        className="
-          absolute right-2 top-2 z-10
-          flex h-6 w-6 items-center justify-center
-          rounded-full border border-gray-300 bg-white
-          text-sm font-bold leading-none text-gray-600
-          shadow-sm transition
-          hover:border-red-400 hover:bg-red-500 hover:text-white
-          dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300
-          dark:hover:border-red-400 dark:hover:bg-red-500 dark:hover:text-white
-        "
-      >
-        ×
-      </button>
-      <button
-        type="button"
-        onClick={() => setIsEditing((current) => !current)}
-        className="
-    absolute right-10 top-2 z-10
-    rounded-full border border-gray-300 bg-white px-2 py-0.5
-    text-xs text-gray-600 shadow-sm transition
-    hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700
-    dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300
-    dark:hover:border-blue-400 dark:hover:bg-blue-900/40
-  "
-      >
-        {isEditing ? "View" : "Edit"}
-      </button>
-      <div className="h-5" />
-
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 px-3 pb-1">
-          {tags.map((tag) => (
-            <span
-              key={tag.id}
-              title={`Tag: ${tag.name}`}
-              className="
-                rounded-full border border-gray-300 bg-gray-50 px-2 py-0.5
-                text-xs text-gray-700
-                hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700
-                dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200
-                dark:hover:border-blue-400 dark:hover:bg-blue-900/40
-              "
-            >
-              #{tag.name}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="flex h-8 items-end border-b border-red-400 px-3 pr-10">
-        <h3 className="translate-y-0.5 truncate font-['Comic_Sans_MS','Bradley_Hand',cursive] text-lg font-semibold dark:text-gray-100">
-          {isEditingTitle ? (
-            <input
-              value={titleDraft}
-              autoFocus
-              disabled={isSavingTitle}
-              onChange={(e) => setTitleDraft(e.target.value)}
-              onBlur={saveTitle}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  saveTitle();
-                }
-
-                if (e.key === "Escape") {
-                  setTitleDraft(currentNote.title);
-                  setIsEditingTitle(false);
-                }
-              }}
-              className="
-      w-full rounded-md border border-blue-300 bg-white px-2 py-1
-      text-lg font-semibold text-gray-900
-      focus:outline-none focus:ring-2 focus:ring-blue-400
-      dark:border-blue-700 dark:bg-gray-900 dark:text-gray-100
-    "
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setTitleDraft(currentNote.title);
-                setIsEditingTitle(true);
-              }}
-              className="
-      block w-full text-left text-lg font-semibold text-gray-900
-      hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400
-    "
-              title="Click to edit title"
-            >
-              {currentNote.title}
-            </button>
-          )}
-        </h3>
-      </div>
-
-      <div
-        className="
-    min-h-40 px-4 py-0
-bg-[linear-gradient(to_bottom,transparent_31px,#93c5fd_32px)]
-bg-[length:100%_32px]
-dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
-  "
-      >
-        {isEditing ? (
-          <EditNoteForm
-            note={currentNote}
-            tags={allTags}
-            noteTags={tags}
-            references={references}
-            noteReferences={noteReferences}
-            userId={userId}
-            onCancel={closeEditMode}
-            onSave={(updatedNote) => {
-              setCurrentNote(updatedNote);
-              closeEditMode();
-            }}
-          />
-        ) : (
-          <ReadOnlyNoteContent content={currentNote.contentJson} />
-        )}
-      </div>
-
-      <div className="h-10 border-b border-blue-300" />
-    </article>
-  );
-}

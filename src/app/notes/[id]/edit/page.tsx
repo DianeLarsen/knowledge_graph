@@ -16,6 +16,22 @@ export default async function EditNotePage({ params }: EditNotePageProps) {
   const { id } = await params;
 const userId = await getCurrentUserId();
 const details = await getNoteDetailsById(id);
+
+if (!details) {
+  return (
+    <main className="min-h-screen bg-gray-50 px-6 py-8 dark:bg-gray-950">
+      <div className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <p className="text-gray-600 dark:text-gray-300">Note not found.</p>
+        <Link
+          href="/notes"
+          className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+        >
+          ← Back to notes
+        </Link>
+      </div>
+    </main>
+  );
+}
 const tags = await getAllTags();
 const references = await getReferencesByUserId(userId);
 
