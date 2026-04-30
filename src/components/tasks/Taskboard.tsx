@@ -30,7 +30,16 @@ export default function TaskBoard({ userId, initialTasks }: TaskBoardProps) {
   const [showArchived, setShowArchived] = useState(false);
   const [openMenuTaskId, setOpenMenuTaskId] = useState<string | null>(null);
 
-  const [duplicateTasks, setDuplicateTasks] = useState<Task[]>([]);
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    attemptedTask: {
+      title: string;
+      description?: string;
+      status: TaskStatus;
+      priority: "low" | "medium" | "high";
+      dueDate?: string;
+    };
+    similarTasks: Task[];
+  } | null>(null);
 const [hoveredDuplicateTaskId, setHoveredDuplicateTaskId] = useState<
   string | null
   >(null);
@@ -113,18 +122,37 @@ async function createTask(input: {
   });
 
   if (result.duplicate) {
-    setDuplicateTasks(result.similarTasks);
+    setDuplicateWarning({
+      attemptedTask: input,
+      similarTasks: result.similarTasks,
+    });
     return;
   }
 
-  if (!result.task) {
-    return;
-  }
+  if (!result.task) return;
 
   setTasks((current) => [result.task!, ...current]);
-  setDuplicateTasks([]);
+  setDuplicateWarning(null);
 }
+async function createTaskAnyway() {
+  if (!duplicateWarning) return;
 
+  const task = await createTaskAction({
+    userId,
+    title: duplicateWarning.attemptedTask.title,
+    description: duplicateWarning.attemptedTask.description,
+    status: duplicateWarning.attemptedTask.status,
+    priority: duplicateWarning.attemptedTask.priority,
+    dueDate: duplicateWarning.attemptedTask.dueDate,
+    skipDuplicateCheck: true,
+  });
+
+  if (task.task) {
+    setTasks((current) => [task.task!, ...current]);
+  }
+
+  setDuplicateWarning(null);
+}
   async function editTask(
     taskId: string,
     data: {
@@ -201,12 +229,19 @@ async function createTask(input: {
           {showArchived ? "Hide archive" : "Show archive"}
         </button>
       </div>
-      {duplicateTasks.length > 0 && (
-        <div className="relative rounded-xl border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200">
+      {duplicateWarning && (
+        <div className="relative overflow-visible rounded-xl border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200">
           <p className="font-semibold">Possible duplicate task found:</p>
 
+          <p className="mt-1 text-xs">
+            You tried to create:{" "}
+            <span className="font-semibold">
+              {duplicateWarning.attemptedTask.title}
+            </span>
+          </p>
+
           <ul className="mt-2 list-disc space-y-1 pl-5">
-            {duplicateTasks.map((task) => (
+            {duplicateWarning.similarTasks.map((task) => (
               <li key={task.id} className="relative">
                 <a
                   href={`/tasks#task-${task.id}`}
@@ -216,9 +251,8 @@ async function createTask(input: {
                 >
                   {task.title}
                 </a>
-
                 {hoveredDuplicateTaskId === task.id && (
-                  <div className="absolute left-0 top-6 z-20 w-80 rounded-xl border border-gray-200 bg-white p-4 text-gray-800 shadow-lg dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                  <div className="absolute left-0 top-full z-50 mt-2 w-80 rounded-xl border border-gray-200 bg-white p-4 text-gray-800 shadow-lg dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
                     <p className="font-semibold">{task.title}</p>
 
                     {task.description && (
@@ -237,6 +271,24 @@ async function createTask(input: {
               </li>
             ))}
           </ul>
+
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={createTaskAnyway}
+              className="rounded-lg bg-yellow-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-yellow-700"
+            >
+              Create Anyway
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setDuplicateWarning(null)}
+              className="rounded-lg border border-yellow-400 px-3 py-1.5 text-xs font-semibold hover:bg-yellow-100 dark:hover:bg-yellow-900"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
       <section

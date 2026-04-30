@@ -8,8 +8,10 @@ import {
   findSimilarTasks,
 } from "@/db/queries/tasks";
 import { type NewTask } from "@/db/schema";
-
-export async function createTaskAction(input: NewTask) {
+type CreateTaskInput = NewTask & {
+  skipDuplicateCheck?: boolean;
+};
+export async function createTaskAction(input: CreateTaskInput) {
   const result = await createTaskWithDuplicateCheck(input);
 
   revalidateTasks();
@@ -33,22 +35,25 @@ export async function deleteTaskAction(id: string) {
   return task;
 }
 
-export async function createTaskWithDuplicateCheck(data: NewTask) {
-  const similarTasks = await findSimilarTasks({
-    userId: data.userId,
-    title: data.title,
-    description: data.description ?? undefined,
-  });
+export async function createTaskWithDuplicateCheck(data: CreateTaskInput) {
+  if (!data.skipDuplicateCheck) {
+    const similarTasks = await findSimilarTasks({
+      userId: data.userId,
+      title: data.title,
+      description: data.description ?? undefined,
+    });
 
-  if (similarTasks.length > 0) {
-    return {
-      duplicate: true,
-      similarTasks,
-      task: null,
-    };
+    if (similarTasks.length > 0) {
+      return {
+        duplicate: true,
+        similarTasks,
+        task: null,
+      };
+    }
   }
 
-  const task = await createTask(data);
+  const { skipDuplicateCheck, ...taskData } = data;
+  const task = await createTask(taskData);
 
   return {
     duplicate: false,

@@ -119,7 +119,14 @@ export default function CaptureAnalysis({
                           </span>
                         </div>
                       )}
-                      {task.created ? (
+                      {task.created && task.taskId ? (
+                        <a
+                          href={`/tasks#task-${task.taskId}`}
+                          className="inline-flex rounded-md bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-200 dark:bg-green-950 dark:text-green-300 dark:hover:bg-green-900"
+                        >
+                          Task Created - View Task
+                        </a>
+                      ) : task.created ? (
                         <span className="inline-flex rounded-md bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 dark:bg-green-950 dark:text-green-300">
                           Task Created
                         </span>
