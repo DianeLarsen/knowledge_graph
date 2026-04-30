@@ -5,6 +5,7 @@ import {
 } from "@/app/actions/capture";
 import { Zap } from "lucide-react";
 
+
 export default async function CapturePage() {
   const captures = await getCaptures();
 
@@ -93,6 +94,7 @@ type CaptureAnalysisData = {
   summary: string;
   possibleTasks: {
     title: string;
+    description: string;
     priority: string;
     status: string;
   }[];
@@ -126,7 +128,9 @@ function CaptureAnalysis({ analysisJson }: { analysisJson: string }) {
 
       <AnalysisSection
         title="Possible Tasks"
-        items={analysis.possibleTasks.map((task) => task.title)}
+        items={analysis.possibleTasks.map(
+          (task) => `${task.title} (${task.priority}) - ${task.description}`,
+        )}
       />
       <AnalysisSection
         title="Possible Notes"
@@ -157,3 +161,4 @@ function AnalysisSection({ title, items }: { title: string; items: string[] }) {
     </div>
   );
 }
+
