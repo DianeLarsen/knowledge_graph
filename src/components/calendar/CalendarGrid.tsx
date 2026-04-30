@@ -1,20 +1,9 @@
 // src/components/calendar/CalendarGrid.tsx
+import {
+  CalendarItem,
 
-type CalendarItem = {
-  id: string;
-  type: "event" | "task";
-  title: string;
-  date: string | null;
-  endDate?: string | null;
-  startTime?: string | null;
-  endTime?: string | null;
-  allDay?: boolean | null;
-  description?: string | null;
-  status?: string;
-  priority?: string | null;
-  noteId?: string | null;
-  taskId?: string | null;
-};
+} from "@/components/calendar/types";
+
 
 type CalendarGridProps = {
   year: number;

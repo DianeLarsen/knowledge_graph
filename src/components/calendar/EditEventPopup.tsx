@@ -1,45 +1,55 @@
 // src/components/calendar/EditEventPopup.tsx
-
+"use client";
 import { updateEventAction } from "@/app/actions/calendar";
 import EventFormFields from "@/components/calendar/EventFormFields";
+import {
+  CalendarItem,
+  NoteOption,
+  TaskOption,
+} from "@/components/calendar/types";
+import { useState } from "react";
 
-type CalendarItem = {
-  id: string;
-  type: "event" | "task";
-  title: string;
-  date: string | null;
-  endDate?: string | null;
-  startTime?: string | null;
-  endTime?: string | null;
-  allDay?: boolean | null;
-  description?: string | null;
-  status?: string;
-  priority?: string | null;
-  noteId?: string | null;
-  taskId?: string | null;
-};
-type NoteOption = {
-  id: string;
-  title: string;
-};
-
-type TaskOption = {
-  id: string;
-  title: string;
-};
 type EditEventPopupProps = {
   event: CalendarItem;
+  items: CalendarItem[];
   notes: NoteOption[];
   tasks: TaskOption[];
   onClose: () => void;
 };
+
+function timesOverlap(
+  startA?: string | null,
+  endA?: string | null,
+  startB?: string | null,
+  endB?: string | null,
+) {
+  if (!startA || !endA || !startB || !endB) return false;
+
+  return startA < endB && startB < endA;
+}
 
 export default function EditEventPopup({
   event,
   notes,
   tasks,
   onClose,
+  items,
 }: EditEventPopupProps) {
+  const [startDate, setStartDate] = useState(event.date?.slice(0, 10) ?? "");
+  const [endDate, setEndDate] = useState(
+    event.endDate?.slice(0, 10) ?? event.date?.slice(0, 10) ?? "",
+  );
+  const [startTime, setStartTime] = useState(event.startTime ?? "");
+  const [endTime, setEndTime] = useState(event.endTime ?? "");
+
+  const conflicts = items.filter((item) => {
+    if (item.id === event.id) return false;
+    if (item.type !== "event") return false;
+    if (item.date?.slice(0, 10) !== startDate) return false;
+    if (item.allDay) return false;
+
+    return timesOverlap(startTime, endTime, item.startTime, item.endTime);
+  });
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <section className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-900">
@@ -80,10 +90,28 @@ export default function EditEventPopup({
             defaultEndTime={event.endTime}
             defaultNoteId={event.noteId}
             defaultTaskId={event.taskId}
+            startDate={startDate}
+            endDate={endDate}
+            startTime={startTime}
+            endTime={endTime}
+            onStartDateChange={(value) => {
+              setStartDate(value);
+              setEndDate(value);
+            }}
+            onEndDateChange={setEndDate}
+            onStartTimeChange={setStartTime}
+            onEndTimeChange={setEndTime}
             notes={notes}
             tasks={tasks}
           />
-
+          {conflicts.length > 0 && (
+            <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200">
+              This overlaps with:{" "}
+              <span className="font-medium">
+                {conflicts.map((conflict) => conflict.title).join(", ")}
+              </span>
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"

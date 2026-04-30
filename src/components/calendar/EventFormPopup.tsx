@@ -1,29 +1,52 @@
 // src/components/calendar/EventFormPopup.tsx
+"use client";
 
+import { useState } from "react";
 import { createEventAction } from "@/app/actions/calendar";
 import EventFormFields from "@/components/calendar/EventFormFields";
+import {
+  CalendarItem,
+  NoteOption,
+  TaskOption,
+} from "@/components/calendar/types";
 
 type EventFormPopupProps = {
   selectedDate: string;
-  onClose: () => void;
+  items: CalendarItem[];
   notes: NoteOption[];
   tasks: TaskOption[];
+  onClose: () => void;
 };
-type NoteOption = {
-  id: string;
-  title: string;
-};
+function timesOverlap(
+  startA?: string | null,
+  endA?: string | null,
+  startB?: string | null,
+  endB?: string | null,
+) {
+  if (!startA || !endA || !startB || !endB) return false;
 
-type TaskOption = {
-  id: string;
-  title: string;
-};
+  return startA < endB && startB < endA;
+}
 export default function EventFormPopup({
   selectedDate,
+  items,
   onClose,
   notes,
-  tasks
+  tasks,
 }: EventFormPopupProps) {
+  const [startDate, setStartDate] = useState(selectedDate);
+  const [endDate, setEndDate] = useState(selectedDate);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+
+  const conflicts = items.filter((item) => {
+    if (item.type !== "event") return false;
+    if (item.date?.slice(0, 10) !== startDate) return false;
+    if (item.allDay) return false;
+
+    return timesOverlap(startTime, endTime, item.startTime, item.endTime);
+  });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <section className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-900">
@@ -53,10 +76,28 @@ export default function EventFormPopup({
         >
           <EventFormFields
             defaultStartDate={selectedDate}
+            startDate={startDate}
+            endDate={endDate}
+            startTime={startTime}
+            endTime={endTime}
+            onStartDateChange={(value) => {
+              setStartDate(value);
+              setEndDate(value);
+            }}
+            onEndDateChange={setEndDate}
+            onStartTimeChange={setStartTime}
+            onEndTimeChange={setEndTime}
             notes={notes}
             tasks={tasks}
           />
-
+          {conflicts.length > 0 && (
+            <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200">
+              This overlaps with:{" "}
+              <span className="font-medium">
+                {conflicts.map((conflict) => conflict.title).join(", ")}
+              </span>
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"

@@ -50,6 +50,13 @@
       "when": 1777564742673,
       "tag": "0006_gifted_power_man",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1777571861139,
+      "tag": "0007_slow_boomer",
+      "breakpoints": true
     }
   ]
 }

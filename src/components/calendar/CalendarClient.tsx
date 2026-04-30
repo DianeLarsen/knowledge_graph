@@ -6,31 +6,12 @@ import CalendarGrid from "@/components/calendar/CalendarGrid";
 import EventDetailsPopup from "@/components/calendar/EventDetailsPopup";
 import EventFormPopup from "@/components/calendar/EventFormPopup";
 import EditEventPopup from "@/components/calendar/EditEventPopup";
-
-type CalendarItem = {
-  id: string;
-  type: "event" | "task";
-  title: string;
-  date: string | null;
-  endDate?: string | null;
-  startTime?: string | null;
-  endTime?: string | null;
-  allDay?: boolean | null;
-  description?: string | null;
-  status?: string;
-  priority?: string | null;
-  noteId?: string | null;
-  taskId?: string | null;
-};
-type NoteOption = {
-  id: string;
-  title: string;
-};
-
-type TaskOption = {
-  id: string;
-  title: string;
-};
+import {
+  CalendarItem,
+  NoteOption,
+  TaskOption,
+} from "@/components/calendar/types";
+import SingleEventPopup from "@/components/calendar/SingleEventPopup";
 type CalendarClientProps = {
   year: number;
   month: number;
@@ -51,7 +32,7 @@ export default function CalendarClient({
   month,
   items,
   notes,
-  tasks
+  tasks,
 }: CalendarClientProps) {
   const today = new Date();
   const todayDate = today.toISOString().slice(0, 10);
@@ -63,16 +44,25 @@ export default function CalendarClient({
   const [showDetails, setShowDetails] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createDate, setCreateDate] = useState(todayDate);
-const [editingEvent, setEditingEvent] = useState<CalendarItem | null>(null);
+  const [editingEvent, setEditingEvent] = useState<CalendarItem | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarItem | null>(null);
+
+    
+    function openEventDetails(item: CalendarItem) {
+      setShowDetails(false);
+      setShowCreateForm(false);
+      setEditingEvent(null);
+      setSelectedEvent(item);
+    }
   function openDayDetails(date: string) {
     setSelectedDate(date);
     setShowDetails(true);
   }
-function openEditEvent(item: CalendarItem) {
-  setShowDetails(false);
-  setShowCreateForm(false);
-  setEditingEvent(item);
-}
+  function openEditEvent(item: CalendarItem) {
+    setShowDetails(false);
+    setShowCreateForm(false);
+    setEditingEvent(item);
+  }
   function openCreateForm(date?: string) {
     setCreateDate(date ?? selectedDate ?? todayDate);
     setShowDetails(false);
@@ -149,11 +139,25 @@ function openEditEvent(item: CalendarItem) {
           onClose={() => setShowDetails(false)}
           onCreateEvent={() => openCreateForm(selectedDate)}
           onEditEvent={openEditEvent}
+          onOpenEvent={openEventDetails}
+        />
+      )}
+      {selectedEvent && (
+        <SingleEventPopup
+          event={selectedEvent}
+          notes={notes}
+          tasks={tasks}
+          onClose={() => setSelectedEvent(null)}
+          onEdit={() => {
+            setSelectedEvent(null);
+            openEditEvent(selectedEvent);
+          }}
         />
       )}
       {editingEvent && (
         <EditEventPopup
           event={editingEvent}
+          items={items}
           notes={notes}
           tasks={tasks}
           onClose={() => setEditingEvent(null)}
@@ -162,6 +166,7 @@ function openEditEvent(item: CalendarItem) {
       {showCreateForm && (
         <EventFormPopup
           selectedDate={createDate}
+          items={items}
           notes={notes}
           tasks={tasks}
           onClose={() => setShowCreateForm(false)}

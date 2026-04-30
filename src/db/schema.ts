@@ -237,6 +237,17 @@ export const events = sqliteTable("events", {
     .$onUpdate(() => new Date()),
 });
 
+export const captures = sqliteTable("captures", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  rawText: text("raw_text").notNull(),
+  summary: text("summary"),
+  analysisJson: text("analysis_json"),
+  status: text("status").notNull().default("new"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
 export type Note = typeof notes.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
 export type NoteTag = typeof noteTags.$inferSelect;

@@ -1,17 +1,5 @@
 // src/components/calendar/EventFormFields.tsx
 
-type EventFormFieldsProps = {
-  defaultTitle?: string;
-  defaultDescription?: string | null;
-  defaultStartDate: string;
-  defaultEndDate?: string | null;
-  defaultStartTime?: string | null;
-  defaultEndTime?: string | null;
-  defaultNoteId?: string | null;
-  defaultTaskId?: string | null;
-  notes: NoteOption[];
-  tasks: TaskOption[];
-};
 type NoteOption = {
   id: string;
   title: string;
@@ -21,6 +9,32 @@ type TaskOption = {
   id: string;
   title: string;
 };
+
+type EventFormFieldsProps = {
+  defaultTitle?: string;
+  defaultDescription?: string | null;
+
+  defaultStartDate: string;
+  defaultEndDate?: string | null;
+  defaultStartTime?: string | null;
+  defaultEndTime?: string | null;
+
+  startDate?: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+
+  onStartDateChange?: (value: string) => void;
+  onEndDateChange?: (value: string) => void;
+  onStartTimeChange?: (value: string) => void;
+  onEndTimeChange?: (value: string) => void;
+
+  defaultNoteId?: string | null;
+  defaultTaskId?: string | null;
+  notes: NoteOption[];
+  tasks: TaskOption[];
+};
+
 export default function EventFormFields({
   defaultTitle = "",
   defaultDescription = "",
@@ -28,6 +42,17 @@ export default function EventFormFields({
   defaultEndDate,
   defaultStartTime = "",
   defaultEndTime = "",
+
+  startDate,
+  endDate,
+  startTime,
+  endTime,
+
+  onStartDateChange,
+  onEndDateChange,
+  onStartTimeChange,
+  onEndTimeChange,
+
   defaultNoteId = "",
   defaultTaskId = "",
   notes,
@@ -67,7 +92,11 @@ export default function EventFormFields({
           <input
             type="date"
             name="startDate"
-            defaultValue={defaultStartDate}
+            value={startDate}
+            defaultValue={
+              startDate === undefined ? defaultStartDate : undefined
+            }
+            onChange={(event) => onStartDateChange?.(event.target.value)}
             required
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
           />
@@ -80,7 +109,13 @@ export default function EventFormFields({
           <input
             type="date"
             name="endDate"
-            defaultValue={defaultEndDate ?? defaultStartDate}
+            value={endDate}
+            defaultValue={
+              endDate === undefined
+                ? (defaultEndDate ?? defaultStartDate)
+                : undefined
+            }
+            onChange={(event) => onEndDateChange?.(event.target.value)}
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
           />
         </div>
@@ -94,7 +129,11 @@ export default function EventFormFields({
           <input
             type="time"
             name="startTime"
-            defaultValue={defaultStartTime ?? ""}
+            value={startTime}
+            defaultValue={
+              startTime === undefined ? (defaultStartTime ?? "") : undefined
+            }
+            onChange={(event) => onStartTimeChange?.(event.target.value)}
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
           />
         </div>
@@ -106,11 +145,16 @@ export default function EventFormFields({
           <input
             type="time"
             name="endTime"
-            defaultValue={defaultEndTime ?? ""}
+            value={endTime}
+            defaultValue={
+              endTime === undefined ? (defaultEndTime ?? "") : undefined
+            }
+            onChange={(event) => onEndTimeChange?.(event.target.value)}
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
           />
         </div>
       </div>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
