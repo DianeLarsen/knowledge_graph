@@ -4,7 +4,7 @@ import {
   analyzeCaptureAction,
 } from "@/app/actions/capture";
 import { Zap } from "lucide-react";
-
+import CaptureAnalysis from "@/components/capture/CaptureAnalysis";
 
 export default async function CapturePage() {
   const captures = await getCaptures();
@@ -87,78 +87,6 @@ export default async function CapturePage() {
         )}
       </section>
     </main>
-  );
-}
-
-type CaptureAnalysisData = {
-  summary: string;
-  possibleTasks: {
-    title: string;
-    description: string;
-    priority: string;
-    status: string;
-  }[];
-  possibleNotes: {
-    title: string;
-    content: string;
-  }[];
-  possibleReferences: {
-    type?: string;
-    title?: string;
-    url?: string;
-  }[];
-  aiPrompts: string[];
-  nextSteps: string[];
-  openQuestions: string[];
-  risks: string[];
-};
-
-function CaptureAnalysis({ analysisJson }: { analysisJson: string }) {
-  const analysis = JSON.parse(analysisJson) as CaptureAnalysisData;
-
-  return (
-    <div className="mt-5 rounded-xl border border-purple-200 bg-purple-50 p-4 dark:border-purple-900 dark:bg-purple-950/30">
-      <h3 className="mb-2 text-sm font-semibold text-purple-900 dark:text-purple-100">
-        Analysis
-      </h3>
-
-      <p className="mb-4 text-sm text-purple-900 dark:text-purple-100">
-        {analysis.summary}
-      </p>
-
-      <AnalysisSection
-        title="Possible Tasks"
-        items={analysis.possibleTasks.map(
-          (task) => `${task.title} (${task.priority}) - ${task.description}`,
-        )}
-      />
-      <AnalysisSection
-        title="Possible Notes"
-        items={analysis.possibleNotes.map((note) => note.title)}
-      />
-      <AnalysisSection title="AI Prompts" items={analysis.aiPrompts} />
-      <AnalysisSection title="Next Steps" items={analysis.nextSteps} />
-      <AnalysisSection title="Open Questions" items={analysis.openQuestions} />
-      <AnalysisSection title="Risks" items={analysis.risks} />
-    </div>
-  );
-}
-
-function AnalysisSection({ title, items }: { title: string; items: string[] }) {
-  if (!items || items.length === 0) return null;
-
-  return (
-    <div className="mt-4">
-      <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-purple-700 dark:text-purple-300">
-        {title}
-      </h4>
-
-      <ul className="list-disc space-y-1 pl-5 text-sm text-purple-900 dark:text-purple-100">
-        {items.map((item, index) => (
-          <li key={`${title}-${index}`}>{item}</li>
-        ))}
-      </ul>
-    </div>
   );
 }
 
