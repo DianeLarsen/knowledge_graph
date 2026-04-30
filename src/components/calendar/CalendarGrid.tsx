@@ -1,6 +1,4 @@
 // src/components/calendar/CalendarGrid.tsx
-import Link from "next/link";
-
 
 type CalendarItem = {
   id: string;
@@ -21,7 +19,8 @@ type CalendarGridProps = {
   month: number;
   items: CalendarItem[];
   todayDate?: string;
-  selectedDate?: string;
+  selectedDate?: string | null;
+  onSelectDate: (date: string) => void;
 };
 
 function getMonthDays(year: number, month: number) {
@@ -53,9 +52,28 @@ export default function CalendarGrid({
   items,
   todayDate,
   selectedDate,
+  onSelectDate,
 }: CalendarGridProps) {
   const days = getMonthDays(year, month);
+  function getItemClass(item: CalendarItem) {
+    if (item.type === "event") {
+      return "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200";
+    }
 
+    if (item.priority === "high") {
+      return "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200";
+    }
+
+    if (item.priority === "medium") {
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200";
+    }
+
+    if (item.priority === "low") {
+      return "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200";
+    }
+
+    return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
+  }
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
       <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50 text-center text-xs font-semibold uppercase text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
@@ -70,9 +88,20 @@ export default function CalendarGrid({
         {days.map((date, index) => {
           const dateKey = date ? formatDate(date) : null;
           const dayItems = dateKey
-            ? items.filter((item) => item.date?.slice(0, 10) === dateKey)
+            ? items
+                .filter((item) => item.date?.slice(0, 10) === dateKey)
+                .sort((a, b) => {
+                  if (a.allDay && !b.allDay) return -1;
+                  if (!a.allDay && b.allDay) return 1;
+
+                  const timeA = a.startTime ?? "99:99";
+                  const timeB = b.startTime ?? "99:99";
+
+                  return timeA.localeCompare(timeB);
+                })
             : [];
-const isToday = dateKey === todayDate;
+
+          const isToday = dateKey === todayDate;
           const isSelected = dateKey === selectedDate;
           return (
             <div
@@ -82,9 +111,10 @@ const isToday = dateKey === todayDate;
               } ${isSelected ? "ring-2 ring-blue-400 ring-inset" : ""}`}
             >
               {date && dateKey && (
-                <Link
-                  href={`/calendar?year=${year}&month=${month}&date=${dateKey}`}
-                  className="block h-full"
+                <button
+                  type="button"
+                  onClick={() => onSelectDate(dateKey)}
+                  className="block h-full w-full text-left"
                 >
                   <div
                     className={`mb-2 flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold ${
@@ -100,15 +130,12 @@ const isToday = dateKey === todayDate;
                     {dayItems.slice(0, 3).map((item) => (
                       <div
                         key={`${item.type}-${item.id}`}
-                        className={`truncate rounded-md px-2 py-1 text-xs ${
-                          item.type === "task"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200"
-                            : "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200"
-                        }`}
+                        className={`truncate rounded-md px-2 py-1 text-xs ${getItemClass(item)}`}
                       >
                         {item.startTime && (
                           <span className="mr-1 font-semibold">
                             {item.startTime}
+                            {item.endTime ? `-${item.endTime}` : ""}
                           </span>
                         )}
                         {item.title}
@@ -120,7 +147,7 @@ const isToday = dateKey === todayDate;
                       </div>
                     )}
                   </div>
-                </Link>
+                </button>
               )}
             </div>
           );
