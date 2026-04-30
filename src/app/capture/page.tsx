@@ -1,4 +1,8 @@
-import { createCaptureAction, getCaptures } from "@/app/actions/capture";
+import {
+  createCaptureAction,
+  getCaptures,
+  analyzeCaptureAction,
+} from "@/app/actions/capture";
 import { Zap } from "lucide-react";
 
 export default async function CapturePage() {
@@ -65,11 +69,91 @@ export default async function CapturePage() {
                 <p className="whitespace-pre-wrap text-sm leading-6 text-gray-800 dark:text-gray-200">
                   {capture.rawText}
                 </p>
+                <form action={analyzeCaptureAction.bind(null, capture.id)}>
+                  <button
+                    type="submit"
+                    className="mt-4 rounded-lg border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950"
+                  >
+                    Analyze
+                  </button>
+                </form>
+                {capture.analysisJson && (
+                  <CaptureAnalysis analysisJson={capture.analysisJson} />
+                )}
               </article>
             ))}
           </div>
         )}
       </section>
     </main>
+  );
+}
+
+type CaptureAnalysisData = {
+  summary: string;
+  possibleTasks: {
+    title: string;
+    priority: string;
+    status: string;
+  }[];
+  possibleNotes: {
+    title: string;
+    content: string;
+  }[];
+  possibleReferences: {
+    type?: string;
+    title?: string;
+    url?: string;
+  }[];
+  aiPrompts: string[];
+  nextSteps: string[];
+  openQuestions: string[];
+  risks: string[];
+};
+
+function CaptureAnalysis({ analysisJson }: { analysisJson: string }) {
+  const analysis = JSON.parse(analysisJson) as CaptureAnalysisData;
+
+  return (
+    <div className="mt-5 rounded-xl border border-purple-200 bg-purple-50 p-4 dark:border-purple-900 dark:bg-purple-950/30">
+      <h3 className="mb-2 text-sm font-semibold text-purple-900 dark:text-purple-100">
+        Analysis
+      </h3>
+
+      <p className="mb-4 text-sm text-purple-900 dark:text-purple-100">
+        {analysis.summary}
+      </p>
+
+      <AnalysisSection
+        title="Possible Tasks"
+        items={analysis.possibleTasks.map((task) => task.title)}
+      />
+      <AnalysisSection
+        title="Possible Notes"
+        items={analysis.possibleNotes.map((note) => note.title)}
+      />
+      <AnalysisSection title="AI Prompts" items={analysis.aiPrompts} />
+      <AnalysisSection title="Next Steps" items={analysis.nextSteps} />
+      <AnalysisSection title="Open Questions" items={analysis.openQuestions} />
+      <AnalysisSection title="Risks" items={analysis.risks} />
+    </div>
+  );
+}
+
+function AnalysisSection({ title, items }: { title: string; items: string[] }) {
+  if (!items || items.length === 0) return null;
+
+  return (
+    <div className="mt-4">
+      <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-purple-700 dark:text-purple-300">
+        {title}
+      </h4>
+
+      <ul className="list-disc space-y-1 pl-5 text-sm text-purple-900 dark:text-purple-100">
+        {items.map((item, index) => (
+          <li key={`${title}-${index}`}>{item}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
