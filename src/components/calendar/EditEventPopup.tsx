@@ -15,15 +15,29 @@ type CalendarItem = {
   description?: string | null;
   status?: string;
   priority?: string | null;
+  noteId?: string | null;
+  taskId?: string | null;
+};
+type NoteOption = {
+  id: string;
+  title: string;
 };
 
+type TaskOption = {
+  id: string;
+  title: string;
+};
 type EditEventPopupProps = {
   event: CalendarItem;
+  notes: NoteOption[];
+  tasks: TaskOption[];
   onClose: () => void;
 };
 
 export default function EditEventPopup({
   event,
+  notes,
+  tasks,
   onClose,
 }: EditEventPopupProps) {
   return (
@@ -64,6 +78,10 @@ export default function EditEventPopup({
             }
             defaultStartTime={event.startTime}
             defaultEndTime={event.endTime}
+            defaultNoteId={event.noteId}
+            defaultTaskId={event.taskId}
+            notes={notes}
+            tasks={tasks}
           />
 
           <div className="flex justify-end gap-2 pt-2">

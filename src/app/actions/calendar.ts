@@ -30,6 +30,8 @@ export async function getCalendarItems(
       endTime: event.endTime,
       allDay: event.allDay,
       status: event.status,
+      noteId: event.noteId,
+      taskId: event.taskId,
       source: event,
     })),
 
@@ -46,6 +48,8 @@ export async function getCalendarItems(
       priority: task.priority,
       status: task.status,
       source: task,
+      noteId: null,
+      taskId: task.id,
     })),
   ].sort((a, b) => {
     if (!a.date || !b.date) return 0;
@@ -62,7 +66,8 @@ export async function createEventAction(formData: FormData) {
   const endDate = String(formData.get("endDate") || "").trim();
   const startTime = String(formData.get("startTime") || "").trim();
   const endTime = String(formData.get("endTime") || "").trim();
-
+const noteId = String(formData.get("noteId") || "").trim();
+const taskId = String(formData.get("taskId") || "").trim();
   if (!title || !startDate) {
     throw new Error("Title and start date are required.");
   }
@@ -79,6 +84,8 @@ export async function createEventAction(formData: FormData) {
     endTime: endTime || null,
     allDay,
     status: "planned",
+    noteId: noteId || null,
+    taskId: taskId || null,
   });
 
   revalidatePath("/calendar");
@@ -108,7 +115,8 @@ export async function updateEventAction(formData: FormData) {
   const startTime = String(formData.get("startTime") || "").trim();
   const endTime = String(formData.get("endTime") || "").trim();
   const location = String(formData.get("location") || "").trim();
-
+const noteId = String(formData.get("noteId") || "").trim();
+const taskId = String(formData.get("taskId") || "").trim();
   if (!eventId || !title || !startDate) {
     throw new Error("Event ID, title, and start date are required.");
   }
@@ -124,6 +132,8 @@ export async function updateEventAction(formData: FormData) {
     endTime: endTime || null,
     allDay,
     location: location || null,
+    noteId: noteId || null,
+    taskId: taskId || null,
   });
 
   revalidatePath("/calendar");

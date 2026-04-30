@@ -1,6 +1,8 @@
 import CalendarClient from "@/components/calendar/CalendarClient";
 import { getCalendarItems } from "../actions/calendar";
 import { getCurrentUserId } from "@/lib/currentUser";
+import { getNotesByUser } from "@/db/queries/notes";
+import { getTasksByUserId } from "@/db/queries/tasks";
 
 type CalendarPageProps = {
   searchParams?: Promise<{
@@ -28,7 +30,19 @@ export default async function CalendarPage({
   const month = params?.month ? Number(params.month) : today.getMonth();
 
   const { startDate, endDate } = getMonthRange(year, month);
-  const items = await getCalendarItems(userId, startDate, endDate);
 
-  return <CalendarClient year={year} month={month} items={items} />;
+  const [items, notes, tasks] = await Promise.all([
+    getCalendarItems(userId, startDate, endDate),
+    getNotesByUser(userId),
+    getTasksByUserId(userId),
+  ]);
+  return (
+    <CalendarClient
+      year={year}
+      month={month}
+      items={items}
+      notes={notes}
+      tasks={tasks}
+    />
+  );
 }

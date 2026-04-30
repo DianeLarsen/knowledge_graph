@@ -12,6 +12,8 @@ type CalendarItem = {
   description?: string | null;
   status?: string;
   priority?: string | null;
+  noteId?: string | null;
+  taskId?: string | null;
 };
 
 type CalendarGridProps = {

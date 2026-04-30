@@ -19,12 +19,24 @@ type CalendarItem = {
   description?: string | null;
   status?: string;
   priority?: string | null;
+  noteId?: string | null;
+  taskId?: string | null;
+};
+type NoteOption = {
+  id: string;
+  title: string;
 };
 
+type TaskOption = {
+  id: string;
+  title: string;
+};
 type CalendarClientProps = {
   year: number;
   month: number;
   items: CalendarItem[];
+  notes: NoteOption[];
+  tasks: TaskOption[];
 };
 
 function getMonthLabel(year: number, month: number) {
@@ -38,6 +50,8 @@ export default function CalendarClient({
   year,
   month,
   items,
+  notes,
+  tasks
 }: CalendarClientProps) {
   const today = new Date();
   const todayDate = today.toISOString().slice(0, 10);
@@ -130,6 +144,8 @@ function openEditEvent(item: CalendarItem) {
         <EventDetailsPopup
           date={selectedDate}
           items={items}
+          notes={notes}
+          tasks={tasks}
           onClose={() => setShowDetails(false)}
           onCreateEvent={() => openCreateForm(selectedDate)}
           onEditEvent={openEditEvent}
@@ -138,12 +154,16 @@ function openEditEvent(item: CalendarItem) {
       {editingEvent && (
         <EditEventPopup
           event={editingEvent}
+          notes={notes}
+          tasks={tasks}
           onClose={() => setEditingEvent(null)}
         />
       )}
       {showCreateForm && (
         <EventFormPopup
           selectedDate={createDate}
+          notes={notes}
+          tasks={tasks}
           onClose={() => setShowCreateForm(false)}
         />
       )}

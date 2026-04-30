@@ -6,11 +6,23 @@ import EventFormFields from "@/components/calendar/EventFormFields";
 type EventFormPopupProps = {
   selectedDate: string;
   onClose: () => void;
+  notes: NoteOption[];
+  tasks: TaskOption[];
+};
+type NoteOption = {
+  id: string;
+  title: string;
 };
 
+type TaskOption = {
+  id: string;
+  title: string;
+};
 export default function EventFormPopup({
   selectedDate,
   onClose,
+  notes,
+  tasks
 }: EventFormPopupProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -39,7 +51,11 @@ export default function EventFormPopup({
           onSubmit={onClose}
           className="space-y-3"
         >
-          <EventFormFields defaultStartDate={selectedDate} />
+          <EventFormFields
+            defaultStartDate={selectedDate}
+            notes={notes}
+            tasks={tasks}
+          />
 
           <div className="flex justify-end gap-2 pt-2">
             <button

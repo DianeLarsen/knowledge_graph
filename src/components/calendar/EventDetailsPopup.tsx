@@ -8,16 +8,30 @@ type CalendarItem = {
   type: "event" | "task";
   title: string;
   date: string | null;
-  description?: string | null;
+  endDate?: string | null;
   startTime?: string | null;
   endTime?: string | null;
   allDay?: boolean | null;
+  description?: string | null;
+  status?: string;
   priority?: string | null;
+  noteId?: string | null;
+  taskId?: string | null;
+};
+type NoteOption = {
+  id: string;
+  title: string;
 };
 
+type TaskOption = {
+  id: string;
+  title: string;
+};
 type EventDetailsPopupProps = {
   date: string;
   items: CalendarItem[];
+  notes: NoteOption[];
+  tasks: TaskOption[];
   onClose: () => void;
   onCreateEvent: () => void;
   onEditEvent: (item: CalendarItem) => void;
@@ -26,6 +40,8 @@ type EventDetailsPopupProps = {
 export default function EventDetailsPopup({
   date,
   items,
+  notes,
+  tasks,
   onClose,
   onCreateEvent,
   onEditEvent,
@@ -44,7 +60,13 @@ export default function EventDetailsPopup({
          return timeA.localeCompare(timeB);
        });
     
+function getNoteTitle(noteId?: string | null) {
+  return notes.find((note) => note.id === noteId)?.title;
+}
 
+function getTaskTitle(taskId?: string | null) {
+  return tasks.find((task) => task.id === taskId)?.title;
+}
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <section className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-900">
@@ -117,7 +139,29 @@ export default function EventDetailsPopup({
                     {item.description}
                   </p>
                 )}
+                {item.noteId && getNoteTitle(item.noteId) && (
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    Linked note:{" "}
+                    <Link
+                      href={`/notes?open=${item.noteId}`}
+                      className="font-medium text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {getNoteTitle(item.noteId)}
+                    </Link>
+                  </p>
+                )}
 
+                {item.taskId && getTaskTitle(item.taskId) && (
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Linked task:{" "}
+                    <Link
+                      href="/tasks"
+                      className="font-medium text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {getTaskTitle(item.taskId)}
+                    </Link>
+                  </p>
+                )}
                 {item.type === "event" && (
                   <div className="mt-3 flex gap-2">
                     <button
