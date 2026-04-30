@@ -5,7 +5,8 @@ import { createEvent } from "@/db/queries/calendar";
 import { getCurrentUserId } from "@/lib/currentUser";
 import { getEventsInRange, getTasksDueInRange } from "@/db/queries/calendar";
 import { deleteEvent } from "@/db/queries/calendar";
-
+import { redirect } from "next/navigation";
+import { updateEvent } from "@/db/queries/calendar";
 
 export async function getCalendarItems(userId: string, startDate: string, endDate: string) {
   const [calendarEvents, dueTasks] = await Promise.all([
@@ -78,4 +79,30 @@ export async function deleteEventAction(formData: FormData) {
   await deleteEvent(eventId, userId);
 
   revalidatePath("/calendar");
+}
+
+export async function updateEventAction(formData: FormData) {
+  const userId = await getCurrentUserId();
+
+  const eventId = String(formData.get("eventId") || "");
+  const title = String(formData.get("title") || "").trim();
+  const description = String(formData.get("description") || "").trim();
+  const startDate = String(formData.get("startDate") || "").trim();
+  const endDate = String(formData.get("endDate") || "").trim();
+  const location = String(formData.get("location") || "").trim();
+
+  if (!eventId || !title || !startDate) {
+    throw new Error("Event ID, title, and start date are required.");
+  }
+
+  await updateEvent(eventId, userId, {
+    title,
+    description: description || null,
+    startDate,
+    endDate: endDate || startDate,
+    location: location || null,
+  });
+
+  revalidatePath("/calendar");
+  redirect(`/calendar?year=${startDate.slice(0, 4)}&month=${Number(startDate.slice(5, 7)) - 1}&date=${startDate}`);
 }

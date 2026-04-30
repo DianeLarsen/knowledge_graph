@@ -60,3 +60,12 @@ export async function deleteEvent(eventId: string, userId: string) {
 
   return deletedEvent;
 }
+
+export async function getEventById(eventId: string, userId: string) {
+  const [event] = await db
+    .select()
+    .from(events)
+    .where(and(eq(events.id, eventId), eq(events.userId, userId)));
+
+  return event;
+}

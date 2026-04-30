@@ -1,6 +1,6 @@
 // src/components/calendar/CalendarDayDetails.tsx
 import { deleteEventAction } from "@/app/actions/calendar";
-
+import Link from "next/link";
 
 type CalendarItem = {
   id: string;
@@ -56,16 +56,24 @@ export default function CalendarDayDetails({
                 </p>
               )}
               {item.type === "event" && (
-                <form action={deleteEventAction} className="mt-3">
-                  <input type="hidden" name="eventId" value={item.id} />
-
-                  <button
-                    type="submit"
-                    className="rounded-md border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950"
+                <div className="mt-3 flex gap-2">
+                  <Link
+                    href={`/calendar/events/${item.id}/edit`}
+                    className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                   >
-                    Delete
-                  </button>
-                </form>
+                    Edit
+                  </Link>
+
+                  <form action={deleteEventAction}>
+                    <input type="hidden" name="eventId" value={item.id} />
+                    <button
+                      type="submit"
+                      className="rounded-md border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950"
+                    >
+                      Delete
+                    </button>
+                  </form>
+                </div>
               )}
             </li>
           ))}
