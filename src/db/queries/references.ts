@@ -3,10 +3,10 @@ import { db } from "../index";
 import {
   referencesTable,
   noteReferences,
+  notes,
   type NewReference,
   type NewNoteReference,
 } from "@/db/schema";
-
 
 export async function createReference(reference: NewReference) {
   const [result] = await db
@@ -176,7 +176,7 @@ export async function findExistingReference({
 }
 
 export async function getReferences() {
-  return await db
+  const references = await db
     .select({
       id: referencesTable.id,
       userId: referencesTable.userId,
@@ -190,15 +190,33 @@ export async function getReferences() {
       notes: referencesTable.notes,
       createdAt: referencesTable.createdAt,
       updatedAt: referencesTable.updatedAt,
-
-      // calculated field, not schema field
-      linkCount: count(noteReferences.id),
     })
     .from(referencesTable)
-    .leftJoin(
-      noteReferences,
-      eq(referencesTable.id, noteReferences.referenceId),
-    )
-    .groupBy(referencesTable.id)
     .orderBy(desc(referencesTable.createdAt));
+
+const links = await db
+  .select({
+    referenceId: noteReferences.referenceId,
+    noteId: notes.id,
+    noteTitle: notes.title,
+    noteContent: notes.content,
+  })
+  .from(noteReferences)
+  .innerJoin(notes, eq(noteReferences.noteId, notes.id));
+
+  return references.map((reference) => {
+    const linkedNotes = links
+      .filter((link) => link.referenceId === reference.id)
+      .map((link) => ({
+        id: link.noteId,
+        title: link.noteTitle,
+        content: link.noteContent,
+      }));
+
+    return {
+      ...reference,
+      linkCount: linkedNotes.length,
+      linkedNotes,
+    };
+  });
 }

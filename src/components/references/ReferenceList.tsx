@@ -17,6 +17,11 @@ type Reference = {
   createdAt: Date;
   updatedAt: Date;
   linkCount: number;
+  linkedNotes: {
+    id: string;
+    title: string;
+    content: string;
+  }[];
 };
 
 type ReferenceType = Reference["type"] | "all";

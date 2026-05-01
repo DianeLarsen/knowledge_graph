@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import {
@@ -18,12 +19,17 @@ type Reference = {
   publisher?: string | null;
   publishedDate?: Date | string | null;
   linkCount?: number;
+  linkedNotes?: {
+    id: string;
+    title: string;
+    content: string | null;
+  }[];
 };
 
 export default function ReferenceCard({ reference }: { reference: Reference }) {
   const [isEditing, setIsEditing] = useState(false);
   const [showApa, setShowApa] = useState(false);
-
+  const [showLinkedNotes, setShowLinkedNotes] = useState(false);
   const linkCount = reference.linkCount ?? 0;
   const isLinked = linkCount > 0;
 
@@ -79,9 +85,69 @@ export default function ReferenceCard({ reference }: { reference: Reference }) {
               {reference.type}
             </span>
 
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              Linked to {linkCount} note{linkCount === 1 ? "" : "s"}
-            </span>
+            <div className="relative inline-flex">
+              <button
+                type="button"
+                disabled={linkCount === 0}
+                onClick={() => setShowLinkedNotes((current) => !current)}
+                className={`text-xs underline decoration-dotted underline-offset-2 ${
+                  linkCount === 0
+                    ? "cursor-default text-gray-400 no-underline dark:text-gray-600"
+                    : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                }`}
+              >
+                Linked to {linkCount} note{linkCount === 1 ? "" : "s"}
+              </button>
+
+              {showLinkedNotes &&
+                reference.linkedNotes &&
+                reference.linkedNotes.length > 0 && (
+                  <div className="absolute left-0 top-6 z-30 w-80 rounded-xl border border-gray-200 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-950">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        Linked Notes
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowLinkedNotes(false)}
+                        className="text-xs font-semibold text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                      >
+                        Close
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {reference.linkedNotes.map((note) => (
+                        <div key={note.id} className="group relative">
+                          <a
+                            href={`/notes/${note.id}`}
+                            className="block rounded-lg px-2 py-1.5 text-sm font-semibold text-blue-700 hover:bg-gray-100 dark:text-blue-300 dark:hover:bg-gray-800"
+                          >
+                            {note.title}
+                          </a>
+
+                          <div className="absolute left-full top-0 z-40 ml-2 hidden w-80 rounded-2xl border border-blue-200 bg-white p-4 text-xs shadow-lg group-hover:block dark:border-blue-900 dark:bg-gray-900">
+                            <div className="mb-2 border-b border-red-200 pb-2 dark:border-red-900">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                {note.title}
+                              </p>
+                            </div>
+
+                            <p className="line-clamp-6 whitespace-pre-wrap leading-5 text-gray-700 dark:text-gray-300">
+                              {note.content || "No content yet."}
+                            </p>
+
+                            <p className="mt-3 text-[11px] font-semibold text-blue-600 dark:text-blue-300">
+                              Click title to open note
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </div>
           </div>
 
           <h2 className="pr-24 text-lg font-semibold text-gray-900 dark:text-gray-100">
