@@ -155,3 +155,12 @@ if (similarTasks.length > 0) {
   revalidatePath("/capture");
   revalidatePath("/tasks");
 }
+
+export async function archiveCaptureAction(captureId: string) {
+  await updateCaptureStatus({
+    id: captureId,
+    status: "archived",
+  });
+
+  revalidatePath("/capture");
+}

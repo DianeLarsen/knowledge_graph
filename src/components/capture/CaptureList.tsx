@@ -5,6 +5,7 @@ import CaptureAnalysis from "@/components/capture/CaptureAnalysis";
 import {
   analyzeCaptureAction,
   markCaptureProcessedAction,
+  archiveCaptureAction,
 } from "@/app/actions/capture";
 
 type CaptureStatus = "all" | "new" | "analyzed" | "processed" | "archived";
@@ -95,6 +96,16 @@ export default function CaptureList({ captures }: { captures: Capture[] }) {
                     Mark Processed
                   </button>
                 </form>
+               {capture.status !== "archived" && (
+  <form action={archiveCaptureAction.bind(null, capture.id)}>
+    <button
+      type="submit"
+      className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+    >
+      Archive
+    </button>
+  </form>
+)}
               </div>
 
               {capture.analysisJson && (
