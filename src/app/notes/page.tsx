@@ -10,14 +10,24 @@ export default async function NotesPage() {
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-8 dark:bg-gray-950">
       <div className="mx-auto max-w-4xl">
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            Notes
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Your collected notes, because apparently brains need external hard
-            drives.
-          </p>
+        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+              Notes
+            </h1>
+
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
+              Your collected notes, because apparently brains need external hard
+              drives.
+            </p>
+          </div>
+
+          <Link
+            href="/notes/references"
+            className="inline-flex shrink-0 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            View References
+          </Link>
         </header>
 
         {notes.length > 0 ? (

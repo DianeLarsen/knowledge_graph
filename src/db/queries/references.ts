@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, count } from "drizzle-orm";
 import { db } from "../index";
 import {
   referencesTable,
@@ -6,6 +6,7 @@ import {
   type NewReference,
   type NewNoteReference,
 } from "@/db/schema";
+
 
 export async function createReference(reference: NewReference) {
   const [result] = await db
@@ -33,13 +34,16 @@ export async function getReferenceById(id: string) {
 }
 
 export async function updateReference(id: string, data: Partial<NewReference>) {
-  const [result] = await db
-    .update(referencesTable)
-    .set(data)
-    .where(eq(referencesTable.id, id))
-    .returning();
+  await db.update(referencesTable).set(data).where(eq(referencesTable.id, id));
+}
 
-  return result;
+export async function getReferenceLinkCount(referenceId: string) {
+  const result = await db
+    .select()
+    .from(noteReferences)
+    .where(eq(noteReferences.referenceId, referenceId));
+
+  return result.length;
 }
 
 export async function deleteReference(id: string) {
@@ -169,4 +173,32 @@ export async function findExistingReference({
 
     return sameUrl || sameTitle;
   });
+}
+
+export async function getReferences() {
+  return await db
+    .select({
+      id: referencesTable.id,
+      userId: referencesTable.userId,
+      type: referencesTable.type,
+      title: referencesTable.title,
+      author: referencesTable.author,
+      url: referencesTable.url,
+      publisher: referencesTable.publisher,
+      publishedDate: referencesTable.publishedDate,
+      citation: referencesTable.citation,
+      notes: referencesTable.notes,
+      createdAt: referencesTable.createdAt,
+      updatedAt: referencesTable.updatedAt,
+
+      // calculated field, not schema field
+      linkCount: count(noteReferences.id),
+    })
+    .from(referencesTable)
+    .leftJoin(
+      noteReferences,
+      eq(referencesTable.id, noteReferences.referenceId),
+    )
+    .groupBy(referencesTable.id)
+    .orderBy(desc(referencesTable.createdAt));
 }
