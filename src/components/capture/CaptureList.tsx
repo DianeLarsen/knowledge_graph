@@ -25,7 +25,41 @@ export default function CaptureList({ captures }: { captures: Capture[] }) {
     filter === "all"
       ? captures
       : captures.filter((capture) => capture.status === filter);
+  function getCaptureProgress(analysisJson: string | null) {
+    if (!analysisJson) {
+      return {
+        createdTasks: 0,
+        createdNotes: 0,
+        readyToProcess: false,
+      };
+    }
 
+    try {
+      const analysis = JSON.parse(analysisJson);
+
+      const createdTasks =
+        analysis.possibleTasks?.filter(
+          (task: { created?: boolean }) => task.created,
+        ).length ?? 0;
+
+      const createdNotes =
+        analysis.possibleNotes?.filter(
+          (note: { created?: boolean }) => note.created,
+        ).length ?? 0;
+
+      return {
+        createdTasks,
+        createdNotes,
+        readyToProcess: createdTasks > 0 || createdNotes > 0,
+      };
+    } catch {
+      return {
+        createdTasks: 0,
+        createdNotes: 0,
+        readyToProcess: false,
+      };
+    }
+  }
   return (
     <section>
       <div className="mb-4 flex flex-wrap gap-2">
@@ -57,65 +91,77 @@ export default function CaptureList({ captures }: { captures: Capture[] }) {
         </p>
       ) : (
         <div className="space-y-4">
-          {filteredCaptures.map((capture) => (
-            <article
-              key={capture.id}
-              className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900"
-            >
-              <div className="mb-2 flex items-center justify-between gap-4">
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                  {capture.status}
-                </span>
+          {filteredCaptures.map((capture) => {
+            const progress = getCaptureProgress(capture.analysisJson);
 
-                <time className="text-xs text-gray-400">
-                  {new Date(capture.createdAt).toLocaleString()}
-                </time>
-              </div>
+            return (
+              <article
+                key={capture.id}
+                className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900"
+              >
+                <div className="mb-2 flex items-center justify-between gap-4">
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                    {capture.status}
+                  </span>
 
-              <p className="whitespace-pre-wrap text-sm leading-6 text-gray-800 dark:text-gray-200">
-                {capture.rawText}
-              </p>
+                  <time className="text-xs text-gray-400">
+                    {new Date(capture.createdAt).toLocaleString()}
+                  </time>
+                </div>
+                {progress.readyToProcess && capture.status !== "processed" && (
+                  <div className="mb-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+                    {progress.createdTasks} task
+                    {progress.createdTasks === 1 ? "" : "s"} created ·{" "}
+                    {progress.createdNotes} note
+                    {progress.createdNotes === 1 ? "" : "s"} created · Ready to
+                    process
+                  </div>
+                )}
+                <p className="whitespace-pre-wrap text-sm leading-6 text-gray-800 dark:text-gray-200">
+                  {capture.rawText}
+                </p>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                <form action={analyzeCaptureAction.bind(null, capture.id)}>
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950"
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <form action={analyzeCaptureAction.bind(null, capture.id)}>
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950"
+                    >
+                      Analyze
+                    </button>
+                  </form>
+
+                  <form
+                    action={markCaptureProcessedAction.bind(null, capture.id)}
                   >
-                    Analyze
-                  </button>
-                </form>
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-green-300 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-950"
+                    >
+                      Mark Processed
+                    </button>
+                  </form>
+                  {capture.status !== "archived" && (
+                    <form action={archiveCaptureAction.bind(null, capture.id)}>
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                      >
+                        Archive
+                      </button>
+                    </form>
+                  )}
+                </div>
 
-                <form
-                  action={markCaptureProcessedAction.bind(null, capture.id)}
-                >
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-green-300 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-950"
-                  >
-                    Mark Processed
-                  </button>
-                </form>
-               {capture.status !== "archived" && (
-  <form action={archiveCaptureAction.bind(null, capture.id)}>
-    <button
-      type="submit"
-      className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-    >
-      Archive
-    </button>
-  </form>
-)}
-              </div>
-
-              {capture.analysisJson && (
-                <CaptureAnalysis
-                  analysisJson={capture.analysisJson}
-                  captureId={capture.id}
-                />
-              )}
-            </article>
-          ))}
+                {capture.analysisJson && (
+                  <CaptureAnalysis
+                    analysisJson={capture.analysisJson}
+                    captureId={capture.id}
+                  />
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
     </section>
