@@ -2,7 +2,7 @@
 
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
-
+import { createNote } from "@/db/queries/notes";
 import { getCurrentUserId } from "@/lib/currentUser";
 import { analyzeCaptureText } from "@/lib/ai/analyzeCapture";
 import { createTask, findSimilarTasks } from "@/db/queries/tasks";
@@ -163,4 +163,62 @@ export async function archiveCaptureAction(captureId: string) {
   });
 
   revalidatePath("/capture");
+}
+export async function createNoteFromCaptureAction(formData: FormData) {
+  const title = String(formData.get("title") ?? "").trim();
+  const content = String(formData.get("content") ?? "").trim();
+  const captureId = String(formData.get("captureId") ?? "");
+  const noteIndex = Number(formData.get("noteIndex"));
+  const userId = await getCurrentUserId();
+
+  if (!title || !captureId || Number.isNaN(noteIndex)) {
+    return;
+  }
+
+  const note = await createNote({
+    title,
+    content,
+    contentJson: JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: content
+            ? [
+                {
+                  type: "text",
+                  text: content,
+                },
+              ]
+            : [],
+        },
+      ],
+    }),
+    userId,
+  });
+
+  const capture = await getCaptureById(captureId);
+
+  if (capture?.analysisJson) {
+    const analysis = JSON.parse(capture.analysisJson);
+
+    if (analysis.possibleNotes?.[noteIndex]) {
+      analysis.possibleNotes[noteIndex] = {
+        ...analysis.possibleNotes[noteIndex],
+        created: true,
+        noteId: note?.id,
+      };
+
+      await updateCaptureAnalysis({
+        id: captureId,
+        summary: analysis.summary,
+        analysisJson: JSON.stringify(analysis),
+        status: capture.status,
+      });
+    }
+  }
+
+  revalidatePath("/capture");
+  revalidatePath("/notes");
+  revalidatePath("/workspace");
 }

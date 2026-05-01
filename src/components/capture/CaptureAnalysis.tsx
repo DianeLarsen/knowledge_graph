@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { createTaskFromCaptureAction } from "@/app/actions/capture";
+import {
+  createTaskFromCaptureAction,
+  createNoteFromCaptureAction,
+} from "@/app/actions/capture";
 
 type CaptureAnalysisData = {
   summary: string;
@@ -17,10 +20,12 @@ type CaptureAnalysisData = {
     similarTaskId?: string;
     similarTaskTitle?: string;
   }[];
-  possibleNotes: {
-    title: string;
-    content: string;
-  }[];
+possibleNotes: {
+  title: string;
+  content: string;
+  created?: boolean;
+  noteId?: string;
+}[];
   possibleReferences: {
     type?: string;
     title?: string;
@@ -148,10 +153,57 @@ export default function CaptureAnalysis({
               </div>
             </div>
           )}
-          <AnalysisSection
-            title="Possible Notes"
-            items={analysis.possibleNotes.map((note) => note.title)}
-          />
+{analysis.possibleNotes.length > 0 && (
+  <div className="mt-4">
+    <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-purple-700 dark:text-purple-300">
+      Possible Notes
+    </h4>
+
+    <div className="space-y-3">
+      {analysis.possibleNotes.map((note, index) => (
+        <div
+          key={`${note.title}-${index}`}
+          className="rounded-lg border border-purple-200 bg-white p-3 dark:border-purple-800 dark:bg-gray-950"
+        >
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {note.title}
+          </p>
+
+          <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-300">
+            {note.content}
+          </p>
+
+          <form action={createNoteFromCaptureAction} className="mt-3">
+            <input type="hidden" name="captureId" value={captureId} />
+            <input type="hidden" name="noteIndex" value={index} />
+            <input type="hidden" name="title" value={note.title} />
+            <input type="hidden" name="content" value={note.content} />
+
+            {note.created && note.noteId ? (
+              <a
+                href={`/notes/${note.noteId}`}
+                className="inline-flex rounded-md bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-200 dark:bg-green-950 dark:text-green-300 dark:hover:bg-green-900"
+              >
+                Note Created - View Note
+              </a>
+            ) : note.created ? (
+              <span className="inline-flex rounded-md bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 dark:bg-green-950 dark:text-green-300">
+                Note Created
+              </span>
+            ) : (
+              <button
+                type="submit"
+                className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+              >
+                Create Note
+              </button>
+            )}
+          </form>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
           <AnalysisSection title="AI Prompts" items={analysis.aiPrompts} />
           <AnalysisSection title="Next Steps" items={analysis.nextSteps} />
           <AnalysisSection
