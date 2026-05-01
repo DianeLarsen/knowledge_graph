@@ -12,7 +12,7 @@ export const CaptureAnalysisSchema = z.object({
       title: z.string(),
       description: z.string(),
       priority: z.enum(["low", "medium", "high"]),
-      status: z.enum(["new", "in_progress", "awaiting", "done"]),
+      status: z.enum(["todo", "in_progress", "awaiting", "done"]),
     }),
   ),
   possibleNotes: z.array(
@@ -54,7 +54,7 @@ export async function analyzeCaptureText(
       {
         role: "system",
         content:
-          "You analyze messy brain dumps for a personal knowledge management and project planning app. Extract concrete tasks, possible notes, possible references, useful AI prompts, next steps, open questions, and risks. Do not invent specific references. If reference details are missing, use empty strings. Return only structured data.",
+          "You analyze messy brain dumps for a personal knowledge management and project planning app. Extract concrete tasks, possible notes, useful AI prompts, next steps, open questions, and risks. For possibleReferences, suggest relevant articles, official documentation, books, videos, or high-quality learning resources based on the capture topic. Prefer official documentation, well-known sources, or broadly reliable educational resources. If the user includes a specific source or URL, extract it. If they do not include references, suggest useful resources they could explore. Always return at least 2 possibleReferences when the topic involves learning, development, or system design. Do not fabricate obscure titles, fake authors, fake URLs, or unverifiable sources. If you know a reliable official URL, include it. If unsure of the exact URL, leave url as an empty string and explain what to search for in notes. Return only structured data.",
       },
       {
         role: "user",
@@ -96,7 +96,7 @@ export async function analyzeCaptureText(
                   },
                   status: {
                     type: "string",
-                    enum: ["new", "in_progress", "awaiting", "done"],
+                    enum: ["todo", "in_progress", "awaiting", "done"],
                   },
                 },
               },

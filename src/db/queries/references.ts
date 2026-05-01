@@ -7,8 +7,6 @@ import {
   type NewNoteReference,
 } from "@/db/schema";
 
-
-
 export async function createReference(reference: NewReference) {
   const [result] = await db
     .insert(referencesTable)
@@ -34,10 +32,7 @@ export async function getReferenceById(id: string) {
   return result;
 }
 
-export async function updateReference(
-  id: string,
-  data: Partial<NewReference>,
-) {
+export async function updateReference(id: string, data: Partial<NewReference>) {
   const [result] = await db
     .update(referencesTable)
     .set(data)
@@ -107,7 +102,10 @@ export async function updateNoteReference(
   return result;
 }
 
-export async function removeReferenceFromNote(noteId: string, referenceId: string) {
+export async function removeReferenceFromNote(
+  noteId: string,
+  referenceId: string,
+) {
   const [result] = await db
     .delete(noteReferences)
     .where(
@@ -148,4 +146,27 @@ export async function getNoteReferencesByUserId(userId: string) {
       eq(noteReferences.referenceId, referencesTable.id),
     )
     .where(eq(referencesTable.userId, userId));
+}
+
+export async function findExistingReference({
+  userId,
+  title,
+  url,
+}: {
+  userId: string;
+  title: string;
+  url?: string;
+}) {
+  const existingReferences = await db
+    .select()
+    .from(referencesTable)
+    .where(eq(referencesTable.userId, userId));
+
+  return existingReferences.find((reference) => {
+    const sameUrl = url && reference.url === url;
+    const sameTitle =
+      reference.title.toLowerCase().trim() === title.toLowerCase().trim();
+
+    return sameUrl || sameTitle;
+  });
 }
