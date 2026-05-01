@@ -2,9 +2,13 @@
 
 import { Note, Reference, Tag } from "@/db/schema";
 import TagPill from "@/components/TagPill";
-import ReadOnlyNoteContent from "@/components/ReadOnlyNoteContent";
-import EditNoteForm from "@/components/EditNoteForm";
+import ReadOnlyNoteContent from "@/components/notes/ReadOnlyNoteContent";
+import EditNoteForm from "@/components/notes/EditNoteForm";
 import { useState } from "react";
+import {
+  attachReferenceToNoteAction,
+  removeReferenceFromNoteAction,
+} from "@/app/actions/references";
 
 export type NoteDetails = {
   note: Note;
@@ -86,16 +90,22 @@ export default function NoteCard({
   const [currentData, setCurrentData] = useState(data);
   const [isEditing, setIsEditing] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
- const {
-   note,
-   tags,
-   outgoingLinks,
-   backlinks,
-   sharedTags,
-   tagStats,
-   references = [],
- } = currentData;
+  const {
+    note,
+    tags,
+    outgoingLinks,
+    backlinks,
+    sharedTags,
+    tagStats,
+    references = [],
+  } = currentData;
+const attachedReferenceIds = new Set(
+  references.map((reference) => reference.id),
+);
 
+const availableReferences = allReferences.filter(
+  (reference) => !attachedReferenceIds.has(reference.id),
+);
   return (
     <div className={compact ? "w-full" : "mx-auto w-full max-w-3xl"}>
       <article
@@ -292,7 +302,56 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
                   </div>
                 </section>
               )}
+              {userId && availableReferences.length > 0 && (
+                <section>
+                  <h2 className="mb-2 font-semibold text-gray-800 dark:text-gray-200">
+                    Add Reference
+                  </h2>
 
+                  <form
+                    action={attachReferenceToNoteAction}
+                    className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900"
+                  >
+                    <input type="hidden" name="noteId" value={note.id} />
+
+                    <select
+                      name="referenceId"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-800 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                      defaultValue=""
+                    >
+                      <option value="" disabled>
+                        Select a reference
+                      </option>
+
+                      {availableReferences.map((reference) => (
+                        <option key={reference.id} value={reference.id}>
+                          {reference.title}
+                        </option>
+                      ))}
+                    </select>
+
+                    <input
+                      name="pageNumber"
+                      placeholder="Page number, optional"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                    />
+
+                    <textarea
+                      name="summary"
+                      placeholder="Why this reference matters for this note, optional"
+                      rows={2}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                    />
+
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                    >
+                      Attach Reference
+                    </button>
+                  </form>
+                </section>
+              )}
               {references.length > 0 && (
                 <section>
                   <h2 className="mb-2 font-semibold text-gray-800 dark:text-gray-200">
@@ -340,6 +399,30 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
                           >
                             Open reference
                           </a>
+                        )}
+                        {userId && (
+                          <form
+                            action={removeReferenceFromNoteAction}
+                            className="mt-2"
+                          >
+                            <input
+                              type="hidden"
+                              name="noteId"
+                              value={note.id}
+                            />
+                            <input
+                              type="hidden"
+                              name="referenceId"
+                              value={reference.id}
+                            />
+
+                            <button
+                              type="submit"
+                              className="rounded-md border border-red-300 px-2 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950"
+                            >
+                              Remove from note
+                            </button>
+                          </form>
                         )}
                       </div>
                     ))}

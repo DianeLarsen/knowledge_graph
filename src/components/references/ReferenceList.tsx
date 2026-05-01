@@ -20,7 +20,7 @@ type Reference = {
   linkedNotes: {
     id: string;
     title: string;
-    content: string;
+    content: string | null;
   }[];
 };
 

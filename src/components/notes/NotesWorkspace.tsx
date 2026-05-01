@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import NewNoteComposer from "@/components/NewNoteComposer";
-import NoteCard, { NoteDetails } from "@/components/NoteCard";
+import NewNoteComposer from "@/components/notes/NewNoteComposer";
+import NoteCard, { NoteDetails } from "@/components/notes/NoteCard";
 import { Reference } from "@/db/schema";
 
 type WorkspaceProps = {
@@ -17,16 +17,17 @@ export default function NotesWorkspace({
   references,
 }: WorkspaceProps) {
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
-const notes = dataList.map((data) => data.note);
+  const notes = dataList.map((data) => data.note);
 
-const tags = Array.from(
-  new Map(
-    dataList.flatMap((data) => data.tags).map((tag) => [tag.id, tag]),
-  ).values(),
-);
+  const tags = Array.from(
+    new Map(
+      dataList.flatMap((data) => data.tags).map((tag) => [tag.id, tag]),
+    ).values(),
+  );
 
-
-const openNotes = dataList.filter((data) => openNoteIds.includes(data.note.id));
+  const openNotes = dataList.filter((data) =>
+    openNoteIds.includes(data.note.id),
+  );
 
   function toggleNote(noteId: string) {
     setOpenNoteIds((current) =>
@@ -39,13 +40,13 @@ const openNotes = dataList.filter((data) => openNoteIds.includes(data.note.id));
   function closeNote(noteId: string) {
     setOpenNoteIds((current) => current.filter((id) => id !== noteId));
   }
-function openCardsByTag(tagId: string) {
-  const matchingNoteIds = dataList
-    .filter((data) => data.tags.some((tag) => tag.id === tagId))
-    .map((data) => data.note.id);
+  function openCardsByTag(tagId: string) {
+    const matchingNoteIds = dataList
+      .filter((data) => data.tags.some((tag) => tag.id === tagId))
+      .map((data) => data.note.id);
 
-  setOpenNoteIds((current) => [...new Set([...current, ...matchingNoteIds])]);
-}
+    setOpenNoteIds((current) => [...new Set([...current, ...matchingNoteIds])]);
+  }
 
   function closeAllCards() {
     setOpenNoteIds([]);
@@ -57,7 +58,6 @@ function openCardsByTag(tagId: string) {
     );
   }
 
- 
   return (
     <main className="min-h-screen bg-gray-50 p-4 dark:bg-gray-950">
       <section className="mb-4 rounded-2xl border bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
@@ -183,4 +183,3 @@ function openCardsByTag(tagId: string) {
     </main>
   );
 }
-

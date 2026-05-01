@@ -3,9 +3,9 @@
 import { useState } from "react";
 
 import { Note, Tag, Reference } from "@/db/schema";
-import RichNoteEditor from "@/components/RichNoteEditor";
+import RichNoteEditor from "@/components/notes/RichNoteEditor";
 import { updateNoteAction } from "@/app/actions/notes";
-import ReferenceComposer from "@/components/ReferenceComposer";
+import ReferenceComposer from "@/components/references/ReferenceComposer";
 
 type NoteReferenceSummary = {
   id: string;
@@ -57,6 +57,8 @@ export default function EditNoteForm({
   );
   const [availableReferences, setAvailableReferences] =
     useState<Reference[]>(references);
+  const [showReferenceComposer, setShowReferenceComposer] = useState(false);
+  
   async function handleSave() {
     if (isSaving) return;
     if (selectedReferenceIds.length === 0) {
@@ -156,9 +158,15 @@ export default function EditNoteForm({
       <RichNoteEditor
         initialContent={contentJson || content}
         tags={tags}
+        references={availableReferences}
         onTagUsed={(tagName) => {
           setInlineTagNames((current) =>
             current.includes(tagName) ? current : [...current, tagName],
+          );
+        }}
+        onReferenceUsed={(referenceId) => {
+          setSelectedReferenceIds((current) =>
+            current.includes(referenceId) ? current : [...current, referenceId],
           );
         }}
         onChange={({ plainText, json }) => {
@@ -202,17 +210,34 @@ export default function EditNoteForm({
             </p>
           )}
         </div>
-        <ReferenceComposer
-          userId={userId}
-          onReferenceCreated={(reference) => {
-            setAvailableReferences((current) => [reference, ...current]);
-            setSelectedReferenceIds((current) =>
-              current.includes(reference.id)
-                ? current
-                : [...current, reference.id],
-            );
-          }}
-        />
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowReferenceComposer((current) => !current)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            {showReferenceComposer
+              ? "Hide new reference form"
+              : "Add new reference"}
+          </button>
+
+          {showReferenceComposer && (
+            <div className="mt-3">
+              <ReferenceComposer
+                userId={userId}
+                onReferenceCreated={(reference) => {
+                  setAvailableReferences((current) => [reference, ...current]);
+                  setSelectedReferenceIds((current) =>
+                    current.includes(reference.id)
+                      ? current
+                      : [...current, reference.id],
+                  );
+                  setShowReferenceComposer(false);
+                }}
+              />
+            </div>
+          )}
+        </div>
       </section>
 
       <button

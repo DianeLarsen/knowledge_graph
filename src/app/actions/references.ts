@@ -6,6 +6,9 @@ import {
   deleteReference,
   getReferenceLinkCount,
   getReferences,
+  addReferenceToNote,
+  removeReferenceFromNote,
+  getReferencesForNote,
 } from "@/db/queries/references";
 import { revalidatePath } from "next/cache";
 import { type NewReference } from "@/db/schema";
@@ -77,5 +80,53 @@ export async function deleteReferenceAction(referenceId: string) {
 
   await deleteReference(referenceId);
 
+  revalidatePath("/notes/references");
+}
+
+export async function attachReferenceToNoteAction(formData: FormData) {
+  const noteId = String(formData.get("noteId") ?? "");
+  const referenceId = String(formData.get("referenceId") ?? "");
+  const pageNumber = String(formData.get("pageNumber") ?? "").trim();
+  const summary = String(formData.get("summary") ?? "").trim();
+
+  if (!noteId || !referenceId) {
+    return;
+  }
+
+  const existingReferences = await getReferencesForNote(noteId);
+  const alreadyAttached = existingReferences.some(
+    (reference) => reference.id === referenceId,
+  );
+
+  if (alreadyAttached) {
+    return;
+  }
+
+  await addReferenceToNote({
+    noteId,
+    referenceId,
+    pageNumber: pageNumber || null,
+    summary: summary || null,
+  });
+
+  revalidatePath("/notes");
+  revalidatePath(`/notes/${noteId}`);
+  revalidatePath("/workspace");
+  revalidatePath("/notes/references");
+}
+
+export async function removeReferenceFromNoteAction(formData: FormData) {
+  const noteId = String(formData.get("noteId") ?? "");
+  const referenceId = String(formData.get("referenceId") ?? "");
+
+  if (!noteId || !referenceId) {
+    return;
+  }
+
+  await removeReferenceFromNote(noteId, referenceId);
+
+  revalidatePath("/notes");
+  revalidatePath(`/notes/${noteId}`);
+  revalidatePath("/workspace");
   revalidatePath("/notes/references");
 }

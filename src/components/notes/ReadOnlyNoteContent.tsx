@@ -5,6 +5,8 @@ import StarterKit from "@tiptap/starter-kit";
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import Mention from "@tiptap/extension-mention";
+import { TagMark } from "@/lib/tiptap/extensions/TagMark";
+import { ReferenceMark } from "@/lib/tiptap/extensions/ReferenceMark";
 
 type ReadOnlyNoteContentProps = {
   content: string | null;
@@ -22,7 +24,8 @@ export default function ReadOnlyNoteContent({
       }),
 
       Highlight,
-
+      TagMark,
+      ReferenceMark,
       Link.configure({
         openOnClick: true,
       }),
@@ -78,25 +81,37 @@ export default function ReadOnlyNoteContent({
     <EditorContent
       editor={editor}
       className="
- font-['Comic_Sans_MS','Bradley_Hand',cursive]
-    text-lg text-gray-900 dark:text-gray-100
+    min-h-40 px-3 py-2
+    text-sm text-gray-900 dark:text-gray-100
 
+    [&_.ProseMirror]:min-h-40
     [&_.ProseMirror]:outline-none
-    [&_.ProseMirror]:whitespace-pre-wrap
-    [&_.ProseMirror]:leading-[32px]
-    [&_.ProseMirror]:pt-[7px]
+    [&_.ProseMirror_p]:my-2
 
-    [&_.ProseMirror_p]:my-0
-    [&_.ProseMirror_p]:leading-[32px]
+    [&_.ProseMirror_a]:rounded
+    [&_.ProseMirror_a]:px-1
+    [&_.ProseMirror_a]:underline
 
-    [&_mark]:rounded
-    [&_mark]:bg-yellow-200
-    [&_mark]:px-1
-    dark:[&_mark]:bg-yellow-800
+    [&_.tag-mark]:rounded
+    [&_.tag-mark]:bg-blue-50
+    [&_.tag-mark]:px-1
+    [&_.tag-mark]:text-blue-700
+    [&_.tag-mark]:underline
+    [&_.tag-mark]:decoration-dotted
+    [&_.tag-mark]:underline-offset-2
+    dark:[&_.tag-mark]:bg-blue-900/30
+    dark:[&_.tag-mark]:text-blue-200
 
-    [&_.mention]:align-baseline
-    [&_.mention]:leading-none
-      "
+    [&_.reference-mark]:rounded
+    [&_.reference-mark]:bg-amber-50
+    [&_.reference-mark]:px-1
+    [&_.reference-mark]:text-amber-800
+    [&_.reference-mark]:underline
+    [&_.reference-mark]:decoration-dotted
+    [&_.reference-mark]:underline-offset-2
+    dark:[&_.reference-mark]:bg-amber-900/30
+    dark:[&_.reference-mark]:text-amber-200
+  "
     />
   );
 }

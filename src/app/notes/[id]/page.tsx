@@ -1,4 +1,4 @@
-import NoteCard from "@/components/NoteCard";
+import NoteCard from "@/components/notes/NoteCard";
 import { getNoteDetailsById } from "@/db/queries/notes";
 import Link from "next/link";
 

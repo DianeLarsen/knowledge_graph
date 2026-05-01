@@ -5,8 +5,7 @@ import { Note, Tag, Reference } from "@/db/schema";
 import RichNoteEditor from "./RichNoteEditor";
 import { createNoteAction } from "@/app/actions/notes";
 import { useRouter } from "next/navigation";
-import ReferenceComposer from "./ReferenceComposer";
-
+import ReferenceComposer from "../references/ReferenceComposer";
 
 type NewNoteComposerProps = {
   notes: Note[];
@@ -36,7 +35,7 @@ export default function NewNoteComposer({
   );
   const [availableReferences, setAvailableReferences] =
     useState<Reference[]>(references);
-
+const [showReferenceComposer, setShowReferenceComposer] = useState(false);
   const router = useRouter();
   function toggleTag(tagId: string) {
     setSelectedTagIds((current) =>
@@ -56,6 +55,7 @@ export default function NewNoteComposer({
     setSavedMessage("");
     setInlineTagNames([]);
     setSelectedReferenceIds([]);
+    setShowReferenceComposer(false);
   }
   function toggleLinkedNote(noteId: string) {
     setLinkedNoteIds((current) =>
@@ -67,16 +67,16 @@ export default function NewNoteComposer({
 
   async function handleSave() {
     if (isSaving || hasSaved) return;
-if (selectedReferenceIds.length === 0) {
-  setSavedMessage("Add at least one reference before saving.");
-  return;
-}
+    if (selectedReferenceIds.length === 0) {
+      setSavedMessage("Add at least one reference before saving.");
+      return;
+    }
     try {
       setIsSaving(true);
       setSavedMessage("");
 
       await createNoteAction({
-        userId: "72d9a5a1-00f1-471b-8abd-5d8e838241db",
+        userId,
         title,
         content,
         contentJson,
@@ -120,10 +120,17 @@ if (selectedReferenceIds.length === 0) {
       />
 
       <RichNoteEditor
+        initialContent={contentJson || content}
         tags={tags}
+        references={availableReferences}
         onTagUsed={(tagName) => {
           setInlineTagNames((current) =>
             current.includes(tagName) ? current : [...current, tagName],
+          );
+        }}
+        onReferenceUsed={(referenceId) => {
+          setSelectedReferenceIds((current) =>
+            current.includes(referenceId) ? current : [...current, referenceId],
           );
         }}
         onChange={({ plainText, json }) => {
@@ -241,17 +248,34 @@ if (selectedReferenceIds.length === 0) {
             </p>
           )}
         </div>
-        <ReferenceComposer
-userId={userId}
-          onReferenceCreated={(reference) => {
-            setAvailableReferences((current) => [reference, ...current]);
-            setSelectedReferenceIds((current) =>
-              current.includes(reference.id)
-                ? current
-                : [...current, reference.id],
-            );
-          }}
-        />
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowReferenceComposer((current) => !current)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            {showReferenceComposer
+              ? "Hide new reference form"
+              : "Add new reference"}
+          </button>
+
+          {showReferenceComposer && (
+            <div className="mt-3">
+              <ReferenceComposer
+                userId={userId}
+                onReferenceCreated={(reference) => {
+                  setAvailableReferences((current) => [reference, ...current]);
+                  setSelectedReferenceIds((current) =>
+                    current.includes(reference.id)
+                      ? current
+                      : [...current, reference.id],
+                  );
+                  setShowReferenceComposer(false);
+                }}
+              />
+            </div>
+          )}
+        </div>
       </section>
 
       <button
