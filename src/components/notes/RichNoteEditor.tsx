@@ -27,6 +27,7 @@ type RichNoteEditorProps = {
   onTagUsed?: (tagName: string) => void;
   onReferenceUsed?: (referenceId: string) => void;
   onChange: (data: { plainText: string; json: string }) => void;
+  getReferenceLabel: (reference: Reference) => string;
 };
 
 export default function RichNoteEditor({
@@ -36,6 +37,7 @@ export default function RichNoteEditor({
   onTagUsed,
   onReferenceUsed,
   references = [],
+  getReferenceLabel,
 }: RichNoteEditorProps) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [selectedText, setSelectedText] = useState("");
@@ -261,7 +263,7 @@ function linkSelectionToReference(reference: Reference) {
     })
     .setMark("referenceMark", {
       referenceId: reference.id,
-      referenceTitle: reference.title,
+      referenceTitle: getReferenceLabel(reference),
     })
     .run();
 
@@ -471,9 +473,9 @@ function createTagFromSelection() {
                       type="button"
                       onClick={() => linkSelectionToReference(reference)}
                       className="block w-full rounded-lg px-3 py-2 text-left text-gray-800 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800"
-                      title={reference.title}
+                      title={getReferenceLabel(reference)}
                     >
-                      {reference.title}
+                      {getReferenceLabel(reference)}
                     </button>
                   ))}
                 </div>

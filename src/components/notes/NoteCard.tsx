@@ -359,73 +359,88 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
                   </h2>
 
                   <div className="space-y-2">
-                    {references.map((reference) => (
-                      <div
-                        key={reference.noteReferenceId}
-                        className="
+                    {references.map((reference) => {
+                      const isAnchored =
+                        !!reference.quote || !!reference.summary;
+                      return (
+                        <div
+                          key={reference.noteReferenceId}
+                          className="
                   rounded-lg border border-amber-200 bg-amber-50 px-3 py-2
                   text-xs text-amber-900
                   dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200
                 "
-                      >
-                        <p className="font-semibold">{reference.title}</p>
-
-                        {reference.author && (
-                          <p className="opacity-80">
-                            Author: {reference.author}
-                          </p>
-                        )}
-
-                        {reference.pageNumber && (
-                          <p className="opacity-80">
-                            Page: {reference.pageNumber}
-                          </p>
-                        )}
-
-                        {reference.quote && (
-                          <p className="mt-1 italic">“{reference.quote}”</p>
-                        )}
-
-                        {reference.summary && (
-                          <p className="mt-1">{reference.summary}</p>
-                        )}
-
-                        {reference.url && (
-                          <a
-                            href={reference.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-1 inline-block underline"
+                        >
+                          <p className="font-semibold">{reference.title}</p>
+                          <p
+                            className={`text-xs ${
+                              isAnchored
+                                ? "text-green-600 dark:text-green-400"
+                                : "text-gray-500 dark:text-gray-400"
+                            }`}
                           >
-                            Open reference
-                          </a>
-                        )}
-                        {userId && (
-                          <form
-                            action={removeReferenceFromNoteAction}
-                            className="mt-2"
-                          >
-                            <input
-                              type="hidden"
-                              name="noteId"
-                              value={note.id}
-                            />
-                            <input
-                              type="hidden"
-                              name="referenceId"
-                              value={reference.id}
-                            />
+                            {isAnchored
+                              ? "Linked to text"
+                              : "General reference"}
+                          </p>
+                          {reference.author && (
+                            <p className="opacity-80">
+                              Author: {reference.author}
+                            </p>
+                          )}
 
-                            <button
-                              type="submit"
-                              className="rounded-md border border-red-300 px-2 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950"
+                          {reference.pageNumber && (
+                            <p className="opacity-80">
+                              Page: {reference.pageNumber}
+                            </p>
+                          )}
+
+                          {reference.quote && (
+                            <p className="mt-1 italic">“{reference.quote}”</p>
+                          )}
+
+                          {reference.summary && (
+                            <p className="mt-1">{reference.summary}</p>
+                          )}
+
+                          {reference.url && (
+                            <a
+                              href={reference.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-1 inline-block underline"
                             >
-                              Remove from note
-                            </button>
-                          </form>
-                        )}
-                      </div>
-                    ))}
+                              Open reference
+                            </a>
+                          )}
+                          {userId && (
+                            <form
+                              action={removeReferenceFromNoteAction}
+                              className="mt-2"
+                            >
+                              <input
+                                type="hidden"
+                                name="noteId"
+                                value={note.id}
+                              />
+                              <input
+                                type="hidden"
+                                name="referenceId"
+                                value={reference.id}
+                              />
+
+                              <button
+                                type="submit"
+                                className="rounded-md border border-red-300 px-2 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950"
+                              >
+                                Remove from note
+                              </button>
+                            </form>
+                          )}
+                        </div>
+                      );
+                    }
+                    )}
                   </div>
                 </section>
               )}

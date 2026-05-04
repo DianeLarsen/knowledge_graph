@@ -105,7 +105,14 @@ const [showReferenceComposer, setShowReferenceComposer] = useState(false);
         : [...current, referenceId],
     );
   }
-
+function getReferenceLabel(reference: Reference) {
+  return (
+    reference.title?.trim() ||
+    reference.author?.trim() ||
+    reference.url?.trim() ||
+    "Untitled reference"
+  );
+}
   return (
     <aside className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -137,6 +144,7 @@ const [showReferenceComposer, setShowReferenceComposer] = useState(false);
           setContent(plainText);
           setContentJson(json);
         }}
+        getReferenceLabel={getReferenceLabel}
       />
 
       <section className="mb-4">
@@ -233,7 +241,7 @@ const [showReferenceComposer, setShowReferenceComposer] = useState(false);
                       : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                   }`}
                 >
-                  <span className="block font-medium">{reference.title}</span>
+                  <span className="block font-medium">{getReferenceLabel(reference)}</span>
                   {reference.author && (
                     <span className="block text-xs opacity-75">
                       {reference.author}

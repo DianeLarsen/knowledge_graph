@@ -97,6 +97,14 @@ export default function EditNoteForm({
         : [...current, referenceId],
     );
   }
+  function getReferenceLabel(reference: Reference) {
+    return (
+      reference.title?.trim() ||
+      reference.author?.trim() ||
+      reference.url?.trim() ||
+      "Untitled reference"
+    );
+  }
   return (
     <section className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="relative">
@@ -173,6 +181,7 @@ export default function EditNoteForm({
           setContent(plainText);
           setContentJson(json);
         }}
+        getReferenceLabel={getReferenceLabel}
       />
       <section className="mb-4">
         <h3 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
