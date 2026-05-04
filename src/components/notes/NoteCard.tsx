@@ -197,6 +197,13 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
           <ReadOnlyNoteContent
             key={note.contentJson ?? note.content ?? note.updatedAt.toString()}
             content={note.contentJson}
+            references={references.map((reference) => ({
+              id: reference.id,
+              title: reference.title,
+              author: reference.author,
+              url: reference.url,
+              notes: reference.notes,
+            }))}
           />
         </div>
         <div className="border-t border-blue-200 px-4 py-3 text-sm dark:border-blue-800">
@@ -439,8 +446,7 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
                           )}
                         </div>
                       );
-                    }
-                    )}
+                    })}
                   </div>
                 </section>
               )}
