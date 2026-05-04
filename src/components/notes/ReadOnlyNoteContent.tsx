@@ -16,21 +16,36 @@ type ReadOnlyReference = {
   url: string | null;
   notes: string | null;
 };
-
+type ReadOnlyTag = {
+  id: string;
+  name: string;
+};
 type ReadOnlyNoteContentProps = {
   content: string | null;
   references?: ReadOnlyReference[];
+  tags?: ReadOnlyTag[];
 };
 
 export default function ReadOnlyNoteContent({
   content,
   references = [],
+  tags = [],
 }: ReadOnlyNoteContentProps) {
-  const [preview, setPreview] = useState<{
-    x: number;
-    y: number;
-    reference: ReadOnlyReference;
-  } | null>(null);
+const [preview, setPreview] = useState<
+  | {
+      type: "reference";
+      x: number;
+      y: number;
+      reference: ReadOnlyReference;
+    }
+  | {
+      type: "tag";
+      x: number;
+      y: number;
+      tag: ReadOnlyTag;
+    }
+  | null
+>(null);
   const editor = useEditor({
     editable: false,
     extensions: [
@@ -103,30 +118,69 @@ export default function ReadOnlyNoteContent({
             "[data-reference-mark]",
           ) as HTMLElement | null;
 
-          if (!referenceElement) {
+          if (referenceElement) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const referenceId = referenceElement.dataset.referenceId;
+
+            if (!referenceId) return;
+
+            const reference = references.find(
+              (item) => item.id === referenceId,
+            );
+
+            if (!reference) return;
+
+            setPreview({
+              type: "reference",
+              x: event.clientX,
+              y: event.clientY,
+              reference,
+            });
+
             return;
           }
 
-          event.preventDefault();
-          event.stopPropagation();
+          const tagElement = target.closest(
+            "[data-tag-mark]",
+          ) as HTMLElement | null;
 
-          const referenceId = referenceElement.dataset.referenceId;
+          if (tagElement) {
+            event.preventDefault();
+            event.stopPropagation();
 
-          if (!referenceId) {
+            const tagId = tagElement.dataset.tagId;
+            const tagName = tagElement.dataset.tagName;
+
+            const tag =
+              tags.find((item) => item.id === tagId) ??
+              tags.find((item) => item.name === tagName);
+
+            if (!tag && tagName) {
+              setPreview({
+                type: "tag",
+                x: event.clientX,
+                y: event.clientY,
+                tag: {
+                  id: tagId ?? tagName,
+                  name: tagName,
+                },
+              });
+              return;
+            }
+
+            if (!tag) return;
+
+            setPreview({
+              type: "tag",
+              x: event.clientX,
+              y: event.clientY,
+              tag,
+            });
+
             return;
           }
-
-          const reference = references.find((item) => item.id === referenceId);
-
-          if (!reference) {
-            return;
-          }
-
-          setPreview({
-            x: event.clientX,
-            y: event.clientY,
-            reference,
-          });
         }}
         className="
         min-h-40 px-3 py-2
@@ -160,12 +214,17 @@ export default function ReadOnlyNoteContent({
         [&_.reference-mark]:underline-offset-2
         dark:[&_.reference-mark]:bg-amber-900/30
         dark:[&_.reference-mark]:text-amber-200
+        [&_.tag-mark]:cursor-pointer
       "
       />
 
       {preview && (
         <div
-          className="fixed z-[9999] w-80 rounded-xl border border-amber-200 bg-white p-3 text-sm shadow-lg dark:border-amber-800 dark:bg-gray-950"
+          className={`fixed z-[9999] w-80 rounded-xl border bg-white p-3 text-sm shadow-lg dark:bg-gray-950 ${
+            preview.type === "reference"
+              ? "border-amber-200 dark:border-amber-800"
+              : "border-blue-200 dark:border-blue-800"
+          }`}
           style={{
             left: preview.x,
             top: preview.y + 12,
@@ -174,14 +233,28 @@ export default function ReadOnlyNoteContent({
         >
           <div className="mb-2 flex items-start justify-between gap-3">
             <div>
-              <p className="font-semibold text-gray-900 dark:text-gray-100">
-                {preview.reference.title}
-              </p>
+              {preview.type === "reference" ? (
+                <>
+                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                    {preview.reference.title}
+                  </p>
 
-              {preview.reference.author && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {preview.reference.author}
-                </p>
+                  {preview.reference.author && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {preview.reference.author}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                    #{preview.tag.name}
+                  </p>
+
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Tagged text
+                  </p>
+                </>
               )}
             </div>
 
@@ -194,21 +267,30 @@ export default function ReadOnlyNoteContent({
             </button>
           </div>
 
-          {preview.reference.notes && (
-            <p className="mt-2 text-xs text-gray-700 dark:text-gray-300">
-              {preview.reference.notes}
-            </p>
-          )}
+          {preview.type === "reference" ? (
+            <>
+              {preview.reference.notes && (
+                <p className="mt-2 text-xs text-gray-700 dark:text-gray-300">
+                  {preview.reference.notes}
+                </p>
+              )}
 
-          {preview.reference.url && (
-            <a
-              href={preview.reference.url}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-block text-xs font-semibold text-blue-600 underline dark:text-blue-300"
-            >
-              Open source
-            </a>
+              {preview.reference.url && (
+                <a
+                  href={preview.reference.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-block text-xs font-semibold text-blue-600 underline dark:text-blue-300"
+                >
+                  Open source
+                </a>
+              )}
+            </>
+          ) : (
+            <p className="mt-2 text-xs text-gray-700 dark:text-gray-300">
+              This text is connected to the tag{" "}
+              <span className="font-semibold">#{preview.tag.name}</span>.
+            </p>
           )}
         </div>
       )}
