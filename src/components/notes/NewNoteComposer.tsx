@@ -6,6 +6,7 @@ import RichNoteEditor from "./RichNoteEditor";
 import { createNoteAction } from "@/app/actions/notes";
 import { useRouter } from "next/navigation";
 import ReferenceComposer from "../references/ReferenceComposer";
+import { extractReferenceIdsFromContentJson } from "@/lib/notes/extractReferenceIdsFromContentJson";
 
 type NewNoteComposerProps = {
   notes: Note[];
@@ -67,10 +68,16 @@ const [showReferenceComposer, setShowReferenceComposer] = useState(false);
 
   async function handleSave() {
     if (isSaving || hasSaved) return;
-    if (selectedReferenceIds.length === 0) {
-      setSavedMessage("Add at least one reference before saving.");
-      return;
-    }
+
+    const inlineReferenceIds = extractReferenceIdsFromContentJson(contentJson);
+
+    const finalReferenceIds = Array.from(
+      new Set([...selectedReferenceIds, ...inlineReferenceIds]),
+    );
+        if (finalReferenceIds.length === 0) {
+          setSavedMessage("Add at least one reference before saving.");
+          return;
+        }
     try {
       setIsSaving(true);
       setSavedMessage("");
@@ -84,7 +91,7 @@ const [showReferenceComposer, setShowReferenceComposer] = useState(false);
         newTagName,
         linkedNoteIds,
         inlineTagNames,
-        selectedReferenceIds,
+        selectedReferenceIds: finalReferenceIds,
       });
 
       setHasSaved(true);

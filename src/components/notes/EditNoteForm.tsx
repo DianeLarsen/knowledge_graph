@@ -6,6 +6,7 @@ import { Note, Tag, Reference } from "@/db/schema";
 import RichNoteEditor from "@/components/notes/RichNoteEditor";
 import { updateNoteAction } from "@/app/actions/notes";
 import ReferenceComposer from "@/components/references/ReferenceComposer";
+import { extractReferenceIdsFromContentJson } from "@/lib/notes/extractReferenceIdsFromContentJson";
 
 type NoteReferenceSummary = {
   id: string;
@@ -61,7 +62,13 @@ export default function EditNoteForm({
   
   async function handleSave() {
     if (isSaving) return;
-    if (selectedReferenceIds.length === 0) {
+const inlineReferenceIds = extractReferenceIdsFromContentJson(contentJson);
+
+const finalReferenceIds = Array.from(
+  new Set([...selectedReferenceIds, ...inlineReferenceIds]),
+);
+
+    if (finalReferenceIds.length === 0) {
       setMessage("Add at least one reference before saving.");
       return;
     }
@@ -75,7 +82,7 @@ export default function EditNoteForm({
         content,
         contentJson,
         inlineTagNames,
-        selectedReferenceIds,
+        selectedReferenceIds: finalReferenceIds,
       });
 
       if (updatedNote) {
