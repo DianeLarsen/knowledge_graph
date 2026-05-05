@@ -16,8 +16,14 @@ export default function NotesWorkspace({
   userId,
   references,
 }: WorkspaceProps) {
+
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
+
   const notes = dataList.map((data) => data.note);
+  const noteOptions = notes.map((note) => ({
+    id: note.id,
+    title: note.title,
+  }));
 
   const tags = Array.from(
     new Map(
@@ -163,8 +169,11 @@ export default function NotesWorkspace({
                 key={data.note.id}
                 data={data}
                 compact
+                allNotes={noteOptions}
                 allTags={tags}
                 allReferences={references}
+                userTags={tags}
+                userReferences={references}
                 userId={userId}
                 onOpenNote={openNote}
                 onClose={() => closeNote(data.note.id)}
@@ -177,7 +186,6 @@ export default function NotesWorkspace({
           notes={notes}
           tags={tags}
           references={references}
-          userId={userId}
         />
       </div>
     </main>

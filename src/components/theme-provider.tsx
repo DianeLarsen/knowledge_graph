@@ -23,7 +23,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const getSystemTheme = (): Theme => (mediaQuery.matches ? "dark" : "light");
 
     const startingTheme = savedTheme ?? getSystemTheme();
-
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTheme(startingTheme);
     applyTheme(startingTheme);
 

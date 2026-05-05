@@ -1,18 +1,12 @@
 // src/components/calendar/EventDetailsPopup.tsx
 
-import { deleteEventAction } from "@/app/actions/calendar";
-import { Pencil, Trash2 } from "lucide-react";
 import {
   CalendarItem,
-  NoteOption,
-  TaskOption,
 } from "@/components/calendar/types";
 
 type EventDetailsPopupProps = {
   date: string;
   items: CalendarItem[];
-  notes: NoteOption[];
-  tasks: TaskOption[];
   onClose: () => void;
   onCreateEvent: () => void;
   onEditEvent: (item: CalendarItem) => void;
@@ -22,11 +16,8 @@ type EventDetailsPopupProps = {
 export default function EventDetailsPopup({
   date,
   items,
-  notes,
-  tasks,
   onClose,
   onCreateEvent,
-  onEditEvent,
   onOpenEvent,
 }: EventDetailsPopupProps) {
   const dateKey = date;
@@ -49,14 +40,7 @@ export default function EventDetailsPopup({
   );
   const laidOutTimedItems = layoutTimedItems(timedItems);
   const hours = Array.from({ length: 17 }, (_, index) => index + 6);
-  // 6 AM through 10 PM
-  function getNoteTitle(noteId?: string | null) {
-    return notes.find((note) => note.id === noteId)?.title;
-  }
 
-  function getTaskTitle(taskId?: string | null) {
-    return tasks.find((task) => task.id === taskId)?.title;
-  }
 
   function timeToMinutes(time?: string | null) {
     if (!time) return null;

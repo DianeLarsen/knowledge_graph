@@ -1,11 +1,31 @@
-import { notes, noteTags, tags, noteLinks, noteReferences, referencesTable, } from "../schema";
+import {
+  notes,
+  entityTags,
+  entityLinks,
+  tags,
+  noteReferences,
+  referencesTable,
+  type RelationshipType,
+  type NewEntityLink,
+  type NewEntityTag,
+} from "../schema";
 import { db } from "../index";
-import { and, eq, inArray, ne, sql, desc } from "drizzle-orm";
-import { getBacklinks, getOutgoingLinks } from "./noteLinks";
-import { getNotesForTag, getTagsForNote } from "./notetags";
+import {
+  and,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  isNotNull,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
+import { getBacklinks, getOutgoingLinks } from "./entitylinks";
+import { getNotesForTag, getTagsForNote } from "./entitytags";
 import { alias } from "drizzle-orm/sqlite-core";
 import { getTagStats } from "./tags";
-
+const RELATED: RelationshipType = "related";
 type CreateNoteInput = {
   title: string;
   content: string;
@@ -32,112 +52,170 @@ export async function createNote(input: CreateNoteInput) {
   }
 
   const result = db.transaction((tx) => {
-  const newNote = tx
-    .insert(notes)
-    .values({
-      title,
-      content,
-      contentJson,
-      userId: input.userId,
-    })
-    .returning()
-    .get();
-
-  let tagIds = [...selectedTagIds];
-
-const inlineTagNames = input.inlineTagNames ?? [];
-const cleanedInlineTagNames = [
-  ...new Set(inlineTagNames.map((name) => name.trim()).filter(Boolean)),
-];
-
-  if (newTagName) {
-    const existingTag = tx
-      .select()
-      .from(tags)
-      .where(eq(tags.name, newTagName))
-      .get();
-
-    if (existingTag) {
-      tagIds.push(existingTag.id);
-    } else {
-      const createdTag = tx
-        .insert(tags)
-        .values({
-          name: newTagName,
-        })
-        .returning()
-        .get();
-
-      tagIds.push(createdTag.id);
-    }
-  }
-    for (const tagName of cleanedInlineTagNames) {
-  const existingTag = tx
-    .select()
-    .from(tags)
-    .where(eq(tags.name, tagName))
-    .get();
-
-  if (existingTag) {
-    tagIds.push(existingTag.id);
-  } else {
-    const createdTag = tx
-      .insert(tags)
-      .values({ name: tagName })
+    const newNote = tx
+      .insert(notes)
+      .values({
+        title,
+        content,
+        contentJson,
+        userId: input.userId,
+      })
       .returning()
       .get();
 
-    tagIds.push(createdTag.id);
-  }
+    let tagIds = [...selectedTagIds];
+
+    const inlineTagNames = input.inlineTagNames ?? [];
+    const cleanedInlineTagNames = [
+      ...new Set(inlineTagNames.map((name) => name.trim()).filter(Boolean)),
+    ];
+
+    if (newTagName) {
+      const existingTag = tx
+        .select()
+        .from(tags)
+        .where(eq(tags.name, newTagName))
+        .get();
+
+      if (existingTag) {
+        tagIds.push(existingTag.id);
+      } else {
+        const createdTag = tx
+          .insert(tags)
+          .values({
+            name: newTagName,
+          })
+          .returning()
+          .get();
+
+        tagIds.push(createdTag.id);
+      }
+    }
+    for (const tagName of cleanedInlineTagNames) {
+      const existingTag = tx
+        .select()
+        .from(tags)
+        .where(eq(tags.name, tagName))
+        .get();
+
+      if (existingTag) {
+        tagIds.push(existingTag.id);
+      } else {
+        const createdTag = tx
+          .insert(tags)
+          .values({ name: tagName })
+          .returning()
+          .get();
+
+        tagIds.push(createdTag.id);
+      }
+    }
+
+    tagIds = [...new Set(tagIds)];
+
+if (tagIds.length > 0) {
+  const tagValues: NewEntityTag[] = tagIds.map((tagId) => ({
+    userId: input.userId,
+    entityType: "note",
+    entityId: newNote.id,
+    tagId,
+  }));
+
+  tx.insert(entityTags).values(tagValues).run();
 }
 
-  tagIds = [...new Set(tagIds)];
+    const cleanedLinkedNoteIds = [
+      ...new Set(
+        linkedNoteIds.filter(
+          (targetNoteId) => targetNoteId && targetNoteId !== newNote.id,
+        ),
+      ),
+    ];
 
-  if (tagIds.length > 0) {
-    tx.insert(noteTags)
-      .values(
-        tagIds.map((tagId) => ({
-          noteId: newNote.id,
-          tagId,
-        })),
-      )
-      .run();
-  }
+    if (cleanedLinkedNoteIds.length > 0) {
+      const linkValues: NewEntityLink[] = cleanedLinkedNoteIds.map(
+        (targetNoteId) => ({
+          userId: input.userId,
+          sourceType: "note",
+          sourceId: newNote.id,
+          targetType: "note",
+          targetId: targetNoteId,
+          relationshipType: RELATED,
+        }),
+      );
 
-  if (linkedNoteIds.length > 0) {
-    tx.insert(noteLinks)
-      .values(
-        linkedNoteIds.map((targetNoteId) => ({
-          sourceNoteId: newNote.id,
-          targetNoteId,
-          relationshipType: "related",
-        })),
-      )
-      .run();
-  }
-if (selectedReferenceIds.length > 0) {
-  tx.insert(noteReferences)
-    .values(
-      selectedReferenceIds.map((referenceId) => ({
-        noteId: newNote.id,
-        referenceId,
-      })),
-    )
-    .run();
-}
-  return newNote;
-});
+      tx.insert(entityLinks).values(linkValues).run();
+    }
+
+    if (selectedReferenceIds.length > 0) {
+      tx.insert(noteReferences)
+        .values(
+          selectedReferenceIds.map((referenceId) => ({
+            noteId: newNote.id,
+            referenceId,
+          })),
+        )
+        .run();
+    }
+    return newNote;
+  });
 
   return result;
 }
 
 export async function getAllNotes() {
-  return await db.select().from(notes).where(sql`${notes.deletedAt} IS NULL`);;
+  return await db.select().from(notes).where(isNull(notes.deletedAt));
 }
 
 export async function getNoteById(id: string) {
-  const result = await db.select().from(notes).where(eq(notes.id, id));
+  const result = await db
+    .select()
+    .from(notes)
+    .where(and(eq(notes.id, id), isNull(notes.deletedAt)));
+
   return result[0];
+}
+
+export async function getNotesByUser(userId: string) {
+  return await db
+    .select()
+    .from(notes)
+    .where(and(eq(notes.userId, userId), isNull(notes.deletedAt)));
+}
+
+export async function getDeletedNotes() {
+  return await db.select().from(notes).where(isNotNull(notes.deletedAt));
+}
+
+export async function searchNotes(query: string) {
+  return await db
+    .select()
+    .from(notes)
+    .where(
+      and(
+        isNull(notes.deletedAt),
+        or(
+          sql`LOWER(${notes.title}) LIKE LOWER(${`%${query}%`})`,
+          sql`LOWER(${notes.content}) LIKE LOWER(${`%${query}%`})`,
+        ),
+      ),
+    );
+}
+
+export async function searchNotesByUser(userId: string, query: string) {
+  return await db
+    .select()
+    .from(notes)
+    .where(
+      and(
+        eq(notes.userId, userId),
+        isNull(notes.deletedAt),
+        or(
+          sql`LOWER(${notes.title}) LIKE LOWER(${`%${query}%`})`,
+          sql`LOWER(${notes.content}) LIKE LOWER(${`%${query}%`})`,
+        ),
+      ),
+    );
 }
 export async function getReferencesForNote(noteId: string) {
   return await db
@@ -173,8 +251,8 @@ export async function getNoteDetailsById(id: string) {
   }
 
   const tags = await getTagsForNote(id);
-  const outgoingLinks = await getOutgoingLinks(id);
-  const backlinks = await getBacklinks(id);
+  const outgoingLinks = await getOutgoingLinks(id, note.userId);
+  const backlinks = await getBacklinks(id, note.userId);
   const sharedTags = await getNotesForTag(id);
   const references = await getReferencesForNote(id);
 
@@ -204,6 +282,7 @@ export async function getNotesForUser(userId: string) {
 }
 export async function updateNote(
   id: string,
+  userId: string,
   title: string,
   content: string,
   contentJson?: string,
@@ -220,9 +299,13 @@ export async function updateNote(
         contentJson,
         updatedAt: new Date(),
       })
-      .where(eq(notes.id, id))
+      .where(and(eq(notes.id, id), eq(notes.userId, userId)))
       .returning()
       .get();
+
+    if (!updatedNote) {
+      throw new Error("Note not found.");
+    }
 
     const cleanedTagNames = [
       ...new Set(inlineTagNames.map((name) => name.trim()).filter(Boolean)),
@@ -235,21 +318,31 @@ export async function updateNote(
         tag = tx.insert(tags).values({ name: tagName }).returning().get();
       }
 
-      const existingNoteTag = tx
+      const existingEntityTag = tx
         .select()
-        .from(noteTags)
-        .where(and(eq(noteTags.noteId, id), eq(noteTags.tagId, tag.id)))
+        .from(entityTags)
+        .where(
+          and(
+            eq(entityTags.userId, userId),
+            eq(entityTags.entityType, "note"),
+            eq(entityTags.entityId, id),
+            eq(entityTags.tagId, tag.id),
+          ),
+        )
         .get();
 
-      if (!existingNoteTag) {
-        tx.insert(noteTags)
+      if (!existingEntityTag) {
+        tx.insert(entityTags)
           .values({
-            noteId: id,
+            userId,
+            entityType: "note",
+            entityId: id,
             tagId: tag.id,
           })
           .run();
       }
     }
+
     tx.delete(noteReferences).where(eq(noteReferences.noteId, id)).run();
 
     if (selectedReferenceIds.length > 0) {
@@ -262,23 +355,37 @@ export async function updateNote(
         )
         .run();
     }
-    tx.delete(noteLinks).where(eq(noteLinks.sourceNoteId, id)).run();
+
+    tx.delete(entityLinks)
+      .where(
+        and(
+          eq(entityLinks.userId, userId),
+          eq(entityLinks.sourceType, "note"),
+          eq(entityLinks.sourceId, id),
+          eq(entityLinks.targetType, "note"),
+        ),
+      )
+      .run();
 
     const cleanedLinkedNoteIds = [
       ...new Set(linkedNoteIds.filter((noteId) => noteId && noteId !== id)),
     ];
 
-    if (cleanedLinkedNoteIds.length > 0) {
-      tx.insert(noteLinks)
-        .values(
-          cleanedLinkedNoteIds.map((targetNoteId) => ({
-            sourceNoteId: id,
-            targetNoteId,
-            relationshipType: "related",
-          })),
-        )
-        .run();
-    }
+if (cleanedLinkedNoteIds.length > 0) {
+  const linkValues: NewEntityLink[] = cleanedLinkedNoteIds.map(
+    (targetNoteId) => ({
+      userId,
+      sourceType: "note",
+      sourceId: id,
+      targetType: "note",
+      targetId: targetNoteId,
+      relationshipType: RELATED,
+    }),
+  );
+
+  tx.insert(entityLinks).values(linkValues).run();
+}
+
     return updatedNote;
   });
 
@@ -294,29 +401,25 @@ export async function deleteNote(id: string) {
   return result[0];
 }
 
-export async function searchNotes(query: string) {
-  return await db
-    .select()
-    .from(notes)
-    .where(
-      sql`${notes.deletedAt} IS NULL AND (LOWER(${notes.title}) LIKE LOWER(${`%${query}%`}) OR LOWER(${notes.content}) LIKE LOWER(${`%${query}%`}))`,
-    );
-}
-
 export async function getOrphanNotes() {
   return await db
     .select()
     .from(notes)
     .where(
-      sql`${notes.deletedAt} IS NULL AND NOT EXISTS (SELECT 1 FROM note_links WHERE note_links.source_note_id = ${notes.id} OR note_links.target_note_id = ${notes.id})`
+      and(
+        isNull(notes.deletedAt),
+        sql`NOT EXISTS (
+          SELECT 1 FROM entity_links
+          WHERE entity_links.source_type = 'note'
+          AND entity_links.source_id = ${notes.id}
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM entity_links
+          WHERE entity_links.target_type = 'note'
+          AND entity_links.target_id = ${notes.id}
+        )`,
+      ),
     );
-}
-
-export async function getDeletedNotes() {
-  return await db
-    .select()
-    .from(notes)
-    .where(sql`${notes.deletedAt} IS NOT NULL`);
 }
 
 export async function restoreNote(id: string) {
@@ -329,15 +432,12 @@ export async function restoreNote(id: string) {
 }
 
 export async function permanentlyDeleteNote(id: string) {
-  const result = await db
-    .delete(notes)
-    .where(eq(notes.id, id))
-    .returning();
+  const result = await db.delete(notes).where(eq(notes.id, id)).returning();
   return result[0];
 }
 
 export async function getNotesSharingTags(noteId: string) {
-  const currentNoteTags = alias(noteTags, "current_note_tags");
+  const currentNoteTags = alias(entityTags, "current_note_tags");
 
   return await db
     .select({
@@ -350,53 +450,44 @@ export async function getNotesSharingTags(noteId: string) {
       sharedTagId: tags.id,
       sharedTagName: tags.name,
     })
-    .from(noteTags)
-    .innerJoin(notes, eq(noteTags.noteId, notes.id))
-    .innerJoin(tags, eq(noteTags.tagId, tags.id))
+    .from(entityTags)
+    .innerJoin(
+      notes,
+      and(eq(entityTags.entityType, "note"), eq(entityTags.entityId, notes.id)),
+    )
+    .innerJoin(tags, eq(entityTags.tagId, tags.id))
     .where(
       and(
+        eq(entityTags.entityType, "note"),
         inArray(
-          noteTags.tagId,
+          entityTags.tagId,
           db
             .select({ tagId: currentNoteTags.tagId })
             .from(currentNoteTags)
-            .where(eq(currentNoteTags.noteId, noteId))
+            .where(
+              and(
+                eq(currentNoteTags.entityType, "note"),
+                eq(currentNoteTags.entityId, noteId),
+              ),
+            ),
         ),
         ne(notes.id, noteId),
-        sql`${notes.deletedAt} IS NULL`
-      )
+        isNull(notes.deletedAt),
+      ),
     );
 }
 
-export async function getRelatedNotes(noteId: string) {
-
-  const outgoingLinks = await getOutgoingLinks(noteId);
-  const backlinks = await getBacklinks(noteId);
+export async function getRelatedNotes(noteId: string, userId: string) {
+  const outgoingLinks = await getOutgoingLinks(noteId, userId);
+  const backlinks = await getBacklinks(noteId, userId);
   const sharedTags = await getNotesSharingTags(noteId);
   return {
     outgoingLinks,
     backlinks,
-    sharedTags
-  }
+    sharedTags,
+  };
 }
 
-export async function getNotesByUser(userId: string) {
-  return await db
-    .select()
-    .from(notes)
-    .where(and(eq(notes.userId, userId), sql`${notes.deletedAt} IS NULL`));
-}
-export async function searchNotesByUser(userId: string, query: string) {
-  return await db
-    .select()
-    .from(notes)
-    .where(
-      and(
-        eq(notes.userId, userId),
-        sql`${notes.deletedAt} IS NULL AND (LOWER(${notes.title}) LIKE LOWER(${`%${query}%`}) OR LOWER(${notes.content}) LIKE LOWER(${`%${query}%`}))`
-      )
-    );
-}
 export async function getOrphanNotesByUser(userId: string) {
   return await db
     .select()
@@ -404,8 +495,20 @@ export async function getOrphanNotesByUser(userId: string) {
     .where(
       and(
         eq(notes.userId, userId),
-        sql`${notes.deletedAt} IS NULL AND NOT EXISTS (SELECT 1 FROM note_links WHERE note_links.source_note_id = ${notes.id} OR note_links.target_note_id = ${notes.id})`
-      )
+        isNull(notes.deletedAt),
+        sql`NOT EXISTS (
+          SELECT 1 FROM entity_links
+          WHERE entity_links.user_id = ${userId}
+          AND entity_links.source_type = 'note'
+          AND entity_links.source_id = ${notes.id}
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM entity_links
+          WHERE entity_links.user_id = ${userId}
+          AND entity_links.target_type = 'note'
+          AND entity_links.target_id = ${notes.id}
+        )`,
+      ),
     );
 }
 
@@ -423,8 +526,8 @@ export async function getNoteDetailsByUserId(userId: string) {
         })),
       );
 
-      const outgoingLinks = await getOutgoingLinks(note.id);
-      const backlinks = await getBacklinks(note.id);
+      const outgoingLinks = await getOutgoingLinks(note.id, userId);
+      const backlinks = await getBacklinks(note.id, userId);
       const sharedTags = await getNotesForTag(note.id);
       const references = await getReferencesForNote(note.id);
 

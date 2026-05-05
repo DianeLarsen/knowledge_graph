@@ -12,14 +12,12 @@ type NewNoteComposerProps = {
   notes: Note[];
   tags: Tag[];
   references: Reference[];
-  userId: string;
 };
 
 export default function NewNoteComposer({
   notes,
   tags,
   references,
-  userId,
 }: NewNoteComposerProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -84,7 +82,6 @@ export default function NewNoteComposer({
       setSavedMessage("");
 
       await createNoteAction({
-        userId,
         title,
         content,
         contentJson,
@@ -288,7 +285,6 @@ function getReferenceLabel(reference: Reference) {
           {showReferenceComposer && (
             <div className="mt-3">
               <ReferenceComposer
-                userId={userId}
                 onReferenceCreated={(reference) => {
                   setAvailableReferences((current) => [reference, ...current]);
                   setSelectedReferenceIds((current) =>

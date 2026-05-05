@@ -1,7 +1,5 @@
 import { db } from "./index";
 import {
-  noteLinks,
-  noteTags,
   noteReferences,
   tasks,
   notes,
@@ -9,7 +7,9 @@ import {
   referencesTable,
   users,
   events, 
-  captures
+  captures,
+  entityLinks,
+  entityTags
 } from "./schema";
 
 export async function resetDatabase() {
@@ -17,8 +17,8 @@ export async function resetDatabase() {
 
   // Children first (anything with foreign keys)
 
-  await db.delete(noteLinks);
-  await db.delete(noteTags);
+  await db.delete(entityLinks);
+  await db.delete(entityTags);
   await db.delete(noteReferences);
 
   await db.delete(events); // <-- must come before tasks/notes

@@ -1,6 +1,6 @@
-import { eq, count, and } from "drizzle-orm";
+import { eq, count, and, isNull } from "drizzle-orm";
 import { db } from "../index";
-import { notes, tags, noteTags } from "@/db/schema";
+import { entityTags, notes, tags } from "@/db/schema";
 
 export async function createTag(name: string) {
   const result = await db.insert(tags).values({ name }).returning();
@@ -20,8 +20,6 @@ export async function getTagByName(name: string) {
   const result = await db.select().from(tags).where(eq(tags.name, name));
   return result[0];
 }
-
-
 
 export async function updateTag(id: string, name: string) {
   const result = await db
@@ -43,17 +41,20 @@ export async function getTagStats(tagId: string, userId: string) {
     .select({
       tagId: tags.id,
       tagName: tags.name,
-      noteCount: count(noteTags.noteId),
+      noteCount: count(entityTags.entityId),
     })
     .from(tags)
-    .leftJoin(noteTags, eq(tags.id, noteTags.tagId))
-    .leftJoin(notes, eq(noteTags.noteId, notes.id))
+    .leftJoin(
+      entityTags,
+      and(eq(tags.id, entityTags.tagId), eq(entityTags.entityType, "note")),
+    )
+    .leftJoin(notes, eq(entityTags.entityId, notes.id))
     .where(
       and(
         eq(tags.id, tagId),
+        eq(entityTags.userId, userId),
         eq(notes.userId, userId),
-        // optional if you soft-delete notes:
-        // isNull(notes.deletedAt),
+        isNull(notes.deletedAt),
       ),
     )
     .groupBy(tags.id);
@@ -69,8 +70,6 @@ export async function getTagsForUser(userId: string) {
       createdAt: tags.createdAt,
     })
     .from(tags)
-    .innerJoin(noteTags, eq(tags.id, noteTags.tagId))
-    .innerJoin(notes, eq(noteTags.noteId, notes.id))
-    .where(eq(notes.userId, userId));
+    .innerJoin(entityTags, eq(tags.id, entityTags.tagId))
+    .where(eq(entityTags.userId, userId));
 }
-

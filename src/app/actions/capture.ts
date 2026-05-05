@@ -1,6 +1,7 @@
 "use server";
 
-import { randomUUID } from "crypto";
+"use server";
+
 import { revalidatePath } from "next/cache";
 import { createNote } from "@/db/queries/notes";
 import { getCurrentUserId } from "@/db/queries/users";
@@ -10,10 +11,11 @@ import {
   createReference,
   findExistingReference,
 } from "@/db/queries/references";
+import { createEntityLink } from "@/db/queries/entitylinks";
 
 import {
   createCapture,
-  getCaptures as getCapturesQuery,
+  getCapturesByUserId,
   getCaptureById,
   updateCaptureAnalysis,
   updateCaptureStatus,
@@ -36,7 +38,6 @@ type ReferenceType =
   | "video"
   | "conversation"
   | "other";
-
 
 function parseReferenceType(value: FormDataEntryValue | null): ReferenceType {
   if (
@@ -70,11 +71,10 @@ export async function createCaptureAction(formData: FormData) {
 
   const userId = await getCurrentUserId();
 
-
- const rawStatus = String(formData.get("status") ?? "new");
+  const rawStatus = String(formData.get("status") ?? "new");
 
   const status: CaptureStatus = isCaptureStatus(rawStatus) ? rawStatus : "new";
-  
+
   await createCapture({
     userId,
     rawText,
@@ -85,20 +85,25 @@ export async function createCaptureAction(formData: FormData) {
 }
 
 export async function getCapturesAction() {
-  return getCapturesQuery();
+  const userId = await getCurrentUserId();
+  return getCapturesByUserId(userId);
 }
 
 export async function analyzeCaptureAction(captureId: string) {
-  const capture = await getCaptureById(captureId);
+  const userId = await getCurrentUserId();
+  const capture = await getCaptureById(captureId, userId);
 
   if (!capture) {
     return;
   }
+
   if (capture.analysisJson) return;
+
   const analysis = await analyzeCaptureText(capture.rawText);
 
   await updateCaptureAnalysis({
     id: captureId,
+    userId,
     summary: analysis.summary,
     analysisJson: JSON.stringify(analysis),
     status: "analyzed",
@@ -108,10 +113,42 @@ export async function analyzeCaptureAction(captureId: string) {
 }
 
 export async function markCaptureProcessedAction(captureId: string) {
+  const userId = await getCurrentUserId();
+
   await updateCaptureStatus({
     id: captureId,
+    userId,
     status: "processed",
   });
+
+  revalidatePath("/capture");
+}
+
+export async function archiveCaptureAction(captureId: string) {
+  const userId = await getCurrentUserId();
+
+  await updateCaptureStatus({
+    id: captureId,
+    userId,
+    status: "archived",
+  });
+
+  revalidatePath("/capture");
+}
+
+export async function deleteCaptureAction(captureId: string) {
+  const userId = await getCurrentUserId();
+  const capture = await getCaptureById(captureId, userId);
+
+  if (!capture) {
+    return;
+  }
+
+  if (capture.status !== "archived") {
+    return;
+  }
+
+  await deleteCapture(captureId, userId);
 
   revalidatePath("/capture");
 }
@@ -133,7 +170,7 @@ export async function createTaskFromCaptureAction(formData: FormData) {
   });
 
   if (similarTasks.length > 0) {
-    const capture = await getCaptureById(captureId);
+    const capture = await getCaptureById(captureId, userId);
 
     if (capture?.analysisJson) {
       const analysis = JSON.parse(capture.analysisJson);
@@ -151,6 +188,7 @@ export async function createTaskFromCaptureAction(formData: FormData) {
           summary: analysis.summary,
           analysisJson: JSON.stringify(analysis),
           status: capture.status,
+          userId,
         });
       }
     }
@@ -165,8 +203,15 @@ export async function createTaskFromCaptureAction(formData: FormData) {
     priority,
     status: "todo",
   });
-
-  const capture = await getCaptureById(captureId);
+  await createEntityLink({
+    userId,
+    sourceType: "capture",
+    sourceId: captureId,
+    targetType: "task",
+    targetId: task.id,
+    relationshipType: "created_from",
+  });
+  const capture = await getCaptureById(captureId, userId);
 
   if (capture?.analysisJson) {
     const analysis = JSON.parse(capture.analysisJson);
@@ -183,6 +228,7 @@ export async function createTaskFromCaptureAction(formData: FormData) {
         summary: analysis.summary,
         analysisJson: JSON.stringify(analysis),
         status: capture.status,
+        userId,
       });
     }
   }
@@ -191,14 +237,6 @@ export async function createTaskFromCaptureAction(formData: FormData) {
   revalidatePath("/tasks");
 }
 
-export async function archiveCaptureAction(captureId: string) {
-  await updateCaptureStatus({
-    id: captureId,
-    status: "archived",
-  });
-
-  revalidatePath("/capture");
-}
 export async function createNoteFromCaptureAction(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
@@ -231,8 +269,15 @@ export async function createNoteFromCaptureAction(formData: FormData) {
     }),
     userId,
   });
-
-  const capture = await getCaptureById(captureId);
+await createEntityLink({
+  userId,
+  sourceType: "capture",
+  sourceId: captureId,
+  targetType: "note",
+  targetId: note.id,
+  relationshipType: "created_from",
+});
+  const capture = await getCaptureById(captureId, userId);
 
   if (capture?.analysisJson) {
     const analysis = JSON.parse(capture.analysisJson);
@@ -249,6 +294,7 @@ export async function createNoteFromCaptureAction(formData: FormData) {
         summary: analysis.summary,
         analysisJson: JSON.stringify(analysis),
         status: capture.status,
+        userId,
       });
     }
   }
@@ -280,7 +326,7 @@ export async function createReferenceFromCaptureAction(formData: FormData) {
   });
 
   if (existingReference) {
-    const capture = await getCaptureById(captureId);
+    const capture = await getCaptureById(captureId, userId);
 
     if (capture?.analysisJson) {
       const analysis = JSON.parse(capture.analysisJson);
@@ -298,6 +344,7 @@ export async function createReferenceFromCaptureAction(formData: FormData) {
           summary: analysis.summary,
           analysisJson: JSON.stringify(analysis),
           status: capture.status,
+          userId,
         });
       }
     }
@@ -314,8 +361,15 @@ export async function createReferenceFromCaptureAction(formData: FormData) {
     url,
     notes,
   });
-
-  const capture = await getCaptureById(captureId);
+await createEntityLink({
+  userId,
+  sourceType: "capture",
+  sourceId: captureId,
+  targetType: "reference",
+  targetId: reference.id,
+  relationshipType: "created_from",
+});
+  const capture = await getCaptureById(captureId, userId);
 
   if (capture?.analysisJson) {
     const analysis = JSON.parse(capture.analysisJson);
@@ -332,6 +386,7 @@ export async function createReferenceFromCaptureAction(formData: FormData) {
         summary: analysis.summary,
         analysisJson: JSON.stringify(analysis),
         status: capture.status,
+        userId
       });
     }
   }
@@ -339,20 +394,4 @@ export async function createReferenceFromCaptureAction(formData: FormData) {
   revalidatePath("/capture");
   revalidatePath("/references");
   revalidatePath("/notes");
-}
-export async function deleteCaptureAction(captureId: string) {
-  const capture = await getCaptureById(captureId);
-
-  if (!capture) {
-    return;
-  }
-
-  // Only allow delete if already archived
-  if (capture.status !== "archived") {
-    return;
-  }
-
-  await deleteCapture(captureId);
-
-  revalidatePath("/capture");
 }

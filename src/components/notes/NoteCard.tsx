@@ -50,17 +50,29 @@ type NoteReferenceCardItem = {
   summary: string | null;
 };
 type OutgoingLink = {
+  id: string;
+  relationshipType: string;
+  label: string | null;
+  sourceType: string;
+  sourceId: string;
+  targetType: string;
+  targetId: string;
   targetNoteId: string;
   targetTitle: string | null;
-  sourceTitle: string | null;
-  relationshipType: string;
+  targetContent: string | null;
 };
 
 type Backlink = {
+  id: string;
+  relationshipType: string;
+  label: string | null;
+  sourceType: string;
+  sourceId: string;
+  targetType: string;
+  targetId: string;
   sourceNoteId: string;
   sourceTitle: string | null;
-  targetTitle: string | null;
-  relationshipType: string;
+  sourceContent: string | null;
 };
 
 type SharedTagNote = {
@@ -112,9 +124,12 @@ export default function NoteCard({
     references.map((reference) => reference.id),
   );
 
-  const availableReferences = allReferences.filter(
-    (reference) => !attachedReferenceIds.has(reference.id),
-  );
+const referenceOptions =
+  userReferences.length > 0 ? userReferences : allReferences;
+
+const availableReferences = referenceOptions.filter(
+  (reference) => !attachedReferenceIds.has(reference.id),
+);
   return (
     <div className={compact ? "w-full" : "mx-auto w-full max-w-3xl"}>
       <article
@@ -420,7 +435,9 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
                           )}
 
                           {reference.summary && (
-                            <p className="mt-1">{reference.summary}</p>
+                            <p className="mt-1 font-medium text-gray-800 dark:text-gray-200">
+                              Why it matters: {reference.summary}
+                            </p>
                           )}
 
                           {reference.url && (
@@ -473,11 +490,10 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
           <div className="relative w-full max-w-3xl rounded-2xl bg-white p-4 shadow-xl dark:bg-gray-950">
             <EditNoteForm
               note={note}
-              tags={allTags}
+              tags={userTags.length > 0 ? userTags : allTags}
               noteTags={tags}
-              references={allReferences}
+              references={referenceOptions}
               noteReferences={currentData.references ?? []}
-              userId={userId}
               onCancel={() => setIsEditing(false)}
               onSave={(updatedNote) => {
                 setCurrentData((current) => ({

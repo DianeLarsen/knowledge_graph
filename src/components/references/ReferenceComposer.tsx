@@ -6,12 +6,10 @@ import { createReferenceAction } from "@/app/actions/references";
 
 
 type ReferenceComposerProps = {
-  userId: string;
   onReferenceCreated: (reference: Reference) => void;
 };
 
 export default function ReferenceComposer({
-    userId,
   onReferenceCreated,
 }: ReferenceComposerProps) {
   const [type, setType] = useState<Reference["type"]>("book");
@@ -39,7 +37,6 @@ export default function ReferenceComposer({
       setMessage("");
 
       const reference = await createReferenceAction({
-        userId: userId,
         type,
         title: title.trim(),
         author: author.trim() || undefined,

@@ -35,7 +35,6 @@ type EditNoteFormProps = {
   tags: Tag[];
   noteTags: Tag[];
   references: Reference[];
-  userId: string;
   noteReferences: NoteReferenceSummary[];
   availableNotes: LinkedNoteSummary[];
   linkedNoteIds: string[];
@@ -49,7 +48,6 @@ export default function EditNoteForm({
   noteTags,
   references,
   noteReferences,
-  userId,
   onCancel,
   onSave,
   availableNotes,
@@ -73,7 +71,7 @@ export default function EditNoteForm({
   );
   const [selectedLinkedNoteIds, setSelectedLinkedNoteIds] =
     useState<string[]>(linkedNoteIds);
-  
+
   function toggleLinkedNote(noteId: string) {
     setSelectedLinkedNoteIds((current) =>
       current.includes(noteId)
@@ -105,15 +103,17 @@ export default function EditNoteForm({
       setIsSaving(true);
       setMessage("");
 
-const updatedNote = await updateNoteAction({
-  id: note.id,
-  title,
-  content,
-  contentJson,
-  inlineTagNames: Array.from(new Set([...selectedTagNames, ...inlineTagNames])),
-  selectedReferenceIds: finalReferenceIds,
-  linkedNoteIds: selectedLinkedNoteIds,
-});
+      const updatedNote = await updateNoteAction({
+        id: note.id,
+        title,
+        content,
+        contentJson,
+        inlineTagNames: Array.from(
+          new Set([...selectedTagNames, ...inlineTagNames]),
+        ),
+        selectedReferenceIds: finalReferenceIds,
+        linkedNoteIds: selectedLinkedNoteIds,
+      });
 
       if (updatedNote) {
         onSave?.(updatedNote);
@@ -322,7 +322,6 @@ const updatedNote = await updateNoteAction({
           {showReferenceComposer && (
             <div className="mt-3">
               <ReferenceComposer
-                userId={userId}
                 onReferenceCreated={(reference) => {
                   setAvailableReferences((current) => [reference, ...current]);
                   setSelectedReferenceIds((current) =>

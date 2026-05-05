@@ -6,14 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/db/seed.ts",
     "test:db": "tsx src/test.ts",
     "db:reset": "tsx src/db/reset.ts",
-    "db:fresh": "npm run db:reset && npm run db:seed"
+    "db:fresh": "npm run db:reset && npm run db:seed",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.3.0",

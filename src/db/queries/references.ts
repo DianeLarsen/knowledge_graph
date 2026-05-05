@@ -1,4 +1,4 @@
-import { eq, and, desc, count } from "drizzle-orm";
+import { eq, and, desc, count, isNull } from "drizzle-orm";
 import { db } from "../index";
 import {
   referencesTable,
@@ -18,7 +18,7 @@ export async function createReference(reference: NewReference) {
 }
 
 export async function getReferencesForUser(userId: string) {
-  return db
+  return await db
     .select()
     .from(referencesTable)
     .where(eq(referencesTable.userId, userId));
@@ -34,16 +34,24 @@ export async function getReferenceById(id: string) {
 }
 
 export async function updateReference(id: string, data: Partial<NewReference>) {
-  await db.update(referencesTable).set(data).where(eq(referencesTable.id, id));
+  const [result] = await db
+    .update(referencesTable)
+    .set(data)
+    .where(eq(referencesTable.id, id))
+    .returning();
+
+  return result;
 }
 
 export async function getReferenceLinkCount(referenceId: string) {
-  const result = await db
-    .select()
+  const [result] = await db
+    .select({
+      linkCount: count(noteReferences.id),
+    })
     .from(noteReferences)
     .where(eq(noteReferences.referenceId, referenceId));
 
-  return result.length;
+  return result?.linkCount ?? 0;
 }
 
 export async function deleteReference(id: string) {
@@ -65,7 +73,7 @@ export async function addReferenceToNote(noteReference: NewNoteReference) {
 }
 
 export async function getReferencesForNote(noteId: string) {
-  return db
+  return await db
     .select({
       id: referencesTable.id,
       type: referencesTable.type,
@@ -124,7 +132,7 @@ export async function removeReferenceFromNote(
 }
 
 export async function getNoteReferencesByUserId(userId: string) {
-  return db
+  return await db
     .select({
       id: referencesTable.id,
       type: referencesTable.type,
@@ -149,7 +157,14 @@ export async function getNoteReferencesByUserId(userId: string) {
       referencesTable,
       eq(noteReferences.referenceId, referencesTable.id),
     )
-    .where(eq(referencesTable.userId, userId));
+    .innerJoin(notes, eq(noteReferences.noteId, notes.id))
+    .where(
+      and(
+        eq(referencesTable.userId, userId),
+        eq(notes.userId, userId),
+        isNull(notes.deletedAt),
+      ),
+    );
 }
 
 export async function findExistingReference({
@@ -194,15 +209,16 @@ export async function getReferences() {
     .from(referencesTable)
     .orderBy(desc(referencesTable.createdAt));
 
-const links = await db
-  .select({
-    referenceId: noteReferences.referenceId,
-    noteId: notes.id,
-    noteTitle: notes.title,
-    noteContent: notes.content,
-  })
-  .from(noteReferences)
-  .innerJoin(notes, eq(noteReferences.noteId, notes.id));
+  const links = await db
+    .select({
+      referenceId: noteReferences.referenceId,
+      noteId: notes.id,
+      noteTitle: notes.title,
+      noteContent: notes.content,
+    })
+    .from(noteReferences)
+    .innerJoin(notes, eq(noteReferences.noteId, notes.id))
+    .where(isNull(notes.deletedAt));
 
   return references.map((reference) => {
     const linkedNotes = links

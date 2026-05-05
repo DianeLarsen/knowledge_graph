@@ -6,8 +6,27 @@ import {
   check,
 } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+export const entityTypes = [
+  "note",
+  "task",
+  "event",
+  "capture",
+  "reference",
+] as const;
 
+export type EntityType = (typeof entityTypes)[number];
 
+export const relationshipTypes = [
+  "related",
+  "created_from",
+  "supports",
+  "blocks",
+  "mentions",
+  "uses",
+  "follow_up",
+] as const;
+
+export type RelationshipType = (typeof relationshipTypes)[number];
 export const notes = sqliteTable("notes", {
   id: text("id")
     .primaryKey()
@@ -38,52 +57,86 @@ export const tags = sqliteTable("tags", {
     .$defaultFn(() => new Date()),
 });
 
-export const noteTags = sqliteTable(
-  "note_tags",
+
+
+export const entityTags = sqliteTable(
+  "entity_tags",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    createdAt: integer("created_at", { mode: "timestamp" })
+
+    userId: text("user_id")
       .notNull()
-      .$defaultFn(() => new Date()),
-    noteId: text("note_id")
-      .notNull()
-      .references(() => notes.id, { onDelete: "cascade" }),
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    entityType: text("entity_type", {
+      enum: entityTypes,
+    }).notNull(),
+
+    entityId: text("entity_id").notNull(),
+
     tagId: text("tag_id")
       .notNull()
       .references(() => tags.id, { onDelete: "cascade" }),
+
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
-  (t) => [unique("unique_note_tag").on(t.noteId, t.tagId)],
+  (t) => [
+    unique("unique_entity_tag").on(t.userId, t.entityType, t.entityId, t.tagId),
+  ],
 );
 
-export const noteLinks = sqliteTable(
-  "note_links",
+export const entityLinks = sqliteTable(
+  "entity_links",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
+
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    sourceType: text("source_type", {
+      enum: entityTypes,
+    }).notNull(),
+
+    sourceId: text("source_id").notNull(),
+
+    targetType: text("target_type", {
+      enum: entityTypes,
+    }).notNull(),
+
+    targetId: text("target_id").notNull(),
+
+    relationshipType: text("relationship_type", {
+      enum: relationshipTypes, 
+    })
+      .notNull()
+      .default("related"),
+
+    label: text("label"),
+
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
-
-    sourceNoteId: text("source_note_id")
-      .notNull()
-      .references(() => notes.id, { onDelete: "cascade" }),
-
-    targetNoteId: text("target_note_id")
-      .notNull()
-      .references(() => notes.id, { onDelete: "cascade" }),
-
-    relationshipType: text("relationship_type").notNull(),
   },
-  (table) => [
-    check("no_self_link", sql`${table.sourceNoteId} <> ${table.targetNoteId}`),
+  (t) => [
+    check(
+      "no_self_entity_link",
+      sql`NOT (${t.sourceType} = ${t.targetType} AND ${t.sourceId} = ${t.targetId})`,
+    ),
 
-    unique("unique_note_link").on(
-      table.sourceNoteId,
-      table.targetNoteId,
-      table.relationshipType,
+    unique("unique_entity_link").on(
+      t.userId,
+      t.sourceType,
+      t.sourceId,
+      t.targetType,
+      t.targetId,
+      t.relationshipType,
     ),
   ],
 );
@@ -271,8 +324,11 @@ export const captures = sqliteTable("captures", {
 
 export type Note = typeof notes.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
-export type NoteTag = typeof noteTags.$inferSelect;
-export type NoteLink = typeof noteLinks.$inferSelect;
+export type EntityTag = typeof entityTags.$inferSelect;
+export type NewEntityTag = typeof entityTags.$inferInsert;
+
+export type EntityLink = typeof entityLinks.$inferSelect;
+export type NewEntityLink = typeof entityLinks.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Reference = typeof referencesTable.$inferSelect;
 export type NewReference = typeof referencesTable.$inferInsert;
@@ -284,3 +340,7 @@ export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
+
+export type Capture = typeof captures.$inferSelect;
+export type NewCapture = typeof captures.$inferInsert;
+

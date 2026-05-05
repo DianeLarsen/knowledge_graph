@@ -7,12 +7,20 @@ import {
   deleteTask,
   findSimilarTasks,
 } from "@/db/queries/tasks";
+import { getCurrentUserId } from "@/db/queries/users";
 import { type NewTask } from "@/db/schema";
-type CreateTaskInput = NewTask & {
+
+type CreateTaskInput = Omit<NewTask, "userId"> & {
   skipDuplicateCheck?: boolean;
 };
+
 export async function createTaskAction(input: CreateTaskInput) {
-  const result = await createTaskWithDuplicateCheck(input);
+  const userId = await getCurrentUserId();
+
+  const result = await createTaskWithDuplicateCheck({
+    ...input,
+    userId,
+  });
 
   revalidateTasks();
 
@@ -20,7 +28,12 @@ export async function createTaskAction(input: CreateTaskInput) {
 }
 
 export async function updateTaskAction(id: string, data: Partial<NewTask>) {
-  const task = await updateTask(id, data);
+  const userId = await getCurrentUserId();
+
+  const task = await updateTask(id, {
+    ...data,
+    userId,
+  });
 
   revalidateTasks();
 
@@ -35,7 +48,9 @@ export async function deleteTaskAction(id: string) {
   return task;
 }
 
-export async function createTaskWithDuplicateCheck(data: CreateTaskInput) {
+export async function createTaskWithDuplicateCheck(
+  data: NewTask & { skipDuplicateCheck?: boolean },
+) {
   if (!data.skipDuplicateCheck) {
     const similarTasks = await findSimilarTasks({
       userId: data.userId,
@@ -52,7 +67,15 @@ export async function createTaskWithDuplicateCheck(data: CreateTaskInput) {
     }
   }
 
-  const { skipDuplicateCheck, ...taskData } = data;
+  const taskData = {
+    userId: data.userId,
+    title: data.title,
+    description: data.description,
+    status: data.status,
+    priority: data.priority,
+    dueDate: data.dueDate,
+    noteId: data.noteId,
+  };
   const task = await createTask(taskData);
 
   return {
@@ -67,4 +90,5 @@ function revalidateTasks() {
   revalidatePath("/workspace");
   revalidatePath("/notes");
   revalidatePath("/capture");
+  revalidatePath("/calendar");
 }

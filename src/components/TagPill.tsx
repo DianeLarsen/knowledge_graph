@@ -35,7 +35,7 @@ console.log("tagStats:", stats);
    return () => {
      document.removeEventListener("mousedown", handleClickOutside);
    };
- }, []);
+ }, [stats]);
   return (
     <span
       ref={ref}

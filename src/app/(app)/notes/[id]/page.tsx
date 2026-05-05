@@ -1,9 +1,12 @@
+// app/notes/[id]/page.tsx
+
 import NoteCard from "@/components/notes/NoteCard";
 import { getNoteDetailsById } from "@/db/queries/notes";
 import Link from "next/link";
 import { getNotesForUser } from "@/db/queries/notes";
 import { getReferences, getReferencesForUser } from "@/db/queries/references";
 import { getAllTags, getTagsForUser } from "@/db/queries/tags";
+
 
 type NoteDetailsPageProps = {
   params: Promise<{

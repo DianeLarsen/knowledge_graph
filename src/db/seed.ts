@@ -1,8 +1,8 @@
 import { createUser, getAllUsers } from "./queries/users";
 import { createNote } from "./queries/notes";
 import { createTag } from "./queries/tags";
-import { addTagToNote } from "./queries/notetags";
-import { createNoteLink } from "./queries/noteLinks";
+import { addTagToNote } from "./queries/entitytags";
+import { createEntityLink } from "./queries/entitylinks";
 import { createReference, addReferenceToNote } from "./queries/references";
 import { createTask } from "./queries/tasks";
 import { createEvent } from "./queries/calendar";
@@ -42,7 +42,8 @@ async function seed() {
   const sqljoins = await createNote({
     userId: user.id,
     title: "SQL Joins",
-    content: "SQL joins combine rows from two or more tables based on related columns.",
+    content:
+      "SQL joins combine rows from two or more tables based on related columns.",
     contentJson: makeContentJson(
       "SQL joins combine rows from two or more tables based on related columns.",
     ),
@@ -51,7 +52,8 @@ async function seed() {
   const drizzleorm = await createNote({
     userId: user.id,
     title: "Drizzle ORM",
-    content: "Drizzle ORM is a TypeScript ORM that keeps database queries strongly typed.",
+    content:
+      "Drizzle ORM is a TypeScript ORM that keeps database queries strongly typed.",
     contentJson: makeContentJson(
       "Drizzle ORM is a TypeScript ORM that keeps database queries strongly typed.",
     ),
@@ -60,7 +62,8 @@ async function seed() {
   const sqlite = await createNote({
     userId: user.id,
     title: "SQLite",
-    content: "SQLite is a lightweight relational database stored in a single file.",
+    content:
+      "SQLite is a lightweight relational database stored in a single file.",
     contentJson: makeContentJson(
       "SQLite is a lightweight relational database stored in a single file.",
     ),
@@ -87,7 +90,8 @@ async function seed() {
   const searchqueries = await createNote({
     userId: user.id,
     title: "Search Queries",
-    content: "Search queries help users find notes by title, content, tags, and references.",
+    content:
+      "Search queries help users find notes by title, content, tags, and references.",
     contentJson: makeContentJson(
       "Search queries help users find notes by title, content, tags, and references.",
     ),
@@ -101,60 +105,62 @@ async function seed() {
     backlinks,
     searchqueries,
   });
-const task1 = await createTask({
-  userId: user.id,
-  noteId: sqljoins.id,
-  title: "Review SQL join examples",
-  description: "Add examples for INNER JOIN, LEFT JOIN, and many-to-many joins.",
-  status: "todo",
-  priority: "medium",
-  dueDate: "2026-05-01",
-});
+  const task1 = await createTask({
+    userId: user.id,
+    noteId: sqljoins.id,
+    title: "Review SQL join examples",
+    description:
+      "Add examples for INNER JOIN, LEFT JOIN, and many-to-many joins.",
+    status: "todo",
+    priority: "medium",
+    dueDate: "2026-05-01",
+  });
 
-const task2 = await createTask({
-  userId: user.id,
-  noteId: drizzleorm.id,
-  title: "Add Drizzle query examples",
-  description: "Create examples for select, insert, update, delete, and joins.",
-  status: "in_progress",
-  priority: "high",
-  dueDate: "2026-05-03",
-});
+  const task2 = await createTask({
+    userId: user.id,
+    noteId: drizzleorm.id,
+    title: "Add Drizzle query examples",
+    description:
+      "Create examples for select, insert, update, delete, and joins.",
+    status: "in_progress",
+    priority: "high",
+    dueDate: "2026-05-03",
+  });
 
-const task3 = await createTask({
-  userId: user.id,
-  noteId: sqlite.id,
-  title: "Document SQLite reset behavior",
-  description: "Explain delete order and foreign key constraints.",
-  status: "todo",
-  priority: "medium",
-});
+  const task3 = await createTask({
+    userId: user.id,
+    noteId: sqlite.id,
+    title: "Document SQLite reset behavior",
+    description: "Explain delete order and foreign key constraints.",
+    status: "todo",
+    priority: "medium",
+  });
 
-const task4 = await createTask({
-  userId: user.id,
-  noteId: knowledgegraphs.id,
-  title: "Sketch note relationship map",
-  description: "Show how notes, tags, links, references, and tasks connect.",
-  status: "todo",
-  priority: "high",
-});
+  const task4 = await createTask({
+    userId: user.id,
+    noteId: knowledgegraphs.id,
+    title: "Sketch note relationship map",
+    description: "Show how notes, tags, links, references, and tasks connect.",
+    status: "todo",
+    priority: "high",
+  });
 
-const task5 = await createTask({
-  userId: user.id,
-  noteId: backlinks.id,
-  title: "Display backlinks on note cards",
-  description: "Show a small backlink count or related note preview.",
-  status: "done",
-  priority: "low",
-});
+  const task5 = await createTask({
+    userId: user.id,
+    noteId: backlinks.id,
+    title: "Display backlinks on note cards",
+    description: "Show a small backlink count or related note preview.",
+    status: "done",
+    priority: "low",
+  });
 
-console.log("Created tasks:", {
-  task1,
-  task2,
-  task3,
-  task4,
-  task5,
-});
+  console.log("Created tasks:", {
+    task1,
+    task2,
+    task3,
+    task4,
+    task5,
+  });
   const database = await createTag("database");
   const typescript = await createTag("typescript");
   const notes = await createTag("notes");
@@ -162,14 +168,14 @@ console.log("Created tasks:", {
 
   console.log("Created tags:", database, typescript, notes, querying);
 
-  const noteTag1 = await addTagToNote(sqljoins.id, database.id);
-  const noteTag2 = await addTagToNote(drizzleorm.id, typescript.id);
-  const noteTag3 = await addTagToNote(sqlite.id, database.id);
-  const noteTag4 = await addTagToNote(knowledgegraphs.id, notes.id);
-  const noteTag5 = await addTagToNote(sqljoins.id, querying.id);
-  const noteTag6 = await addTagToNote(drizzleorm.id, database.id);
-  const noteTag7 = await addTagToNote(backlinks.id, notes.id);
-  const noteTag8 = await addTagToNote(searchqueries.id, querying.id);
+  const noteTag1 = await addTagToNote(user.id, sqljoins.id, database.id);
+  const noteTag2 = await addTagToNote(user.id, drizzleorm.id, typescript.id);
+  const noteTag3 = await addTagToNote(user.id, sqlite.id, database.id);
+  const noteTag4 = await addTagToNote(user.id, knowledgegraphs.id, notes.id);
+  const noteTag5 = await addTagToNote(user.id, sqljoins.id, querying.id);
+  const noteTag6 = await addTagToNote(user.id, drizzleorm.id, database.id);
+  const noteTag7 = await addTagToNote(user.id, backlinks.id, notes.id);
+  const noteTag8 = await addTagToNote(user.id, searchqueries.id, querying.id);
 
   console.log("Added tags to notes:", {
     noteTag1,
@@ -265,7 +271,8 @@ console.log("Created tasks:", {
   const noteRef6 = await addReferenceToNote({
     noteId: searchqueries.id,
     referenceId: drizzleReference.id,
-    summary: "Search query behavior will likely be implemented through typed database queries.",
+    summary:
+      "Search query behavior will likely be implemented through typed database queries.",
   });
 
   console.log("Added references to notes:", {
@@ -277,10 +284,42 @@ console.log("Created tasks:", {
     noteRef6,
   });
 
-  const noteLink1 = await createNoteLink(sqljoins.id, drizzleorm.id, "supports");
-  const noteLink2 = await createNoteLink(sqljoins.id, sqlite.id, "uses");
-  const noteLink3 = await createNoteLink(drizzleorm.id, knowledgegraphs.id, "explains");
-  const noteLink4 = await createNoteLink(sqlite.id, backlinks.id, "related");
+  const noteLink1 = await createEntityLink({
+    userId: user.id,
+    sourceType: "note",
+    sourceId: sqljoins.id,
+    targetType: "note",
+    targetId: drizzleorm.id,
+    relationshipType: "supports",
+  });
+
+  const noteLink2 = await createEntityLink({
+    userId: user.id,
+    sourceType: "note",
+    sourceId: sqljoins.id,
+    targetType: "note",
+    targetId: sqlite.id,
+    relationshipType: "uses",
+  });
+
+  const noteLink3 = await createEntityLink({
+    userId: user.id,
+    sourceType: "note",
+    sourceId: drizzleorm.id,
+    targetType: "note",
+    targetId: knowledgegraphs.id,
+    relationshipType: "related",
+    label: "explains",
+  });
+
+  const noteLink4 = await createEntityLink({
+    userId: user.id,
+    sourceType: "note",
+    sourceId: sqlite.id,
+    targetType: "note",
+    targetId: backlinks.id,
+    relationshipType: "related",
+  });
 
   console.log("Created note links:", {
     noteLink1,
@@ -288,64 +327,64 @@ console.log("Created tasks:", {
     noteLink3,
     noteLink4,
   });
-const event1 = await createEvent({
-  userId: user.id,
-  noteId: sqljoins.id,
-  taskId: task1.id,
-  title: "Study SQL joins",
-  description:
-    "Review SQL join examples and connect them to the SQL Joins note.",
-  startDate: "2026-05-01",
-  endDate: "2026-05-01",
-  startTime: "18:00",
-  endTime: "19:30",
-  allDay: false,
-  location: "Portfolio workspace",
-  status: "planned",
-});
+  const event1 = await createEvent({
+    userId: user.id,
+    noteId: sqljoins.id,
+    taskId: task1.id,
+    title: "Study SQL joins",
+    description:
+      "Review SQL join examples and connect them to the SQL Joins note.",
+    startDate: "2026-05-01",
+    endDate: "2026-05-01",
+    startTime: "18:00",
+    endTime: "19:30",
+    allDay: false,
+    location: "Portfolio workspace",
+    status: "planned",
+  });
 
-const event2 = await createEvent({
-  userId: user.id,
-  noteId: drizzleorm.id,
-  taskId: task2.id,
-  title: "Build Drizzle examples",
-  description: "Work on typed query examples for the Drizzle ORM note.",
-  startDate: "2026-05-03",
-  endDate: "2026-05-03",
-  startTime: "10:00",
-  endTime: "12:00",
-  allDay: false,
-  location: "Portfolio workspace",
-  status: "planned",
-});
+  const event2 = await createEvent({
+    userId: user.id,
+    noteId: drizzleorm.id,
+    taskId: task2.id,
+    title: "Build Drizzle examples",
+    description: "Work on typed query examples for the Drizzle ORM note.",
+    startDate: "2026-05-03",
+    endDate: "2026-05-03",
+    startTime: "10:00",
+    endTime: "12:00",
+    allDay: false,
+    location: "Portfolio workspace",
+    status: "planned",
+  });
 
-const event3 = await createEvent({
-  userId: user.id,
-  noteId: knowledgegraphs.id,
-  taskId: task4.id,
-  title: "Plan knowledge graph map",
-  description: "Sketch system connections across notes, tasks, and calendar.",
-  startDate: "2026-05-05",
-  endDate: "2026-05-05",
-  startTime: "14:00",
-  endTime: "16:00",
-  allDay: false,
-  location: "Planning board",
-  status: "planned",
-});
+  const event3 = await createEvent({
+    userId: user.id,
+    noteId: knowledgegraphs.id,
+    taskId: task4.id,
+    title: "Plan knowledge graph map",
+    description: "Sketch system connections across notes, tasks, and calendar.",
+    startDate: "2026-05-05",
+    endDate: "2026-05-05",
+    startTime: "14:00",
+    endTime: "16:00",
+    allDay: false,
+    location: "Planning board",
+    status: "planned",
+  });
 
-const event4 = await createEvent({
-  userId: user.id,
-  title: "Weekly planning review",
-  description: "Review open tasks, deadlines, and next priorities.",
-  startDate: "2026-05-06",
-  endDate: "2026-05-06",
-  startTime: "09:00",
-  endTime: "10:00",
-  allDay: false,
-  location: "Calendar",
-  status: "planned",
-});
+  const event4 = await createEvent({
+    userId: user.id,
+    title: "Weekly planning review",
+    description: "Review open tasks, deadlines, and next priorities.",
+    startDate: "2026-05-06",
+    endDate: "2026-05-06",
+    startTime: "09:00",
+    endTime: "10:00",
+    allDay: false,
+    location: "Calendar",
+    status: "planned",
+  });
   const event5 = await createEvent({
     userId: user.id,
     title: "Deep work session",
@@ -393,16 +432,16 @@ const event4 = await createEvent({
     status: "planned",
   });
 
-console.log("Created events:", {
-  event1,
-  event2,
-  event3,
-  event4,
-  event5,
-  event6,
-  event7,
-  event8,
-});
+  console.log("Created events:", {
+    event1,
+    event2,
+    event3,
+    event4,
+    event5,
+    event6,
+    event7,
+    event8,
+  });
   console.log("Seeding complete.");
 }
 

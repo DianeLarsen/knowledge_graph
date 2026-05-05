@@ -9,7 +9,18 @@ import { Tag, Reference } from "@/db/schema";
 import { useState, useEffect, useRef } from "react";
 import { TagMark } from "@/lib/tiptap/extensions/TagMark";
 import { ReferenceMark } from "@/lib/tiptap/extensions/ReferenceMark";
-import { extractReferenceIdsFromContentJson } from "@/lib/notes/extractReferenceIdsFromContentJson";
+
+
+type MentionSuggestionItem = {
+  id: string;
+  label: string;
+};
+
+type MentionSuggestionProps = {
+  items: MentionSuggestionItem[];
+  clientRect?: (() => DOMRect | null) | null;
+  command: (item: MentionSuggestionItem) => void;
+};
 
 type ContextMenuTag = {
   tagId?: string;
@@ -62,6 +73,7 @@ export default function RichNoteEditor({
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [selectedText, setSelectedText] = useState("");
   const menuRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     function handleClick(event: MouseEvent) {
       if (!menuRef.current) return;
@@ -77,6 +89,7 @@ export default function RichNoteEditor({
       window.removeEventListener("mousedown", handleClick);
     };
   }, []);
+  
   const editor = useEditor(
     {
       extensions: [
@@ -161,12 +174,12 @@ export default function RichNoteEditor({
             render: () => {
               let popup: HTMLDivElement;
 
-              function update(props: any) {
+              function update(props: MentionSuggestionProps) {
                 if (!popup) return;
 
                 popup.innerHTML = props.items
                   .map(
-                    (item: any, index: number) => `
+                    (item: MentionSuggestionItem, index: number) => `
           <div
             class="px-3 py-1 text-sm cursor-pointer text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800"
             data-index="${index}"
@@ -376,7 +389,9 @@ function removeSpecificReferenceFromSelection(
       return true;
     })
     .run();
-
+if (referenceToRemove.referenceId) {
+  onReferenceRemoved?.(referenceToRemove.referenceId);
+}
   closeContextMenu();
 }
   function highlightSelection() {

@@ -10,9 +10,11 @@ import {
   removeReferenceFromNote,
   getReferencesForNote,
 } from "@/db/queries/references";
+import { createEntityLink, deleteEntityLink } from "@/db/queries/entitylinks";
+import { getCurrentUserId } from "@/db/queries/users";
 import { revalidatePath } from "next/cache";
 import { type NewReference } from "@/db/schema";
-import { findExistingReference } from "@/db/queries/references";
+
 type ReferenceType =
   | "book"
   | "website"
@@ -20,6 +22,8 @@ type ReferenceType =
   | "video"
   | "conversation"
   | "other";
+
+type CreateReferenceActionInput = Omit<NewReference, "userId">;
 
 function parseReferenceType(value: FormDataEntryValue | null): ReferenceType {
   if (
@@ -35,11 +39,18 @@ function parseReferenceType(value: FormDataEntryValue | null): ReferenceType {
 
   return "other";
 }
-export async function createReferenceAction(input: NewReference) {
-  const reference = await createReference(input);
+
+export async function createReferenceAction(input: CreateReferenceActionInput) {
+  const userId = await getCurrentUserId();
+
+  const reference = await createReference({
+    ...input,
+    userId,
+  });
 
   revalidatePath("/workspace");
   revalidatePath("/notes");
+  revalidatePath("/notes/references");
 
   return reference;
 }
@@ -69,6 +80,8 @@ export async function updateReferenceAction(formData: FormData) {
   });
 
   revalidatePath("/notes/references");
+  revalidatePath("/notes");
+  revalidatePath("/workspace");
 }
 
 export async function deleteReferenceAction(referenceId: string) {
@@ -81,9 +94,13 @@ export async function deleteReferenceAction(referenceId: string) {
   await deleteReference(referenceId);
 
   revalidatePath("/notes/references");
+  revalidatePath("/notes");
+  revalidatePath("/workspace");
 }
 
 export async function attachReferenceToNoteAction(formData: FormData) {
+  const userId = await getCurrentUserId();
+
   const noteId = String(formData.get("noteId") ?? "");
   const referenceId = String(formData.get("referenceId") ?? "");
   const pageNumber = String(formData.get("pageNumber") ?? "").trim();
@@ -109,6 +126,15 @@ export async function attachReferenceToNoteAction(formData: FormData) {
     summary: summary || null,
   });
 
+  await createEntityLink({
+    userId,
+    sourceType: "note",
+    sourceId: noteId,
+    targetType: "reference",
+    targetId: referenceId,
+    relationshipType: "uses",
+  });
+
   revalidatePath("/notes");
   revalidatePath(`/notes/${noteId}`);
   revalidatePath("/workspace");
@@ -116,6 +142,8 @@ export async function attachReferenceToNoteAction(formData: FormData) {
 }
 
 export async function removeReferenceFromNoteAction(formData: FormData) {
+  const userId = await getCurrentUserId();
+
   const noteId = String(formData.get("noteId") ?? "");
   const referenceId = String(formData.get("referenceId") ?? "");
 
@@ -124,6 +152,15 @@ export async function removeReferenceFromNoteAction(formData: FormData) {
   }
 
   await removeReferenceFromNote(noteId, referenceId);
+
+  await deleteEntityLink({
+    userId,
+    sourceType: "note",
+    sourceId: noteId,
+    targetType: "reference",
+    targetId: referenceId,
+    relationshipType: "uses",
+  });
 
   revalidatePath("/notes");
   revalidatePath(`/notes/${noteId}`);

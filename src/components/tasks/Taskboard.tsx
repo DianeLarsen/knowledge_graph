@@ -27,7 +27,7 @@ const baseColumns: { status: VisibleTaskStatus; title: string }[] = [
   { status: "done", title: "Done" },
 ];
 
-export default function TaskBoard({ userId, initialTasks }: TaskBoardProps) {
+export default function TaskBoard({ initialTasks }: TaskBoardProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [showArchived, setShowArchived] = useState(false);
   const [openMenuTaskId, setOpenMenuTaskId] = useState<string | null>(null);
@@ -115,7 +115,6 @@ async function createTask(input: {
   dueDate?: string;
 }) {
   const result = await createTaskAction({
-    userId,
     title: input.title,
     description: input.description,
     status: input.status,
@@ -140,7 +139,6 @@ async function createTaskAnyway() {
   if (!duplicateWarning) return;
 
   const task = await createTaskAction({
-    userId,
     title: duplicateWarning.attemptedTask.title,
     description: duplicateWarning.attemptedTask.description,
     status: duplicateWarning.attemptedTask.status,

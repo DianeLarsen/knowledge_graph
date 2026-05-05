@@ -1,19 +1,25 @@
 import { db } from "@/db";
 import { captures } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
-export async function getCaptures() {
-  return db.select().from(captures).orderBy(desc(captures.createdAt));
+type CaptureStatus = "new" | "analyzed" | "processed" | "archived";
+
+export async function getCapturesByUserId(userId: string) {
+  return await db
+    .select()
+    .from(captures)
+    .where(eq(captures.userId, userId))
+    .orderBy(desc(captures.createdAt));
 }
 
-export async function getCaptureById(id: string) {
-  const result = await db.select().from(captures).where(eq(captures.id, id));
+export async function getCaptureById(id: string, userId: string) {
+  const [result] = await db
+    .select()
+    .from(captures)
+    .where(and(eq(captures.id, id), eq(captures.userId, userId)));
 
-  return result[0];
+  return result;
 }
-
-const captureStatuses = ["new", "analyzed", "processed", "archived"] as const;
-type CaptureStatus = (typeof captureStatuses)[number];
 
 export async function createCapture({
   userId,
@@ -38,16 +44,18 @@ export async function createCapture({
 
 export async function updateCaptureAnalysis({
   id,
+  userId,
   summary,
   analysisJson,
   status = "analyzed",
 }: {
   id: string;
+  userId: string;
   summary: string;
   analysisJson: string;
   status?: CaptureStatus;
 }) {
-  const result = await db
+  const [result] = await db
     .update(captures)
     .set({
       summary,
@@ -55,17 +63,19 @@ export async function updateCaptureAnalysis({
       status,
       updatedAt: new Date(),
     })
-    .where(eq(captures.id, id))
+    .where(and(eq(captures.id, id), eq(captures.userId, userId)))
     .returning();
 
-  return result[0];
+  return result;
 }
 
 export async function updateCaptureStatus({
   id,
+  userId,
   status,
 }: {
   id: string;
+  userId: string;
   status: CaptureStatus;
 }) {
   const [result] = await db
@@ -74,17 +84,17 @@ export async function updateCaptureStatus({
       status,
       updatedAt: new Date(),
     })
-    .where(eq(captures.id, id))
+    .where(and(eq(captures.id, id), eq(captures.userId, userId)))
     .returning();
 
   return result;
 }
 
-export async function deleteCapture(id: string) {
-  const result = await db
+export async function deleteCapture(id: string, userId: string) {
+  const [result] = await db
     .delete(captures)
-    .where(eq(captures.id, id))
+    .where(and(eq(captures.id, id), eq(captures.userId, userId)))
     .returning();
 
-  return result[0];
+  return result;
 }

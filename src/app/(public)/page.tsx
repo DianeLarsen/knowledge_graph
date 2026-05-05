@@ -1,6 +1,7 @@
 
 import FeatureCard from "@/components/FeatureCard";
 import { Network, Zap, CheckSquare } from "lucide-react";
+import Link from "next/link";
 
 export default async function Home() {
 
@@ -19,19 +20,19 @@ export default async function Home() {
           </p>
 
           <div className="flex gap-3">
-            <a
+            <Link
               href="/demo"
               className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
             >
               Explore Demo
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/sign-up"
               className="rounded-xl border border-zinc-300 px-5 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
             >
               Create Account
-            </a>
+            </Link>
           </div>
         </section>
 

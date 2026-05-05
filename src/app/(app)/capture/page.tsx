@@ -1,11 +1,8 @@
 import {
   createCaptureAction,
   getCapturesAction,
-  analyzeCaptureAction,
-  markCaptureProcessedAction,
 } from "@/app/actions/capture";
 import { Zap } from "lucide-react";
-import CaptureAnalysis from "@/components/capture/CaptureAnalysis";
 import CaptureList from "@/components/capture/CaptureList";
 
 export default async function CapturePage() {

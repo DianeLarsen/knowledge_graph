@@ -1,12 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createEvent } from "@/db/queries/calendar";
-import { getCurrentUserId } from "@/db/queries/users";
-import { getEventsInRange, getTasksDueInRange } from "@/db/queries/calendar";
-import { deleteEvent } from "@/db/queries/calendar";
 import { redirect } from "next/navigation";
-import { updateEvent } from "@/db/queries/calendar";
+import { getCurrentUserId } from "@/db/queries/users";
+import {
+  createEvent,
+  deleteEvent,
+  getEventsInRange,
+  getTasksDueInRange,
+  updateEvent,
+} from "@/db/queries/calendar";
+import {
+  createEntityLink,
+  deleteEntityLinksForSource,
+} from "@/db/queries/entitylinks";
 
 export async function getCalendarItems(
   userId: string,
@@ -66,15 +73,17 @@ export async function createEventAction(formData: FormData) {
   const endDate = String(formData.get("endDate") || "").trim();
   const startTime = String(formData.get("startTime") || "").trim();
   const endTime = String(formData.get("endTime") || "").trim();
-const noteId = String(formData.get("noteId") || "").trim();
-const taskId = String(formData.get("taskId") || "").trim();
+  const location = String(formData.get("location") || "").trim();
+  const noteId = String(formData.get("noteId") || "").trim();
+  const taskId = String(formData.get("taskId") || "").trim();
+
   if (!title || !startDate) {
     throw new Error("Title and start date are required.");
   }
 
   const allDay = !startTime && !endTime;
 
-  await createEvent({
+  const event = await createEvent({
     userId,
     title,
     description: description || null,
@@ -83,10 +92,33 @@ const taskId = String(formData.get("taskId") || "").trim();
     startTime: startTime || null,
     endTime: endTime || null,
     allDay,
+    location: location || null,
     status: "planned",
     noteId: noteId || null,
     taskId: taskId || null,
   });
+
+  if (noteId) {
+    await createEntityLink({
+      userId,
+      sourceType: "event",
+      sourceId: event.id,
+      targetType: "note",
+      targetId: noteId,
+      relationshipType: "related",
+    });
+  }
+
+  if (taskId) {
+    await createEntityLink({
+      userId,
+      sourceType: "event",
+      sourceId: event.id,
+      targetType: "task",
+      targetId: taskId,
+      relationshipType: "related",
+    });
+  }
 
   revalidatePath("/calendar");
 }
@@ -115,15 +147,14 @@ export async function updateEventAction(formData: FormData) {
   const startTime = String(formData.get("startTime") || "").trim();
   const endTime = String(formData.get("endTime") || "").trim();
   const location = String(formData.get("location") || "").trim();
-const noteId = String(formData.get("noteId") || "").trim();
-const taskId = String(formData.get("taskId") || "").trim();
+  const noteId = String(formData.get("noteId") || "").trim();
+  const taskId = String(formData.get("taskId") || "").trim();
   if (!eventId || !title || !startDate) {
     throw new Error("Event ID, title, and start date are required.");
   }
 
   const allDay = !startTime && !endTime;
-
-  await updateEvent(eventId, userId, {
+  const event = await updateEvent(eventId, userId, {
     title,
     description: description || null,
     startDate,
@@ -135,6 +166,38 @@ const taskId = String(formData.get("taskId") || "").trim();
     noteId: noteId || null,
     taskId: taskId || null,
   });
+
+  if (!event) {
+    return;
+  }
+
+  await deleteEntityLinksForSource({
+    userId,
+    sourceType: "event",
+    sourceId: eventId,
+  });
+
+  if (noteId) {
+    await createEntityLink({
+      userId,
+      sourceType: "event",
+      sourceId: event.id,
+      targetType: "note",
+      targetId: noteId,
+      relationshipType: "related",
+    });
+  }
+
+  if (taskId) {
+    await createEntityLink({
+      userId,
+      sourceType: "event",
+      sourceId: event.id,
+      targetType: "task",
+      targetId: taskId,
+      relationshipType: "related",
+    });
+  }
 
   revalidatePath("/calendar");
 

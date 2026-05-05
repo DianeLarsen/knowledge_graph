@@ -67,6 +67,7 @@ useEffect(() => {
     window.removeEventListener("click", closeMenu);
     window.removeEventListener("contextmenu", closeMenu);
   };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
   return (
     <>
