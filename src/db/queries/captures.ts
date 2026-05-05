@@ -12,34 +12,28 @@ export async function getCaptureById(id: string) {
   return result[0];
 }
 
+const captureStatuses = ["new", "analyzed", "processed", "archived"] as const;
+type CaptureStatus = (typeof captureStatuses)[number];
+
 export async function createCapture({
-  id,
   userId,
   rawText,
   status = "new",
-  createdAt,
-  updatedAt,
 }: {
-  id: string;
   userId: string;
   rawText: string;
-  status?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  status?: CaptureStatus;
 }) {
-  const result = await db
+  const [result] = await db
     .insert(captures)
     .values({
-      id,
       userId,
       rawText,
       status,
-      createdAt,
-      updatedAt,
     })
     .returning();
 
-  return result[0];
+  return result;
 }
 
 export async function updateCaptureAnalysis({
@@ -51,7 +45,7 @@ export async function updateCaptureAnalysis({
   id: string;
   summary: string;
   analysisJson: string;
-  status?: string;
+  status?: CaptureStatus;
 }) {
   const result = await db
     .update(captures)
@@ -72,9 +66,9 @@ export async function updateCaptureStatus({
   status,
 }: {
   id: string;
-  status: "new" | "analyzed" | "processed" | "archived";
+  status: CaptureStatus;
 }) {
-  const result = await db
+  const [result] = await db
     .update(captures)
     .set({
       status,
@@ -83,7 +77,7 @@ export async function updateCaptureStatus({
     .where(eq(captures.id, id))
     .returning();
 
-  return result[0];
+  return result;
 }
 
 export async function deleteCapture(id: string) {

@@ -2,7 +2,7 @@ import { Mark, mergeAttributes } from "@tiptap/core";
 
 export const TagMark = Mark.create({
   name: "tagMark",
-
+  excludes: "",
   addAttributes() {
     return {
       tagId: {

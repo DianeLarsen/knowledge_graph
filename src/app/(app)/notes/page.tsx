@@ -1,7 +1,7 @@
 import { getNotesByUser } from "@/db/queries/notes";
 import { Note } from "@/db/schema";
 import Link from "next/link";
-import { getCurrentUserId } from "@/lib/currentUser";
+import { getCurrentUserId } from "@/db/queries/users";
 
 export default async function NotesPage() {
   const userId = await getCurrentUserId();

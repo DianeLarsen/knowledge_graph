@@ -10,6 +10,11 @@ import {
   removeReferenceFromNoteAction,
 } from "@/app/actions/references";
 
+type LinkedNoteSummary = {
+  id: string;
+  title: string;
+};
+
 export type NoteDetails = {
   note: Note;
   tags: Tag[];
@@ -73,18 +78,22 @@ export default function NoteCard({
   onClose,
   onOpenNote,
   compact = false,
-
+  allNotes = [],
   allTags = [],
   allReferences = [],
   userId,
+  userTags = [],
+  userReferences = [],
 }: {
   data: NoteDetails;
   onClose?: () => void;
   onOpenNote?: (noteId: string) => void;
   compact?: boolean;
-
+  allNotes?: LinkedNoteSummary[];
   allTags?: Tag[];
   allReferences?: Reference[];
+  userTags?: Tag[];
+  userReferences?: Reference[];
   userId?: string;
 }) {
   const [currentData, setCurrentData] = useState(data);
@@ -99,13 +108,13 @@ export default function NoteCard({
     tagStats,
     references = [],
   } = currentData;
-const attachedReferenceIds = new Set(
-  references.map((reference) => reference.id),
-);
+  const attachedReferenceIds = new Set(
+    references.map((reference) => reference.id),
+  );
 
-const availableReferences = allReferences.filter(
-  (reference) => !attachedReferenceIds.has(reference.id),
-);
+  const availableReferences = allReferences.filter(
+    (reference) => !attachedReferenceIds.has(reference.id),
+  );
   return (
     <div className={compact ? "w-full" : "mx-auto w-full max-w-3xl"}>
       <article
@@ -194,22 +203,21 @@ bg-[length:100%_32px]
 dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
   "
         >
-<ReadOnlyNoteContent
-  key={note.contentJson ?? note.content ?? note.updatedAt.toString()}
-  content={note.contentJson}
-  references={references.map((reference) => ({
-    id: reference.id,
-    title: reference.title,
-    author: reference.author,
-    url: reference.url,
-    notes: reference.notes,
-  }))}
-  tags={tags.map((tag) => ({
-    id: tag.id,
-    name: tag.name,
-  }))}
-/>
-       
+          <ReadOnlyNoteContent
+            key={note.contentJson ?? note.content ?? note.updatedAt.toString()}
+            content={note.contentJson}
+            references={references.map((reference) => ({
+              id: reference.id,
+              title: reference.title,
+              author: reference.author,
+              url: reference.url,
+              notes: reference.notes,
+            }))}
+            tags={tags.map((tag) => ({
+              id: tag.id,
+              name: tag.name,
+            }))}
+          />
         </div>
         <div className="border-t border-blue-200 px-4 py-3 text-sm dark:border-blue-800">
           <button
@@ -463,21 +471,6 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
       {isEditing && userId && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-10">
           <div className="relative w-full max-w-3xl rounded-2xl bg-white p-4 shadow-xl dark:bg-gray-950">
-            <button
-              type="button"
-              onClick={() => setIsEditing(false)}
-              className="
-          absolute right-3 top-3 z-10
-          flex h-7 w-7 items-center justify-center
-          rounded-full border border-gray-300 bg-white
-          text-sm font-bold text-gray-600 shadow-sm
-          hover:border-red-400 hover:bg-red-500 hover:text-white
-          dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300
-        "
-            >
-              ×
-            </button>
-
             <EditNoteForm
               note={note}
               tags={allTags}
@@ -497,6 +490,8 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
 
                 setIsEditing(false);
               }}
+              availableNotes={allNotes}
+              linkedNoteIds={outgoingLinks.map((link) => link.targetNoteId)}
             />
           </div>
         </div>

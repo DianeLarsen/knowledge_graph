@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Reference } from "@/db/schema";
 import { createReferenceAction } from "@/app/actions/references";
-import { getCurrentUserId } from "@/lib/currentUser";
+
 
 type ReferenceComposerProps = {
   userId: string;

@@ -1,6 +1,6 @@
 import { notes, noteTags, tags, noteLinks, noteReferences, referencesTable, } from "../schema";
 import { db } from "../index";
-import { and, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql, desc } from "drizzle-orm";
 import { getBacklinks, getOutgoingLinks } from "./noteLinks";
 import { getNotesForTag, getTagsForNote } from "./notetags";
 import { alias } from "drizzle-orm/sqlite-core";
@@ -195,7 +195,13 @@ export async function getNoteDetailsById(id: string) {
     references,
   };
 }
-
+export async function getNotesForUser(userId: string) {
+  return db
+    .select()
+    .from(notes)
+    .where(eq(notes.userId, userId))
+    .orderBy(desc(notes.updatedAt));
+}
 export async function updateNote(
   id: string,
   title: string,
@@ -203,6 +209,7 @@ export async function updateNote(
   contentJson?: string,
   inlineTagNames: string[] = [],
   selectedReferenceIds: string[] = [],
+  linkedNoteIds: string[] = [],
 ) {
   const result = db.transaction((tx) => {
     const updatedNote = tx
@@ -217,36 +224,21 @@ export async function updateNote(
       .returning()
       .get();
 
-    const cleanedTagNames = [...new Set(
-      inlineTagNames
-        .map((name) => name.trim())
-        .filter(Boolean),
-    )];
+    const cleanedTagNames = [
+      ...new Set(inlineTagNames.map((name) => name.trim()).filter(Boolean)),
+    ];
 
     for (const tagName of cleanedTagNames) {
-      let tag = tx
-        .select()
-        .from(tags)
-        .where(eq(tags.name, tagName))
-        .get();
+      let tag = tx.select().from(tags).where(eq(tags.name, tagName)).get();
 
       if (!tag) {
-        tag = tx
-          .insert(tags)
-          .values({ name: tagName })
-          .returning()
-          .get();
+        tag = tx.insert(tags).values({ name: tagName }).returning().get();
       }
 
       const existingNoteTag = tx
         .select()
         .from(noteTags)
-        .where(
-          and(
-            eq(noteTags.noteId, id),
-            eq(noteTags.tagId, tag.id),
-          ),
-        )
+        .where(and(eq(noteTags.noteId, id), eq(noteTags.tagId, tag.id)))
         .get();
 
       if (!existingNoteTag) {
@@ -258,20 +250,35 @@ export async function updateNote(
           .run();
       }
     }
-tx.delete(noteReferences)
-  .where(eq(noteReferences.noteId, id))
-  .run();
+    tx.delete(noteReferences).where(eq(noteReferences.noteId, id)).run();
 
-if (selectedReferenceIds.length > 0) {
-  tx.insert(noteReferences)
-    .values(
-      selectedReferenceIds.map((referenceId) => ({
-        noteId: id,
-        referenceId,
-      })),
-    )
-    .run();
-}
+    if (selectedReferenceIds.length > 0) {
+      tx.insert(noteReferences)
+        .values(
+          selectedReferenceIds.map((referenceId) => ({
+            noteId: id,
+            referenceId,
+          })),
+        )
+        .run();
+    }
+    tx.delete(noteLinks).where(eq(noteLinks.sourceNoteId, id)).run();
+
+    const cleanedLinkedNoteIds = [
+      ...new Set(linkedNoteIds.filter((noteId) => noteId && noteId !== id)),
+    ];
+
+    if (cleanedLinkedNoteIds.length > 0) {
+      tx.insert(noteLinks)
+        .values(
+          cleanedLinkedNoteIds.map((targetNoteId) => ({
+            sourceNoteId: id,
+            targetNoteId,
+            relationshipType: "related",
+          })),
+        )
+        .run();
+    }
     return updatedNote;
   });
 

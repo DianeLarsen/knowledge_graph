@@ -36,7 +36,8 @@ export default function NewNoteComposer({
   );
   const [availableReferences, setAvailableReferences] =
     useState<Reference[]>(references);
-const [showReferenceComposer, setShowReferenceComposer] = useState(false);
+  const [showReferenceComposer, setShowReferenceComposer] = useState(false);
+    const inlineReferenceIds = extractReferenceIdsFromContentJson(contentJson);
   const router = useRouter();
   function toggleTag(tagId: string) {
     setSelectedTagIds((current) =>
@@ -152,6 +153,14 @@ function getReferenceLabel(reference: Reference) {
           setContentJson(json);
         }}
         getReferenceLabel={getReferenceLabel}
+        onReferenceRemoved={() => {}}
+        onTagRemoved={(tagName) => {
+          setInlineTagNames((current) =>
+            current.filter((name) => name !== tagName),
+          );
+        }}
+        inlineReferenceIds={inlineReferenceIds}
+        selectedReferenceIds={selectedReferenceIds}
       />
 
       <section className="mb-4">
@@ -248,7 +257,9 @@ function getReferenceLabel(reference: Reference) {
                       : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                   }`}
                 >
-                  <span className="block font-medium">{getReferenceLabel(reference)}</span>
+                  <span className="block font-medium">
+                    {getReferenceLabel(reference)}
+                  </span>
                   {reference.author && (
                     <span className="block text-xs opacity-75">
                       {reference.author}

@@ -1,10 +1,19 @@
 "use client";
 
-import React from "react";
-import { BookOpen, CheckSquare, CalendarDays, Zap, Laptop } from "lucide-react";
+import {
+  BookOpen,
+  CheckSquare,
+  CalendarDays,
+  Zap,
+  Play,
+  LayoutGrid,
+  Menu,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ThemeToggle } from "./ThemeToggle";
+import { Show } from "@clerk/nextjs";
+import { useState } from "react";
 
 const navItems = [
   { label: "Notes", description: "Think", icon: BookOpen, href: "/notes" },
@@ -18,96 +27,118 @@ const navItems = [
   { label: "Capture", description: "Dump ideas", icon: Zap, href: "/capture" },
   {
     label: "Current Work",
-    description: "Build",
-    icon: Laptop,
+    description: "Focus",
+    icon: Play,
     href: "/projects/current",
   },
   {
     label: "Workspace",
-    description: "Build",
-    icon: Laptop,
+    description: "Explore",
+    icon: LayoutGrid,
     href: "/workspace",
   },
 ];
 
 export default function KnowledgeHomeTopNav() {
   const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <section className="w-full rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] p-4 shadow-sm">
-      <div className="mb-4 flex gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[rgb(var(--text))]">
-            Knowledge Home
-          </h1>
-          <p className="text-sm hidden sm:flex text-[rgb(var(--muted))]">
-            Capture, organize, plan, and get back to work without wandering into
-            the digital junk drawer.
-          </p>
-        </div>
+    <Show when="signed-in">
+      <nav
+        aria-label="Primary knowledge navigation"
+        className="sticky top-16 z-40 border-b border-[rgb(var(--border))] bg-[rgb(var(--bg))]/85 backdrop-blur"
+      >
+        <div className="mx-auto w-full max-w-6xl px-4">
+          <div className="flex items-center justify-between py-2 md:hidden">
+            <Link
+              href="/notes"
+              className="text-sm font-semibold text-[rgb(var(--text))]"
+              onClick={() => setIsOpen(false)}
+            >
+              View Notes
+            </Link>
 
-        <ThemeToggle />
-      </div>
+            <button
+              type="button"
+              onClick={() => setIsOpen((current) => !current)}
+              className="rounded-xl border border-[rgb(var(--border))] p-2 text-[rgb(var(--text))] hover:bg-[rgb(var(--card))]"
+              aria-label="Toggle navigation menu"
+              aria-expanded={isOpen}
+            >
+              {isOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </button>
+          </div>
 
-      <nav aria-label="Primary knowledge navigation">
-        <ul className="grid grid-cols-6">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname.startsWith(item.href);
+          <ul className="hidden w-full grid-cols-6 gap-2 py-2 md:grid">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname.startsWith(item.href);
 
-            return (
-              <li key={item.label}>
-                <Link
-                  href={item.href}
-                  className={`
-                    group flex h-auto flex-col justify-between rounded-2xl border p-2 sm:p-3 lg:p-4 transition
-                    hover:-translate-y-0.5 hover:shadow-md
+              return (
+                <li key={item.label}>
+                  <Link
+                    href={item.href}
+                    className={`
+    group flex min-h-[48px] w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-medium transition
+    hover:min-h-[64px]
+    ${
+      isActive
+        ? "bg-blue-600 text-white shadow-sm"
+        : "text-[rgb(var(--muted))] hover:bg-[rgb(var(--card))] hover:text-[rgb(var(--text))]"
+    }
+  `}
+                  >
+                    <div className="flex items-center gap-2 transition-all group-hover:flex-col group-hover:gap-1">
+                      <Icon className="h-4 w-4" />
 
-                    ${
-                      isActive
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                        : "border-[rgb(var(--border))] bg-[rgb(var(--card))]"
-                    }
-                  `}
-                >
-                  <div className="flex items-center justify-between">
-                    <div
+                      <div className="flex flex-col items-center leading-tight">
+                        <span>{item.label}</span>
+                        <span className="max-h-0 overflow-hidden opacity-0 transition-all group-hover:max-h-4 group-hover:opacity-100">
+                          {item.description}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          {isOpen && (
+            <ul className="grid gap-1 pb-3 md:hidden">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname.startsWith(item.href);
+
+                return (
+                  <li key={item.label}>
+                    <Link
+                      href={item.href}
+                      onClick={() => setIsOpen(false)}
                       className={`
-                        rounded-xl p-2 shadow-sm
+                        flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-medium transition
                         ${
                           isActive
-                            ? "bg-blue-100 dark:bg-blue-800"
-                            : "bg-[rgb(var(--bg))]"
+                            ? "bg-blue-600 text-white shadow-sm"
+                            : "text-[rgb(var(--muted))] hover:bg-[rgb(var(--card))] hover:text-[rgb(var(--text))]"
                         }
                       `}
                     >
-                      <Icon
-                        className={`
-                          h-4 w-4 sm:h-5 sm:w-5
-                          ${
-                            isActive
-                              ? "text-blue-600 dark:text-blue-300"
-                              : "text-[rgb(var(--text))]"
-                          }
-                        `}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <h2 className="text-base font-semibold text-[rgb(var(--text))]">
-                      {item.label}
-                    </h2>
-                    <p className="text-sm text-[rgb(var(--muted))]">
-                      {item.description}
-                    </p>
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                      <Icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </nav>
-    </section>
+    </Show>
   );
 }

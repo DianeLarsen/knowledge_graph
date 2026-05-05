@@ -1,6 +1,9 @@
 import NoteCard from "@/components/notes/NoteCard";
 import { getNoteDetailsById } from "@/db/queries/notes";
 import Link from "next/link";
+import { getNotesForUser } from "@/db/queries/notes";
+import { getReferences, getReferencesForUser } from "@/db/queries/references";
+import { getAllTags, getTagsForUser } from "@/db/queries/tags";
 
 type NoteDetailsPageProps = {
   params: Promise<{
@@ -24,7 +27,11 @@ export default async function NoteDetailsPage({
       </main>
     );
   }
-
+const notes = await getNotesForUser(data.note.userId);
+const allReferences = await getReferences();
+const allTags = await getAllTags();
+  const userTags = await getTagsForUser(data.note.userId);
+  const userReferences = await getReferencesForUser(data.note.userId);
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-8 dark:bg-gray-950">
       <div className="mx-auto mb-6 flex max-w-3xl items-center justify-between">
@@ -34,15 +41,20 @@ export default async function NoteDetailsPage({
         >
           ← Back to notes
         </Link>
-        <Link
-          href={`/notes/${id}/edit`}
-          className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
-        >
-          Edit note
-        </Link>
       </div>
 
-      <NoteCard data={data} />
+      <NoteCard
+        data={data}
+        userId={data.note.userId}
+        allNotes={notes.map((note) => ({
+          id: note.id,
+          title: note.title,
+        }))}
+        allTags={allTags}
+        allReferences={allReferences}
+        userTags={userTags}
+        userReferences={userReferences}
+      />
     </main>
   );
 }

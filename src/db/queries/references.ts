@@ -17,7 +17,7 @@ export async function createReference(reference: NewReference) {
   return result;
 }
 
-export async function getReferencesByUserId(userId: string) {
+export async function getReferencesForUser(userId: string) {
   return db
     .select()
     .from(referencesTable)

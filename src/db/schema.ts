@@ -7,6 +7,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
+
 export const notes = sqliteTable("notes", {
   id: text("id")
     .primaryKey()
@@ -95,6 +96,8 @@ export const users = sqliteTable("users", {
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
+  clerkId: text("clerk_id").notNull().unique(),
+  email: text("email").notNull().unique(),
 });
 
 export const referencesTable = sqliteTable("references", {
@@ -238,14 +241,32 @@ export const events = sqliteTable("events", {
 });
 
 export const captures = sqliteTable("captures", {
-  id: text("id").primaryKey(),
-  userId: text("user_id").notNull(),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+
   rawText: text("raw_text").notNull(),
   summary: text("summary"),
   analysisJson: text("analysis_json"),
-  status: text("status").notNull().default("new"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+
+  status: text("status", {
+    enum: ["new", "analyzed", "processed", "archived"],
+  })
+    .notNull()
+    .default("new"),
+
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date()),
 });
 
 export type Note = typeof notes.$inferSelect;

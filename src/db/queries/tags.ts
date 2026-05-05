@@ -61,7 +61,7 @@ export async function getTagStats(tagId: string, userId: string) {
   return result ?? null;
 }
 
-export async function getTagsByUser(userId: string) {
+export async function getTagsForUser(userId: string) {
   return await db
     .selectDistinct({
       id: tags.id,

@@ -8,7 +8,8 @@ import {
   tags,
   referencesTable,
   users,
-  events, // <-- you forgot me
+  events, 
+  captures
 } from "./schema";
 
 export async function resetDatabase() {
@@ -28,6 +29,7 @@ export async function resetDatabase() {
   await db.delete(tags);
   await db.delete(referencesTable);
 
+  await db.delete(captures);
   // Finally users (top-level parent)
   await db.delete(users);
 

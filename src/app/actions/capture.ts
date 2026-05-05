@@ -3,7 +3,7 @@
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createNote } from "@/db/queries/notes";
-import { getCurrentUserId } from "@/lib/currentUser";
+import { getCurrentUserId } from "@/db/queries/users";
 import { analyzeCaptureText } from "@/lib/ai/analyzeCapture";
 import { createTask, findSimilarTasks } from "@/db/queries/tasks";
 import {
@@ -37,6 +37,7 @@ type ReferenceType =
   | "conversation"
   | "other";
 
+
 function parseReferenceType(value: FormDataEntryValue | null): ReferenceType {
   if (
     value === "book" ||
@@ -51,6 +52,15 @@ function parseReferenceType(value: FormDataEntryValue | null): ReferenceType {
 
   return "other";
 }
+
+const captureStatuses = ["new", "analyzed", "processed", "archived"] as const;
+
+type CaptureStatus = (typeof captureStatuses)[number];
+
+function isCaptureStatus(value: string): value is CaptureStatus {
+  return captureStatuses.includes(value as CaptureStatus);
+}
+
 export async function createCaptureAction(formData: FormData) {
   const rawText = String(formData.get("rawText") ?? "").trim();
 
@@ -59,15 +69,16 @@ export async function createCaptureAction(formData: FormData) {
   }
 
   const userId = await getCurrentUserId();
-  const now = new Date();
 
+
+ const rawStatus = String(formData.get("status") ?? "new");
+
+  const status: CaptureStatus = isCaptureStatus(rawStatus) ? rawStatus : "new";
+  
   await createCapture({
-    id: randomUUID(),
     userId,
     rawText,
-    status: "new",
-    createdAt: now,
-    updatedAt: now,
+    status,
   });
 
   revalidatePath("/capture");

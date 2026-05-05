@@ -6,19 +6,31 @@ import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import Mention from "@tiptap/extension-mention";
 import { Tag, Reference } from "@/db/schema";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { TagMark } from "@/lib/tiptap/extensions/TagMark";
 import { ReferenceMark } from "@/lib/tiptap/extensions/ReferenceMark";
+import { extractReferenceIdsFromContentJson } from "@/lib/notes/extractReferenceIdsFromContentJson";
 
-type EditorTag = {
-  id: string;
-  name: string;
+type ContextMenuTag = {
+  tagId?: string;
+  tagName?: string;
+};
+
+type ContextMenuReference = {
+  referenceId?: string;
+  referenceTitle?: string;
 };
 type ContextMenuState = {
   x: number;
   y: number;
   from: number;
   to: number;
+  hasTagMark: boolean;
+  hasReferenceMark: boolean;
+  tagName?: string;
+  referenceTitle?: string;
+  tags: ContextMenuTag[];
+  references: ContextMenuReference[];
 } | null;
 type RichNoteEditorProps = {
   initialContent: string;
@@ -28,6 +40,10 @@ type RichNoteEditorProps = {
   onReferenceUsed?: (referenceId: string) => void;
   onChange: (data: { plainText: string; json: string }) => void;
   getReferenceLabel: (reference: Reference) => string;
+  onReferenceRemoved?: (referenceId: string) => void;
+  onTagRemoved?: (tagName: string) => void;
+  inlineReferenceIds: string[];
+  selectedReferenceIds: string[];
 };
 
 export default function RichNoteEditor({
@@ -38,10 +54,29 @@ export default function RichNoteEditor({
   onReferenceUsed,
   references = [],
   getReferenceLabel,
+  onReferenceRemoved,
+  onTagRemoved,
+  inlineReferenceIds,
+  selectedReferenceIds,
 }: RichNoteEditorProps) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [selectedText, setSelectedText] = useState("");
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    function handleClick(event: MouseEvent) {
+      if (!menuRef.current) return;
 
+      if (!menuRef.current.contains(event.target as Node)) {
+        setContextMenu(null);
+      }
+    }
+
+    window.addEventListener("mousedown", handleClick);
+
+    return () => {
+      window.removeEventListener("mousedown", handleClick);
+    };
+  }, []);
   const editor = useEditor(
     {
       extensions: [
@@ -244,6 +279,106 @@ export default function RichNoteEditor({
     setContextMenu(null);
   }
 
+function getSelectedMarkInfo(from: number, to: number) {
+  const foundTags = new Map<string, ContextMenuTag>();
+  const foundReferences = new Map<string, ContextMenuReference>();
+
+  editor?.state.doc.nodesBetween(from, to, (node) => {
+    node.marks.forEach((mark) => {
+      if (mark.type.name === "tagMark") {
+        const tagId = mark.attrs.tagId as string | undefined;
+        const tagName = mark.attrs.tagName as string | undefined;
+        const key = tagId || tagName;
+
+        if (key) {
+          foundTags.set(key, { tagId, tagName });
+        }
+      }
+
+      if (mark.type.name === "referenceMark") {
+        const referenceId = mark.attrs.referenceId as string | undefined;
+        const referenceTitle = mark.attrs.referenceTitle as string | undefined;
+        const key = referenceId || referenceTitle;
+
+        if (key) {
+          foundReferences.set(key, { referenceId, referenceTitle });
+        }
+      }
+    });
+  });
+
+  const tagMarks = Array.from(foundTags.values());
+  const referenceMarks = Array.from(foundReferences.values());
+
+  return {
+    tags: tagMarks,
+    references: referenceMarks,
+    hasTagMark: tagMarks.length > 0,
+    hasReferenceMark: referenceMarks.length > 0,
+  };
+}
+
+function removeSpecificTagFromSelection(tagToRemove: ContextMenuTag) {
+  if (!editor || !contextMenu) return;
+
+  const { from, to } = contextMenu;
+
+  editor
+    .chain()
+    .focus()
+    .command(({ tr, state }) => {
+      state.doc.nodesBetween(from, to, (node, pos) => {
+        node.marks.forEach((mark) => {
+          if (
+            mark.type.name === "tagMark" &&
+            mark.attrs.tagId === tagToRemove.tagId &&
+            mark.attrs.tagName === tagToRemove.tagName
+          ) {
+            tr.removeMark(pos, pos + node.nodeSize, mark);
+          }
+        });
+      });
+
+      return true;
+    })
+    .run();
+
+  if (tagToRemove.tagName) {
+    onTagRemoved?.(tagToRemove.tagName);
+  }
+
+  closeContextMenu();
+}
+
+function removeSpecificReferenceFromSelection(
+  referenceToRemove: ContextMenuReference,
+) {
+  if (!editor || !contextMenu) return;
+
+  const { from, to } = contextMenu;
+
+  editor
+    .chain()
+    .focus()
+    .command(({ tr, state }) => {
+      state.doc.nodesBetween(from, to, (node, pos) => {
+        node.marks.forEach((mark) => {
+          if (
+            mark.type.name === "referenceMark" &&
+            mark.attrs.referenceId === referenceToRemove.referenceId &&
+            mark.attrs.referenceTitle === referenceToRemove.referenceTitle
+          ) {
+            tr.removeMark(pos, pos + node.nodeSize, mark);
+          }
+        });
+      });
+
+      return true;
+    })
+    .run();
+
+  closeContextMenu();
+}
   function highlightSelection() {
     if (!editor) return;
 
@@ -253,7 +388,14 @@ export default function RichNoteEditor({
 
 function linkSelectionToReference(reference: Reference) {
   if (!editor || !contextMenu) return;
+const alreadyHasReference = contextMenu.references.some(
+  (item) => item.referenceId === reference.id,
+);
 
+if (alreadyHasReference) {
+  closeContextMenu();
+  return;
+}
   editor
     .chain()
     .focus()
@@ -273,7 +415,14 @@ function linkSelectionToReference(reference: Reference) {
 
 function tagSelection(tag: Tag) {
   if (!editor || !contextMenu) return;
+const alreadyHasTag = contextMenu.tags.some(
+  (item) => item.tagId === tag.id || item.tagName === tag.name,
+);
 
+if (alreadyHasTag) {
+  closeContextMenu();
+  return;
+}
   editor
     .chain()
     .focus()
@@ -291,34 +440,50 @@ function tagSelection(tag: Tag) {
   closeContextMenu();
 }
 
-function createTagFromSelection() {
-  if (!editor || !selectedText || !contextMenu) return;
+  function createTagFromSelection() {
+    if (!editor || !selectedText || !contextMenu) return;
 
-  const tagName = selectedText.trim().replace(/^#/, "").toLowerCase();
+    const tagName = selectedText.trim().replace(/^#/, "").toLowerCase();
 
-  editor
-    .chain()
-    .focus()
-    .setTextSelection({
-      from: contextMenu.from,
-      to: contextMenu.to,
-    })
-    .insertContent([
-      {
-        type: "mention",
-        attrs: {
-          id: `new:${tagName}`,
-          label: "🏷",
-          tagName,
-        },
-      },
-      { type: "text", text: " " },
-    ])
-    .run();
+    editor
+      .chain()
+      .focus()
+      .setTextSelection({
+        from: contextMenu.from,
+        to: contextMenu.to,
+      })
+      .setMark("tagMark", {
+        tagId: `new:${tagName}`,
+        tagName,
+      })
+      .run();
 
-  onTagUsed?.(tagName);
-  closeContextMenu();
-}
+    onTagUsed?.(tagName);
+    closeContextMenu();
+  }
+
+  function getSafeContextMenuPosition(x: number, y: number) {
+    const menuWidth = 256;
+    const padding = 12;
+    const offset = 12;
+
+    const safeX =
+      x + offset + menuWidth > window.innerWidth
+        ? window.innerWidth - menuWidth - padding
+        : x + offset;
+
+    const maxMenuHeight = Math.floor(window.innerHeight * 0.8);
+    const safeY =
+      y + maxMenuHeight > window.innerHeight
+        ? window.innerHeight - maxMenuHeight - padding
+        : y;
+
+    return {
+      x: Math.max(padding, safeX),
+      y: Math.max(padding, safeY),
+    };
+  }
+
   return (
     <div className="rounded-xl border border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-950">
       <div className="flex flex-wrap gap-2 border-b border-gray-200 p-2 dark:border-gray-700">
@@ -349,24 +514,30 @@ function createTagFromSelection() {
 
       <div
         className="relative"
-        onClick={closeContextMenu}
         onContextMenu={(event) => {
           event.preventDefault();
-
-          if (!editor.state.selection.empty) {
-            const { from, to } = editor.state.selection;
-
-            const text = editor.state.doc.textBetween(from, to, " ");
-
-            setSelectedText(text.trim());
-
-            setContextMenu({
-              x: event.clientX,
-              y: event.clientY,
-              from,
-              to,
-            });
+          const position = getSafeContextMenuPosition(
+            event.clientX,
+            event.clientY,
+          );
+          if (editor.state.selection.empty) {
+            closeContextMenu();
+            return;
           }
+
+          const { from, to } = editor.state.selection;
+          const text = editor.state.doc.textBetween(from, to, " ");
+          const markInfo = getSelectedMarkInfo(from, to);
+
+          setSelectedText(text.trim());
+
+          setContextMenu({
+            x: position.x,
+            y: position.y,
+            from,
+            to,
+            ...markInfo,
+          });
         }}
       >
         <EditorContent
@@ -407,7 +578,8 @@ function createTagFromSelection() {
 
         {contextMenu && (
           <div
-            className="fixed z-[9999] w-64 rounded-xl border border-gray-200 bg-white p-2 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-900"
+            ref={menuRef}
+            className="fixed z-[9999] flex max-h-[80vh] w-64 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-2 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-900"
             style={{
               left: contextMenu.x,
               top: contextMenu.y,
@@ -422,65 +594,123 @@ function createTagFromSelection() {
                   : selectedText}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={highlightSelection}
-              className="block w-full rounded-lg px-3 py-2 text-left text-gray-800 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800"
-            >
-              Highlight selected text
-            </button>
-            {selectedText && (
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
               <button
                 type="button"
-                onClick={createTagFromSelection}
+                onClick={highlightSelection}
                 className="block w-full rounded-lg px-3 py-2 text-left text-gray-800 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800"
               >
-                Create tag: #
-                {selectedText.trim().replace(/^#/, "").toLowerCase()}
+                Highlight selected text
               </button>
-            )}
-            {tags.length > 0 && (
-              <div className="mt-2 border-t border-gray-200 pt-2 dark:border-gray-700">
-                <p className="px-3 pb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  Tag selected text
-                </p>
+              {selectedText && (
+                <button
+                  type="button"
+                  onClick={createTagFromSelection}
+                  className="block w-full rounded-lg px-3 py-2 text-left text-gray-800 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800"
+                >
+                  Create tag: #
+                  {selectedText.trim().replace(/^#/, "").toLowerCase()}
+                </button>
+              )}
+              {(contextMenu.hasTagMark || contextMenu.hasReferenceMark) && (
+                <div className="mb-2 border-b border-gray-200 pb-2 dark:border-gray-700">
+                  <p className="px-3 pb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                    Existing inline connections
+                  </p>
 
-                <div className="max-h-32 overflow-y-auto">
-                  {tags.map((tag) => (
+                  {contextMenu.tags.map((tag) => (
                     <button
-                      key={tag.id}
+                      key={tag.tagId || tag.tagName}
                       type="button"
-                      onClick={() => tagSelection(tag)}
-                      className="block w-full rounded-lg px-3 py-2 text-left text-gray-800 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800"
+                      onClick={() => removeSpecificTagFromSelection(tag)}
+                      className="block w-full rounded-lg px-3 py-2 text-left text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-900/30"
                     >
-                      #{tag.name}
+                      Remove tag {tag.tagName ? `#${tag.tagName}` : ""}
+                    </button>
+                  ))}
+
+                  {contextMenu.references.map((reference) => (
+                    <button
+                      key={reference.referenceId || reference.referenceTitle}
+                      type="button"
+                      onClick={() =>
+                        removeSpecificReferenceFromSelection(reference)
+                      }
+                      className="block w-full rounded-lg px-3 py-2 text-left text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-900/30"
+                    >
+                      Remove reference{" "}
+                      {reference.referenceTitle
+                        ? `(${reference.referenceTitle})`
+                        : ""}
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+              {tags.length > 0 && (
+                <div className="mt-2 border-t border-gray-200 pt-2 dark:border-gray-700">
+                  <p className="px-3 pb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                    {contextMenu.hasTagMark
+                      ? "Change tag"
+                      : "Tag selected text"}
+                  </p>
 
-            {references.length > 0 && (
-              <div className="mt-2 border-t border-gray-200 pt-2 dark:border-gray-700">
-                <p className="px-3 pb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  Link selected text to reference
-                </p>
-
-                <div className="max-h-40 overflow-y-auto">
-                  {references.map((reference) => (
-                    <button
-                      key={reference.id}
-                      type="button"
-                      onClick={() => linkSelectionToReference(reference)}
-                      className="block w-full rounded-lg px-3 py-2 text-left text-gray-800 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800"
-                      title={getReferenceLabel(reference)}
-                    >
-                      {getReferenceLabel(reference)}
-                    </button>
-                  ))}
+                  <div className="max-h-32 overflow-y-auto">
+                    {tags.map((tag) => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => tagSelection(tag)}
+                        className="block w-full rounded-lg px-3 py-2 text-left text-gray-800 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800"
+                      >
+                        #{tag.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+
+              {references.length > 0 && (
+                <div className="mt-2 border-t border-gray-200 pt-2 dark:border-gray-700">
+                  <p className="px-3 pb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                    {contextMenu.hasReferenceMark
+                      ? "Change reference"
+                      : "Link selected text to reference"}
+                  </p>
+
+                  <div className="max-h-40 overflow-y-auto">
+                    {references.map((reference) => {
+                      const selected = selectedReferenceIds.includes(
+                        reference.id,
+                      );
+                      const isInline = inlineReferenceIds.includes(
+                        reference.id,
+                      );
+                      return (
+                        <button
+                          key={reference.id}
+                          type="button"
+                          onClick={() => linkSelectionToReference(reference)}
+                          className="block w-full rounded-lg px-3 py-2 text-left text-gray-800 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800"
+                          title={getReferenceLabel(reference)}
+                        >
+                          <span className="block font-medium">
+                            {getReferenceLabel(reference)}
+                          </span>
+
+                          <span className="block text-xs opacity-75">
+                            {isInline
+                              ? "Used in text"
+                              : selected
+                                ? "Attached to note"
+                                : "Not attached"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

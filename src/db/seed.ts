@@ -32,7 +32,11 @@ async function seed() {
     return;
   }
 
-  const user = await createUser("Default User");
+  const user = await createUser({
+    name: "Diane Dev",
+    email: "annieml99@hotmail.com",
+    clerkId: "user_3DJTiW2TXDvMMqCIbAw8zbaSTLC",
+  });
   console.log("Created user:", user);
 
   const sqljoins = await createNote({

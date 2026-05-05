@@ -1,5 +1,5 @@
 import { getTasksByUserId } from "@/db/queries/tasks";
-import { getCurrentUserId } from "@/lib/currentUser";
+import { getCurrentUserId } from "@/db/queries/users";
 import TaskBoard from "@/components/tasks/Taskboard";
 
 export default async function TasksPage() {

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createEvent } from "@/db/queries/calendar";
-import { getCurrentUserId } from "@/lib/currentUser";
+import { getCurrentUserId } from "@/db/queries/users";
 import { getEventsInRange, getTasksDueInRange } from "@/db/queries/calendar";
 import { deleteEvent } from "@/db/queries/calendar";
 import { redirect } from "next/navigation";

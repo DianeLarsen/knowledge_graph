@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import KnowledgeHomeTopNav from "@/components/KnowledgeHomeTopNav";
-import { ThemeProvider } from "@/components/theme-provider";
 
+import { ThemeProvider } from "@/components/theme-provider";
+import { ClerkProvider } from "@clerk/nextjs";
+import KnowledgeHomeTopNav from "@/components/KnowledgeHomeTopNav";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
-
+import PublicHeader from "@/components/PublicHeader";
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -25,18 +26,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased `}
-      suppressHydrationWarning
-    >
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <ThemeProvider>
-          <KnowledgeHomeTopNav />
-
-          <main className="flex-1">{children}</main>
-        </ThemeProvider>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html
+        lang="en"
+        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased `}
+        suppressHydrationWarning
+      >
+        <body className="min-h-full flex flex-col" suppressHydrationWarning>
+          <ThemeProvider>
+            <PublicHeader />
+            <KnowledgeHomeTopNav />
+            <main className="flex-1">{children}</main>
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

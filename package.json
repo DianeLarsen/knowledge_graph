@@ -16,6 +16,7 @@
     "db:fresh": "npm run db:reset && npm run db:seed"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.3.0",
     "@libsql/client": "^0.17.3",
     "@tiptap/extension-highlight": "^3.22.4",
     "@tiptap/extension-link": "^3.22.4",

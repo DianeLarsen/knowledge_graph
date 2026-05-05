@@ -57,6 +57,20 @@
       "when": 1777571861139,
       "tag": "0007_slow_boomer",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1778000125566,
+      "tag": "0008_futuristic_dreadnoughts",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1778000933585,
+      "tag": "0009_misty_betty_ross",
+      "breakpoints": true
     }
   ]
 }

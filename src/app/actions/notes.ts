@@ -19,9 +19,10 @@ type UpdateNoteActionInput = {
   id: string;
   title: string;
   content: string;
-  contentJson?: string;
-  inlineTagNames?: string[];
-  selectedReferenceIds?: string[];
+  contentJson: string;
+  inlineTagNames: string[];
+  selectedReferenceIds: string[];
+  linkedNoteIds?: string[];
 };
 
 export async function updateNoteAction(input: UpdateNoteActionInput) {
@@ -32,6 +33,7 @@ export async function updateNoteAction(input: UpdateNoteActionInput) {
     input.contentJson,
     input.inlineTagNames,
     input.selectedReferenceIds,
+    input.linkedNoteIds,
   );
 
   revalidatePath(`/notes/${input.id}`);

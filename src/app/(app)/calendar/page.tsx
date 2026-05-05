@@ -1,6 +1,6 @@
 import CalendarClient from "@/components/calendar/CalendarClient";
-import { getCalendarItems } from "../actions/calendar";
-import { getCurrentUserId } from "@/lib/currentUser";
+import { getCalendarItems } from "../../actions/calendar";
+import { getCurrentUserId } from "@/db/queries/users";
 import { getNotesByUser } from "@/db/queries/notes";
 import { getTasksByUserId } from "@/db/queries/tasks";
 

@@ -2,7 +2,7 @@ import { Mark, mergeAttributes } from "@tiptap/core";
 
 export const ReferenceMark = Mark.create({
   name: "referenceMark",
-
+  excludes: "",
   addAttributes() {
     return {
       referenceId: {
