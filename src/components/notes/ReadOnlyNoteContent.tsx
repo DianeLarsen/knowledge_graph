@@ -7,7 +7,8 @@ import Link from "@tiptap/extension-link";
 import Mention from "@tiptap/extension-mention";
 import { TagMark } from "@/lib/tiptap/extensions/TagMark";
 import { ReferenceMark } from "@/lib/tiptap/extensions/ReferenceMark";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { TagColor } from "@/lib/tags/tagColors";
 
 type ReadOnlyReference = {
   id: string;
@@ -20,32 +21,129 @@ type ReadOnlyTag = {
   id: string;
   name: string;
 };
+
 type ReadOnlyNoteContentProps = {
   content: string | null;
   references?: ReadOnlyReference[];
   tags?: ReadOnlyTag[];
+  tagColorMap?: Record<string, TagColor>;
 };
 
 export default function ReadOnlyNoteContent({
   content,
   references = [],
   tags = [],
+  tagColorMap = {},
 }: ReadOnlyNoteContentProps) {
-const [preview, setPreview] = useState<
-  | {
-      type: "reference";
-      x: number;
-      y: number;
-      reference: ReadOnlyReference;
-    }
-  | {
-      type: "tag";
-      x: number;
-      y: number;
-      tag: ReadOnlyTag;
-    }
-  | null
->(null);
+
+  const [preview, setPreview] = useState<
+    | {
+        type: "reference";
+        x: number;
+        y: number;
+        reference: ReadOnlyReference;
+      }
+    | {
+        type: "tag";
+        x: number;
+        y: number;
+        tag: ReadOnlyTag;
+      }
+    | null
+    >(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+const colorClassMap: Record<TagColor, string[]> = {
+  blue: [
+    "bg-blue-100",
+    "text-blue-700",
+    "dark:bg-blue-900/40",
+    "dark:text-blue-200",
+  ],
+  sky: [
+    "bg-sky-100",
+    "text-sky-700",
+    "dark:bg-sky-900/40",
+    "dark:text-sky-200",
+  ],
+  cyan: [
+    "bg-cyan-100",
+    "text-cyan-700",
+    "dark:bg-cyan-900/40",
+    "dark:text-cyan-200",
+  ],
+  teal: [
+    "bg-teal-100",
+    "text-teal-700",
+    "dark:bg-teal-900/40",
+    "dark:text-teal-200",
+  ],
+  emerald: [
+    "bg-emerald-100",
+    "text-emerald-700",
+    "dark:bg-emerald-900/40",
+    "dark:text-emerald-200",
+  ],
+  green: [
+    "bg-green-100",
+    "text-green-700",
+    "dark:bg-green-900/40",
+    "dark:text-green-200",
+  ],
+  lime: [
+    "bg-lime-100",
+    "text-lime-700",
+    "dark:bg-lime-900/40",
+    "dark:text-lime-200",
+  ],
+  amber: [
+    "bg-amber-100",
+    "text-amber-700",
+    "dark:bg-amber-900/40",
+    "dark:text-amber-200",
+  ],
+  orange: [
+    "bg-orange-100",
+    "text-orange-700",
+    "dark:bg-orange-900/40",
+    "dark:text-orange-200",
+  ],
+  rose: [
+    "bg-rose-100",
+    "text-rose-700",
+    "dark:bg-rose-900/40",
+    "dark:text-rose-200",
+  ],
+  pink: [
+    "bg-pink-100",
+    "text-pink-700",
+    "dark:bg-pink-900/40",
+    "dark:text-pink-200",
+  ],
+  purple: [
+    "bg-purple-100",
+    "text-purple-700",
+    "dark:bg-purple-900/40",
+    "dark:text-purple-200",
+  ],
+  violet: [
+    "bg-violet-100",
+    "text-violet-700",
+    "dark:bg-violet-900/40",
+    "dark:text-violet-200",
+  ],
+  indigo: [
+    "bg-indigo-100",
+    "text-indigo-700",
+    "dark:bg-indigo-900/40",
+    "dark:text-indigo-200",
+  ],
+};
+
+function getTagColorClasses(tagId?: string | null) {
+  if (!tagId) return colorClassMap.blue.join(" ");
+  return colorClassMap[tagColorMap[tagId] ?? "blue"].join(" ");
+}
+
   const editor = useEditor({
     editable: false,
     extensions: [
@@ -85,14 +183,17 @@ const [preview, setPreview] = useState<
         },
 
         renderHTML({ node }) {
+          const tagId = node.attrs.id ?? "";
           const tagName = node.attrs.tagName ?? "";
 
           return [
             "span",
             {
-              class:
-                "mention inline-flex cursor-help rounded bg-blue-100 px-1 text-blue-700 align-baseline leading-none dark:bg-blue-900/40 dark:text-blue-200",
+              class: `mention inline-flex cursor-help rounded px-1 align-baseline leading-none ${getTagColorClasses(
+                tagId,
+              )}`,
               title: tagName ? `#${tagName}` : "Tag",
+              "data-inline-tag-id": tagId,
               "data-tag-name": tagName,
             },
             "🏷",
@@ -105,10 +206,29 @@ const [preview, setPreview] = useState<
     immediatelyRender: false,
   });
 
-  if (!editor) return null;
 
+
+useEffect(() => {
+  if (!editor) return;
+
+  const allColorClasses = Object.values(colorClassMap).flat();
+
+  const elements =
+    contentRef.current?.querySelectorAll("[data-inline-tag-id]") ?? [];
+
+  elements.forEach((element) => {
+    const tagId = element.getAttribute("data-inline-tag-id");
+    const color = tagColorMap[tagId ?? ""] ?? "blue";
+
+    element.classList.remove(...allColorClasses);
+    element.classList.add(...colorClassMap[color]);
+  });
+}, [editor, tagColorMap]);
+
+  if (!editor) return null;
+  
   return (
-    <div className="relative" onClick={() => setPreview(null)}>
+    <div ref={contentRef} className="relative" onClick={() => setPreview(null)}>
       <EditorContent
         editor={editor}
         onClick={(event) => {
@@ -195,14 +315,11 @@ const [preview, setPreview] = useState<
         [&_.ProseMirror_a]:underline
 
         [&_.tag-mark]:rounded
-        [&_.tag-mark]:bg-blue-50
         [&_.tag-mark]:px-1
-        [&_.tag-mark]:text-blue-700
         [&_.tag-mark]:underline
         [&_.tag-mark]:decoration-dotted
         [&_.tag-mark]:underline-offset-2
-        dark:[&_.tag-mark]:bg-blue-900/30
-        dark:[&_.tag-mark]:text-blue-200
+        [&_.tag-mark]:cursor-pointer
 
         [&_.reference-mark]:cursor-pointer
         [&_.reference-mark]:rounded
@@ -214,7 +331,7 @@ const [preview, setPreview] = useState<
         [&_.reference-mark]:underline-offset-2
         dark:[&_.reference-mark]:bg-amber-900/30
         dark:[&_.reference-mark]:text-amber-200
-        [&_.tag-mark]:cursor-pointer
+        
       "
       />
 

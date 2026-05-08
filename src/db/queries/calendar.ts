@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, lte, or, isNotNull, ne } from "drizzle-orm";
+import { and, asc, eq, gte, isNotNull, lte, ne, or } from "drizzle-orm";
 import { db } from "@/db";
 import { events, tasks, type NewEvent } from "@/db/schema";
 
@@ -7,12 +7,13 @@ export async function getEventsInRange(
   startDate: string,
   endDate: string,
 ) {
-  return await db
+  return db
     .select()
     .from(events)
     .where(
       and(
-        eq(events.userId, userId),
+        eq(events.ownerType, "user"),
+        eq(events.ownerId, userId),
         or(
           and(gte(events.startDate, startDate), lte(events.startDate, endDate)),
           and(
@@ -36,12 +37,13 @@ export async function getTasksDueInRange(
   startDate: string,
   endDate: string,
 ) {
-  return await db
+  return db
     .select()
     .from(tasks)
     .where(
       and(
-        eq(tasks.userId, userId),
+        eq(tasks.ownerType, "user"),
+        eq(tasks.ownerId, userId),
         ne(tasks.status, "archived"),
         gte(tasks.dueDate, startDate),
         lte(tasks.dueDate, endDate),
@@ -52,7 +54,28 @@ export async function getTasksDueInRange(
 
 export async function createEvent(data: NewEvent) {
   const [createdEvent] = await db.insert(events).values(data).returning();
-  return createdEvent;
+  return createdEvent ?? null;
+}
+
+export async function createUserEvent(
+  userId: string,
+  data: Omit<
+    NewEvent,
+    "createdByUserId" | "ownerType" | "ownerId" | "visibility"
+  >,
+) {
+  const [createdEvent] = await db
+    .insert(events)
+    .values({
+      ...data,
+      createdByUserId: userId,
+      ownerType: "user",
+      ownerId: userId,
+      visibility: "private",
+    })
+    .returning();
+
+  return createdEvent ?? null;
 }
 
 export async function updateEvent(
@@ -62,27 +85,48 @@ export async function updateEvent(
 ) {
   const [updatedEvent] = await db
     .update(events)
-    .set(data)
-    .where(and(eq(events.id, eventId), eq(events.userId, userId)))
+    .set({
+      ...data,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(events.id, eventId),
+        eq(events.ownerType, "user"),
+        eq(events.ownerId, userId),
+      ),
+    )
     .returning();
 
-  return updatedEvent;
+  return updatedEvent ?? null;
 }
 
 export async function deleteEvent(eventId: string, userId: string) {
   const [deletedEvent] = await db
     .delete(events)
-    .where(and(eq(events.id, eventId), eq(events.userId, userId)))
+    .where(
+      and(
+        eq(events.id, eventId),
+        eq(events.ownerType, "user"),
+        eq(events.ownerId, userId),
+      ),
+    )
     .returning();
 
-  return deletedEvent;
+  return deletedEvent ?? null;
 }
 
 export async function getEventById(eventId: string, userId: string) {
   const [event] = await db
     .select()
     .from(events)
-    .where(and(eq(events.id, eventId), eq(events.userId, userId)));
+    .where(
+      and(
+        eq(events.id, eventId),
+        eq(events.ownerType, "user"),
+        eq(events.ownerId, userId),
+      ),
+    );
 
-  return event;
+  return event ?? null;
 }

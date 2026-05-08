@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  createTask,
+  createUserTask,
   updateTask,
   deleteTask,
   findSimilarTasks,
@@ -10,7 +10,10 @@ import {
 import { getCurrentUserId } from "@/db/queries/users";
 import { type NewTask } from "@/db/schema";
 
-type CreateTaskInput = Omit<NewTask, "userId"> & {
+type CreateTaskInput = Omit<
+  NewTask,
+  "createdByUserId" | "ownerType" | "ownerId" | "visibility"
+> & {
   skipDuplicateCheck?: boolean;
 };
 
@@ -28,12 +31,7 @@ export async function createTaskAction(input: CreateTaskInput) {
 }
 
 export async function updateTaskAction(id: string, data: Partial<NewTask>) {
-  const userId = await getCurrentUserId();
-
-  const task = await updateTask(id, {
-    ...data,
-    userId,
-  });
+  const task = await updateTask(id, data);
 
   revalidateTasks();
 
@@ -49,7 +47,7 @@ export async function deleteTaskAction(id: string) {
 }
 
 export async function createTaskWithDuplicateCheck(
-  data: NewTask & { skipDuplicateCheck?: boolean },
+  data: CreateTaskInput & { userId: string },
 ) {
   if (!data.skipDuplicateCheck) {
     const similarTasks = await findSimilarTasks({
@@ -67,16 +65,14 @@ export async function createTaskWithDuplicateCheck(
     }
   }
 
-  const taskData = {
-    userId: data.userId,
+  const task = await createUserTask(data.userId, {
     title: data.title,
     description: data.description,
     status: data.status,
     priority: data.priority,
     dueDate: data.dueDate,
     noteId: data.noteId,
-  };
-  const task = await createTask(taskData);
+  });
 
   return {
     duplicate: false,

@@ -42,3 +42,41 @@ body {
   --text: 241 245 249;
   --muted: 148 163 184;
 }
+
+/* Dark scrollbar */
+.dark ::-webkit-scrollbar {
+  width: 10px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #020817;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e3a5f;
+  border-radius: 9999px;
+  border: 2px solid #020817;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
+}
+
+/* Light scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 9999px;
+  border: 2px solid #f3f4f6;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}

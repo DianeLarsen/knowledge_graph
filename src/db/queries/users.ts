@@ -53,14 +53,31 @@ export async function createUser(input: {
   clerkId: string;
 }) {
   const [result] = await db.insert(users).values(input).returning();
-  return result;
+
+  return result ?? null;
 }
 
 export async function getAllUsers() {
-  return await db.select().from(users);
+  return db.select().from(users);
 }
 
 export async function getUserById(id: string) {
-  const result = await db.select().from(users).where(eq(users.id, id));
-  return result[0];
+  const [result] = await db.select().from(users).where(eq(users.id, id));
+
+  return result ?? null;
+}
+
+export async function getUserByClerkId(clerkId: string) {
+  const [result] = await db
+    .select()
+    .from(users)
+    .where(eq(users.clerkId, clerkId));
+
+  return result ?? null;
+}
+
+export async function getUserByEmail(email: string) {
+  const [result] = await db.select().from(users).where(eq(users.email, email));
+
+  return result ?? null;
 }

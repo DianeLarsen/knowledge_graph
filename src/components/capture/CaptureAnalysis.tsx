@@ -109,7 +109,12 @@ export default function CaptureAnalysis({
                       Priority: {task.priority}
                     </p>
 
-                    <form action={createTaskFromCaptureAction} className="mt-3">
+                    <form
+                      action={async (formData) => {
+                        await createTaskFromCaptureAction(formData);
+                      }}
+                      className="mt-3"
+                    >
                       <input type="hidden" name="captureId" value={captureId} />
                       <input type="hidden" name="taskIndex" value={index} />
                       <input type="hidden" name="title" value={task.title} />
@@ -180,7 +185,12 @@ export default function CaptureAnalysis({
                       {note.content}
                     </p>
 
-                    <form action={createNoteFromCaptureAction} className="mt-3">
+                    <form
+                      action={async (formData) => {
+                        await createNoteFromCaptureAction(formData);
+                      }}
+                      className="mt-3"
+                    >
                       <input type="hidden" name="captureId" value={captureId} />
                       <input type="hidden" name="noteIndex" value={index} />
                       <input type="hidden" name="title" value={note.title} />
@@ -270,7 +280,9 @@ export default function CaptureAnalysis({
                     </div>
 
                     <form
-                      action={createReferenceFromCaptureAction}
+                      action={async (formData) => {
+                        await createReferenceFromCaptureAction(formData);
+                      }}
                       className="mt-3"
                     >
                       <input type="hidden" name="captureId" value={captureId} />

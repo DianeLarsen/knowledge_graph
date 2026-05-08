@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../index";
 import {
   entityLinks,
@@ -9,8 +9,13 @@ import {
 } from "../schema";
 
 export async function createEntityLink(data: NewEntityLink) {
-  const [result] = await db.insert(entityLinks).values(data).returning();
-  return result;
+  const [result] = await db
+    .insert(entityLinks)
+    .values(data)
+    .onConflictDoNothing()
+    .returning();
+
+  return result ?? null;
 }
 
 export async function deleteEntityLink({
@@ -29,7 +34,7 @@ export async function deleteEntityLink({
   relationshipType?: RelationshipType;
 }) {
   const conditions = [
-    eq(entityLinks.userId, userId),
+    eq(entityLinks.createdByUserId, userId),
     eq(entityLinks.sourceType, sourceType),
     eq(entityLinks.sourceId, sourceId),
     eq(entityLinks.targetType, targetType),
@@ -40,7 +45,7 @@ export async function deleteEntityLink({
     conditions.push(eq(entityLinks.relationshipType, relationshipType));
   }
 
-  return await db
+  return db
     .delete(entityLinks)
     .where(and(...conditions))
     .returning();
@@ -55,11 +60,11 @@ export async function deleteEntityLinksForSource({
   sourceType: EntityType;
   sourceId: string;
 }) {
-  return await db
+  return db
     .delete(entityLinks)
     .where(
       and(
-        eq(entityLinks.userId, userId),
+        eq(entityLinks.createdByUserId, userId),
         eq(entityLinks.sourceType, sourceType),
         eq(entityLinks.sourceId, sourceId),
       ),
@@ -76,11 +81,11 @@ export async function deleteEntityLinksForTarget({
   targetType: EntityType;
   targetId: string;
 }) {
-  return await db
+  return db
     .delete(entityLinks)
     .where(
       and(
-        eq(entityLinks.userId, userId),
+        eq(entityLinks.createdByUserId, userId),
         eq(entityLinks.targetType, targetType),
         eq(entityLinks.targetId, targetId),
       ),
@@ -88,19 +93,11 @@ export async function deleteEntityLinksForTarget({
     .returning();
 }
 
-export async function getOutgoingLinks(noteId: string, userId?: string) {
-  const conditions = [
-    eq(entityLinks.sourceType, "note"),
-    eq(entityLinks.sourceId, noteId),
-  ];
-
-  if (userId) {
-    conditions.push(eq(entityLinks.userId, userId));
-  }
-
-  return await db
+export async function getOutgoingLinks(noteId: string, userId: string) {
+  return db
     .select({
       id: entityLinks.id,
+      createdByUserId: entityLinks.createdByUserId,
       relationshipType: entityLinks.relationshipType,
       label: entityLinks.label,
       sourceType: entityLinks.sourceType,
@@ -120,22 +117,22 @@ export async function getOutgoingLinks(noteId: string, userId?: string) {
         eq(entityLinks.targetId, notes.id),
       ),
     )
-    .where(and(...conditions));
+    .where(
+      and(
+        eq(entityLinks.sourceType, "note"),
+        eq(entityLinks.sourceId, noteId),
+        eq(notes.ownerType, "user"),
+        eq(notes.ownerId, userId),
+        isNull(notes.deletedAt),
+      ),
+    );
 }
 
-export async function getBacklinks(noteId: string, userId?: string) {
-  const conditions = [
-    eq(entityLinks.targetType, "note"),
-    eq(entityLinks.targetId, noteId),
-  ];
-
-  if (userId) {
-    conditions.push(eq(entityLinks.userId, userId));
-  }
-
-  return await db
+export async function getBacklinks(noteId: string, userId: string) {
+  return db
     .select({
       id: entityLinks.id,
+      createdByUserId: entityLinks.createdByUserId,
       relationshipType: entityLinks.relationshipType,
       label: entityLinks.label,
       sourceType: entityLinks.sourceType,
@@ -155,5 +152,13 @@ export async function getBacklinks(noteId: string, userId?: string) {
         eq(entityLinks.sourceId, notes.id),
       ),
     )
-    .where(and(...conditions));
+    .where(
+      and(
+        eq(entityLinks.targetType, "note"),
+        eq(entityLinks.targetId, noteId),
+        eq(notes.ownerType, "user"),
+        eq(notes.ownerId, userId),
+        isNull(notes.deletedAt),
+      ),
+    );
 }

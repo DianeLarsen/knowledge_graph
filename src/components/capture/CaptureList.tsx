@@ -10,36 +10,24 @@ import {
 } from "@/app/actions/capture";
 
 type CaptureStatus = "all" | "new" | "analyzed" | "processed";
+type StoredCaptureStatus = "new" | "analyzed" | "processed" | "archived";
 
 type Capture = {
   id: string;
   rawText: string;
-  status: string;
+  status: StoredCaptureStatus;
   analysisJson: string | null;
   createdAt: Date;
 };
 
-export default function CaptureList({ captures }: { captures: Capture[] }) {
-  const [filter, setFilter] = useState<CaptureStatus>("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [includeArchived, setIncludeArchived] = useState(false);
+type CaptureProgress = {
+  createdTasks: number;
+  createdNotes: number;
+  createdReferences: number;
+  readyToProcess: boolean;
+};
 
-  const normalizedSearch = searchQuery.trim().toLowerCase();
-
-  const filteredCaptures = captures.filter((capture) => {
-    const matchesArchiveSetting =
-      includeArchived || capture.status !== "archived";
-
-    const matchesStatus = filter === "all" || capture.status === filter;
-
-    const matchesSearch =
-      !normalizedSearch ||
-      capture.rawText.toLowerCase().includes(normalizedSearch) ||
-      capture.analysisJson?.toLowerCase().includes(normalizedSearch);
-
-    return matchesArchiveSetting && matchesStatus && matchesSearch;
-  });
-function getCaptureProgress(analysisJson: string | null) {
+function getCaptureProgress(analysisJson: string | null): CaptureProgress {
   if (!analysisJson) {
     return {
       createdTasks: 0,
@@ -83,6 +71,28 @@ function getCaptureProgress(analysisJson: string | null) {
     };
   }
 }
+export default function CaptureList({ captures }: { captures: Capture[] }) {
+  const [filter, setFilter] = useState<CaptureStatus>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
+
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  const filteredCaptures = captures.filter((capture) => {
+    const matchesArchiveSetting =
+      includeArchived || capture.status !== "archived";
+
+    const matchesStatus = filter === "all" || capture.status === filter;
+
+    const matchesSearch =
+      !normalizedSearch ||
+      capture.rawText.toLowerCase().includes(normalizedSearch) ||
+      capture.analysisJson?.toLowerCase().includes(normalizedSearch);
+
+    return matchesArchiveSetting && matchesStatus && matchesSearch;
+  });
+ 
+
   return (
     <section>
       <div className="mb-4 space-y-3">
@@ -170,8 +180,12 @@ function getCaptureProgress(analysisJson: string | null) {
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {(!capture.analysisJson && capture.status === "new") ? (
-                    <form action={analyzeCaptureAction.bind(null, capture.id)}>
+                  {!capture.analysisJson && capture.status === "new" ? (
+                    <form
+                      action={async () => {
+                        await archiveCaptureAction(capture.id);
+                      }}
+                    >
                       <button
                         type="submit"
                         className="rounded-lg border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950"
@@ -188,10 +202,9 @@ function getCaptureProgress(analysisJson: string | null) {
                   {progress.readyToProcess &&
                     capture.status !== "processed" && (
                       <form
-                        action={markCaptureProcessedAction.bind(
-                          null,
-                          capture.id,
-                        )}
+                        action={async () => {
+                          await markCaptureProcessedAction(capture.id);
+                        }}
                       >
                         <button
                           type="submit"
@@ -202,7 +215,11 @@ function getCaptureProgress(analysisJson: string | null) {
                       </form>
                     )}
                   {capture.status === "processed" && (
-                    <form action={archiveCaptureAction.bind(null, capture.id)}>
+                    <form
+                      action={async () => {
+                        await archiveCaptureAction(capture.id);
+                      }}
+                    >
                       <button
                         type="submit"
                         className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
@@ -212,7 +229,11 @@ function getCaptureProgress(analysisJson: string | null) {
                     </form>
                   )}
                   {capture.status === "archived" && (
-                    <form action={deleteCaptureAction.bind(null, capture.id)}>
+                    <form
+                      action={async () => {
+                        await deleteCaptureAction(capture.id);
+                      }}
+                    >
                       <button
                         type="submit"
                         onClick={(event) => {

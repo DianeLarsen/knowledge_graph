@@ -1,0 +1,1 @@
+ALTER TABLE `tags` ADD `color` text DEFAULT 'blue' NOT NULL;

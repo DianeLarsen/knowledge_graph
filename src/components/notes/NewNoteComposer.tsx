@@ -35,8 +35,11 @@ export default function NewNoteComposer({
   const [availableReferences, setAvailableReferences] =
     useState<Reference[]>(references);
   const [showReferenceComposer, setShowReferenceComposer] = useState(false);
-    const inlineReferenceIds = extractReferenceIdsFromContentJson(contentJson);
+  const inlineReferenceIds = extractReferenceIdsFromContentJson(contentJson);
+
   const router = useRouter();
+  const titleMissing = savedMessage.includes("card title");
+  
   function toggleTag(tagId: string) {
     setSelectedTagIds((current) =>
       current.includes(tagId)
@@ -44,6 +47,7 @@ export default function NewNoteComposer({
         : [...current, tagId],
     );
   }
+
   function resetComposer() {
     setTitle("");
     setContent("");
@@ -57,6 +61,7 @@ export default function NewNoteComposer({
     setSelectedReferenceIds([]);
     setShowReferenceComposer(false);
   }
+
   function toggleLinkedNote(noteId: string) {
     setLinkedNoteIds((current) =>
       current.includes(noteId)
@@ -68,22 +73,37 @@ export default function NewNoteComposer({
   async function handleSave() {
     if (isSaving || hasSaved) return;
 
+    const trimmedTitle = title.trim();
+    const trimmedContent = content.trim();
+
+    if (!trimmedTitle) {
+      setSavedMessage("Add a card title before saving.");
+      return;
+    }
+
+    if (!trimmedContent) {
+      setSavedMessage("Add some card content before saving.");
+      return;
+    }
+
     const inlineReferenceIds = extractReferenceIdsFromContentJson(contentJson);
 
     const finalReferenceIds = Array.from(
       new Set([...selectedReferenceIds, ...inlineReferenceIds]),
     );
-        if (finalReferenceIds.length === 0) {
-          setSavedMessage("Add at least one reference before saving.");
-          return;
-        }
+
+    if (finalReferenceIds.length === 0) {
+      setSavedMessage("Add at least one reference before saving.");
+      return;
+    }
+
     try {
       setIsSaving(true);
       setSavedMessage("");
 
       await createNoteAction({
-        title,
-        content,
+        title: trimmedTitle,
+        content: trimmedContent,
         contentJson,
         selectedTagIds,
         newTagName,
@@ -98,7 +118,12 @@ export default function NewNoteComposer({
       router.refresh();
     } catch (error) {
       console.error(error);
-      setSavedMessage("Something went wrong. Card was not saved.");
+
+      setSavedMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Card was not saved.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -110,14 +135,14 @@ export default function NewNoteComposer({
         : [...current, referenceId],
     );
   }
-function getReferenceLabel(reference: Reference) {
-  return (
-    reference.title?.trim() ||
-    reference.author?.trim() ||
-    reference.url?.trim() ||
-    "Untitled reference"
-  );
-}
+  function getReferenceLabel(reference: Reference) {
+    return (
+      reference.title?.trim() ||
+      reference.author?.trim() ||
+      reference.url?.trim() ||
+      "Untitled reference"
+    );
+  }
   return (
     <aside className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -128,7 +153,11 @@ function getReferenceLabel(reference: Reference) {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Card title"
-        className="mb-3 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+        className={`mb-3 w-full rounded-xl border px-3 py-2 text-sm dark:bg-gray-950 dark:text-gray-100 ${
+          titleMissing
+            ? "border-red-400 bg-red-50 dark:border-red-700 dark:bg-red-950/30"
+            : "border-gray-300 dark:border-gray-700"
+        }`}
       />
 
       <RichNoteEditor

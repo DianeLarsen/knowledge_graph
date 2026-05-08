@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserId } from "@/db/queries/users";
 import {
-  createEvent,
+  createUserEvent,
   deleteEvent,
   getEventsInRange,
   getTasksDueInRange,
@@ -83,8 +83,7 @@ export async function createEventAction(formData: FormData) {
 
   const allDay = !startTime && !endTime;
 
-  const event = await createEvent({
-    userId,
+  const event = await createUserEvent(userId, {
     title,
     description: description || null,
     startDate,
@@ -98,9 +97,13 @@ export async function createEventAction(formData: FormData) {
     taskId: taskId || null,
   });
 
+  if (!event) {
+    return null;
+  }
+
   if (noteId) {
     await createEntityLink({
-      userId,
+      createdByUserId: userId,
       sourceType: "event",
       sourceId: event.id,
       targetType: "note",
@@ -111,7 +114,7 @@ export async function createEventAction(formData: FormData) {
 
   if (taskId) {
     await createEntityLink({
-      userId,
+      createdByUserId: userId,
       sourceType: "event",
       sourceId: event.id,
       targetType: "task",
@@ -121,6 +124,8 @@ export async function createEventAction(formData: FormData) {
   }
 
   revalidatePath("/calendar");
+
+  return event;
 }
 
 export async function deleteEventAction(formData: FormData) {
@@ -131,9 +136,11 @@ export async function deleteEventAction(formData: FormData) {
     throw new Error("Event ID is required.");
   }
 
-  await deleteEvent(eventId, userId);
+  const deleted = await deleteEvent(eventId, userId);
 
   revalidatePath("/calendar");
+
+  return deleted;
 }
 
 export async function updateEventAction(formData: FormData) {
@@ -149,11 +156,13 @@ export async function updateEventAction(formData: FormData) {
   const location = String(formData.get("location") || "").trim();
   const noteId = String(formData.get("noteId") || "").trim();
   const taskId = String(formData.get("taskId") || "").trim();
+
   if (!eventId || !title || !startDate) {
     throw new Error("Event ID, title, and start date are required.");
   }
 
   const allDay = !startTime && !endTime;
+
   const event = await updateEvent(eventId, userId, {
     title,
     description: description || null,
@@ -168,7 +177,7 @@ export async function updateEventAction(formData: FormData) {
   });
 
   if (!event) {
-    return;
+    return null;
   }
 
   await deleteEntityLinksForSource({
@@ -179,7 +188,7 @@ export async function updateEventAction(formData: FormData) {
 
   if (noteId) {
     await createEntityLink({
-      userId,
+      createdByUserId: userId,
       sourceType: "event",
       sourceId: event.id,
       targetType: "note",
@@ -190,7 +199,7 @@ export async function updateEventAction(formData: FormData) {
 
   if (taskId) {
     await createEntityLink({
-      userId,
+      createdByUserId: userId,
       sourceType: "event",
       sourceId: event.id,
       targetType: "task",

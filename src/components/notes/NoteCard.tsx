@@ -1,10 +1,12 @@
 "use client";
 
 import { Note, Reference, Tag } from "@/db/schema";
-import TagPill from "@/components/TagPill";
+import TagPill from "@/components/notes/TagPill";
 import ReadOnlyNoteContent from "@/components/notes/ReadOnlyNoteContent";
 import EditNoteForm from "@/components/notes/EditNoteForm";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { TagColor } from "@/lib/tags/tagColors";
 import {
   attachReferenceToNoteAction,
   removeReferenceFromNoteAction,
@@ -15,11 +17,15 @@ type LinkedNoteSummary = {
   title: string;
 };
 
+type NoteCardTag = Tag & {
+  color: TagColor | null;
+};
+
 export type NoteDetails = {
   note: Note;
-  tags: Tag[];
+  tags: NoteCardTag[];
   tagStats?: {
-    tag: Tag;
+    tag: NoteCardTag;
     stats: {
       tagId: string;
       tagName: string;
@@ -79,38 +85,79 @@ type SharedTagNote = {
   id: string;
   title: string;
   content: string | null;
+  contentJson: string | null;
+  createdByUserId: string;
+  ownerType: "user" | "project";
+  ownerId: string;
+  visibility: "private" | "shared" | "public";
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
   sharedTagId: string;
   sharedTagName: string;
 };
+
+function getInlineTagIds(contentJson: string | null) {
+  if (!contentJson) return new Set<string>();
+
+  try {
+    const doc = JSON.parse(contentJson);
+    const ids = new Set<string>();
+
+    function walk(node: any) {
+      if (!node) return;
+
+      if (Array.isArray(node.marks)) {
+        node.marks.forEach((mark: any) => {
+          if (mark.type === "tagMark" && mark.attrs?.tagId) {
+            ids.add(mark.attrs.tagId);
+          }
+        });
+      }
+
+      if (node.type === "mention" && node.attrs?.id) {
+        ids.add(node.attrs.id);
+      }
+
+      if (Array.isArray(node.content)) {
+        node.content.forEach(walk);
+      }
+    }
+
+    walk(doc);
+    return ids;
+  } catch {
+    return new Set<string>();
+  }
+}
+
 export default function NoteCard({
   data,
   onClose,
   onOpenNote,
   compact = false,
   allNotes = [],
-  allTags = [],
-  allReferences = [],
   userId,
   userTags = [],
   userReferences = [],
+  compactShouldScroll = false,
+  compactTagLimit = 3,
 }: {
   data: NoteDetails;
   onClose?: () => void;
   onOpenNote?: (noteId: string) => void;
   compact?: boolean;
   allNotes?: LinkedNoteSummary[];
-  allTags?: Tag[];
-  allReferences?: Reference[];
-  userTags?: Tag[];
+  userTags?: NoteCardTag[];
   userReferences?: Reference[];
-  userId?: string;
+  userId: string;
+  compactShouldScroll?: boolean;
+  compactTagLimit: number;
 }) {
   const [currentData, setCurrentData] = useState(data);
   const [isEditing, setIsEditing] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+
   const {
     note,
     tags,
@@ -120,16 +167,47 @@ export default function NoteCard({
     tagStats,
     references = [],
   } = currentData;
+
+  const inlineTagIds = getInlineTagIds(note.contentJson);
+
+  const sortedTags = [...tags].sort((a, b) => {
+    const aLinked = inlineTagIds.has(a.id);
+    const bLinked = inlineTagIds.has(b.id);
+
+    if (aLinked && !bLinked) return -1;
+    if (!aLinked && bLinked) return 1;
+
+    return a.name.localeCompare(b.name);
+  });
+
+  const tagColorMap = new Map<string, TagColor>();
+
+  sortedTags.forEach((tag) => {
+    tagColorMap.set(tag.id, tag.color ?? "blue");
+  });
+
+  const shouldCollapseTags = compact && sortedTags.length > compactTagLimit;
+  const maxVisibleTags = shouldCollapseTags
+    ? Math.max(compactTagLimit, inlineTagIds.size)
+    : sortedTags.length;
+
+  const visibleTags = sortedTags.slice(0, maxVisibleTags);
+  const hiddenTags = shouldCollapseTags ? sortedTags.slice(maxVisibleTags) : [];
   const attachedReferenceIds = new Set(
     references.map((reference) => reference.id),
   );
 
-const referenceOptions =
-  userReferences.length > 0 ? userReferences : allReferences;
+  const router = useRouter();
+  useEffect(() => {
+    setCurrentData(data);
+  }, [data]);
 
-const availableReferences = referenceOptions.filter(
-  (reference) => !attachedReferenceIds.has(reference.id),
-);
+  const referenceOptions = userReferences;
+
+  const availableReferences = referenceOptions.filter(
+    (reference) => !attachedReferenceIds.has(reference.id),
+  );
+
   return (
     <div className={compact ? "w-full" : "mx-auto w-full max-w-3xl"}>
       <article
@@ -181,60 +259,165 @@ const availableReferences = referenceOptions.filter(
             </button>
           )}
         </div>
-        {tagStats?.length ? (
-          <div className="mb-3 flex flex-wrap gap-2 px-3 pt-3">
-            {tagStats.map(({ tag, stats }) => (
-              <TagPill key={tag.id} tag={tag} stats={stats} />
-            ))}
-          </div>
-        ) : tags.length > 0 ? (
-          <div className="flex flex-wrap gap-1 px-3 pt-3 pb-1">
-            {tags.map((tag) => (
-              <span
-                key={tag.id}
-                className="
-          rounded-full border border-gray-300 bg-gray-50 px-2 py-0.5
-          text-xs text-gray-700
-          dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200
-        "
-              >
-                #{tag.name}
-              </span>
-            ))}
-          </div>
-        ) : null}
+        {tags.length > 0 && (
+          <div className="relative flex h-11 items-start px-1 pb-1 pt-3 pr-16">
+            <div className="flex min-w-0 flex-nowrap items-center gap-1">
+              {visibleTags.map((tag) => {
+                const stats =
+                  tagStats?.find((item) => item.tag.id === tag.id)?.stats ??
+                  null;
 
-        <IndexLine isRed>
-          <h1 className="font-['Comic_Sans_MS','Bradley_Hand',cursive] text-2xl font-semibold text-gray-950 dark:text-gray-100">
+                return (
+                  <TagPill
+                    key={tag.id}
+                    tag={tag}
+                    stats={stats}
+                    size="card"
+                    linked={inlineTagIds.has(tag.id)}
+                    color={tag.color ?? "blue"}
+                    onJumpToInlineTag={(tagId) => {
+                      document
+                        .querySelector(`[data-inline-tag-id="${tagId}"]`)
+                        ?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        });
+                    }}
+                  />
+                );
+              })}
+
+              {hiddenTags.length > 0 && (
+                <div className="group relative shrink-0">
+                  <button
+                    type="button"
+                    className="
+        rounded-full border border-gray-300 bg-gray-50 px-2.5 py-0.5
+        text-[13px] font-medium text-gray-700 shadow-sm transition
+        hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700
+        dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200
+        dark:hover:border-blue-400 dark:hover:bg-blue-900/40
+        dark:hover:text-blue-200
+      "
+                    aria-label={`Show ${hiddenTags.length} more tags`}
+                  >
+                    +{hiddenTags.length}
+                  </button>
+
+                  <div
+                    className="
+        pointer-events-none absolute left-0 top-full z-50 mt-2
+        min-w-max rounded-xl border border-gray-200 bg-white p-2
+        text-left opacity-0 shadow-lg transition
+        group-hover:pointer-events-auto group-hover:opacity-100
+        dark:border-gray-700 dark:bg-gray-900
+      "
+                  >
+                    <div className="space-y-1">
+                      {hiddenTags.map((tag) => {
+                        const stats =
+                          tagStats?.find((item) => item.tag.id === tag.id)
+                            ?.stats ?? null;
+
+                        return (
+                          <div
+                            key={tag.id}
+                            className="
+                flex items-center justify-between gap-3 rounded-lg px-2 py-1
+                text-sm text-gray-700
+                dark:text-gray-200
+              "
+                          >
+                            <span className="whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  document
+                                    .querySelector(
+                                      `[data-inline-tag-id="${tag.id}"]`,
+                                    )
+                                    ?.scrollIntoView({
+                                      behavior: "smooth",
+                                      block: "center",
+                                    });
+                                }}
+                                className="whitespace-nowrap underline decoration-dotted"
+                              >
+                                #{tag.name}
+                              </button>
+                            </span>
+
+                            <span className="shrink-0 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
+                              Cards with this tag: {stats?.noteCount ?? 0}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <IndexLine isRed compact={compact} className="relative z-10">
+          <h1
+            className={`
+    font-['Comic_Sans_MS','Bradley_Hand',cursive] font-semibold
+  text-gray-900 dark:text-slate-100
+    ${compact ? "text-xl leading-7" : "text-2xl leading-8"}
+  `}
+          >
             {note.title}
           </h1>
         </IndexLine>
 
         <div
-          className="
-    min-h-40 px-4 py-0
-bg-[linear-gradient(to_bottom,transparent_31px,#93c5fd_32px)]
-bg-[length:100%_32px]
-dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
-  "
+          className={`
+    ${compact ? "h-[180px] pb-2 pt-0" : "min-h-40 pb-2 pt-0"}
+    ${
+      compact && compactShouldScroll
+        ? "overflow-y-auto scrollbar-gutter-stable custom-scrollbar"
+        : compact
+          ? "overflow-hidden"
+          : ""
+    }
+  `}
         >
-          <ReadOnlyNoteContent
-            key={note.contentJson ?? note.content ?? note.updatedAt.toString()}
-            content={note.contentJson}
-            references={references.map((reference) => ({
-              id: reference.id,
-              title: reference.title,
-              author: reference.author,
-              url: reference.url,
-              notes: reference.notes,
-            }))}
-            tags={tags.map((tag) => ({
-              id: tag.id,
-              name: tag.name,
-            }))}
-          />
+          <div
+            className={`
+      min-h-full
+      bg-[linear-gradient(to_bottom,transparent_27px,#93c5fd_28px,transparent_29px)]
+      bg-[length:100%_30px]
+      bg-[position:0_0px]
+      dark:bg-[linear-gradient(to_bottom,transparent_27px,#60a5fa_28px,transparent_29px)]
+    `}
+          >
+            <div className="-translate-y-2.5 text-sm leading-[30px] [&_p]:m-0 [&_p]:leading-[30px]">
+              <ReadOnlyNoteContent
+                key={
+                  note.contentJson ?? note.content ?? note.updatedAt.toString()
+                }
+                content={note.contentJson}
+                references={references.map((reference) => ({
+                  id: reference.id,
+                  title: reference.title,
+                  author: reference.author,
+                  url: reference.url,
+                  notes: reference.notes,
+                }))}
+                tags={tags.map((tag) => ({
+                  id: tag.id,
+                  name: tag.name,
+                  color: tag.color,
+                }))}
+                tagColorMap={Object.fromEntries(tagColorMap)}
+              />
+            </div>
+          </div>
         </div>
-        <div className="border-t border-blue-200 px-4 py-3 text-sm dark:border-blue-800">
+        <div className="px-4 py-3 text-sm">
           <button
             type="button"
             onClick={() => setShowDetails((current) => !current)}
@@ -344,7 +527,9 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
                   </h2>
 
                   <form
-                    action={attachReferenceToNoteAction}
+                    action={async (formData) => {
+                      await attachReferenceToNoteAction(formData);
+                    }}
                     className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900"
                   >
                     <input type="hidden" name="noteId" value={note.id} />
@@ -452,7 +637,9 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
                           )}
                           {userId && (
                             <form
-                              action={removeReferenceFromNoteAction}
+                              action={async (formData) => {
+                                await removeReferenceFromNoteAction(formData);
+                              }}
                               className="mt-2"
                             >
                               <input
@@ -483,14 +670,14 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
             </div>
           )}
         </div>
-        <IndexLine />
+        {!compact && <IndexLine />}
       </article>
       {isEditing && userId && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-10">
           <div className="relative w-full max-w-3xl rounded-2xl bg-white p-4 shadow-xl dark:bg-gray-950">
             <EditNoteForm
               note={note}
-              tags={userTags.length > 0 ? userTags : allTags}
+              tags={userTags}
               noteTags={tags}
               references={referenceOptions}
               noteReferences={currentData.references ?? []}
@@ -505,6 +692,7 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
                 }));
 
                 setIsEditing(false);
+                router.refresh();
               }}
               availableNotes={allNotes}
               linkedNoteIds={outgoingLinks.map((link) => link.targetNoteId)}
@@ -519,23 +707,28 @@ dark:bg-[linear-gradient(to_bottom,transparent_31px,#60a5fa_32px)]
 function IndexLine({
   children,
   isRed = false,
+  compact = false,
+  className = "",
 }: {
   children?: React.ReactNode;
   isRed?: boolean;
+  compact?: boolean;
+  className?: string;
 }) {
   return (
     <div
       className={`
-        flex min-h-10 items-end px-4 pl-4
-        border-b
+        flex items-end border-b px-4
+        ${compact ? "min-h-9" : "min-h-10"}
         ${
           isRed
             ? "border-red-400 dark:border-red-400"
             : "border-blue-300 dark:border-blue-400"
         }
+        ${className}
       `}
     >
-      <div className="translate-y-1 break-words">{children}</div>
+      <div className="translate-y-[3px] break-words">{children}</div>
     </div>
   );
 }

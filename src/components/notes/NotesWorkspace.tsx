@@ -4,6 +4,8 @@ import { useState } from "react";
 import NewNoteComposer from "@/components/notes/NewNoteComposer";
 import NoteCard, { NoteDetails } from "@/components/notes/NoteCard";
 import { Reference } from "@/db/schema";
+import TagPanel from "@/components/notes/TagPanel";
+import NotesList from "@/components/notes/NotesList";
 
 type WorkspaceProps = {
   dataList: NoteDetails[];
@@ -30,6 +32,17 @@ export default function NotesWorkspace({
       dataList.flatMap((data) => data.tags).map((tag) => [tag.id, tag]),
     ).values(),
   );
+
+const tagStats = tags.map((tag) => ({
+  tag,
+  stats: {
+    tagId: tag.id,
+    tagName: tag.name,
+    noteCount: dataList.filter((data) =>
+      data.tags.some((item) => item.id === tag.id),
+    ).length,
+  },
+}));
 
   const openNotes = dataList.filter((data) =>
     openNoteIds.includes(data.note.id),
@@ -64,77 +77,31 @@ export default function NotesWorkspace({
     );
   }
 
+ 
+
+  function getPlainTextLength(data: NoteDetails) {
+    return data.note.content?.length ?? 0;
+  }
+  const compactShouldScroll = openNotes.length > 3;
+  const compactTagLimit =
+    openNotes.length <= 1 ? 8 : openNotes.length === 2 ? 3 : 2;
+  
   return (
     <main className="min-h-screen bg-gray-50 p-4 dark:bg-gray-950">
-      <section className="mb-4 rounded-2xl border bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Tags
-          </h2>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {tags.length > 0 ? (
-            tags.map((tag) => (
-              <button
-                key={tag.id}
-                type="button"
-                onClick={() => openCardsByTag(tag.id)}
-                className="
-                rounded-full border border-gray-300 bg-white px-3 py-1
-                text-sm text-gray-700 shadow-sm transition
-                hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700
-                dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200
-                dark:hover:border-blue-400 dark:hover:bg-blue-900/40
-                dark:hover:text-blue-200
-              "
-              >
-                #{tag.name}
-              </button>
-            ))
-          ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              No tags yet.
-            </p>
-          )}
-        </div>
-      </section>
       <div className="grid gap-4 lg:grid-cols-[260px_1fr_320px]">
-        <aside className="rounded-2xl border bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-3 text-lg font-semibold dark:text-gray-100">
-            Notes
-          </h2>
+        <aside className="space-y-5 rounded-2xl border bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+          <TagPanel
+            tags={tags}
+            tagStats={tagStats}
+            onOpenCardsByTag={openCardsByTag}
+          />
 
-          <div className="space-y-2">
-            {notes.map((note) => {
-              const isOpen = openNoteIds.includes(note.id);
-
-              return (
-                <button
-                  key={note.id}
-                  type="button"
-                  onClick={() => toggleNote(note.id)}
-                  className={`
-        w-full rounded-xl border px-3 py-2 text-left text-sm transition
-        ${
-          isOpen
-            ? "border-blue-500 bg-blue-100 text-blue-800 dark:border-blue-400 dark:bg-blue-900/40 dark:text-blue-200"
-            : "border-gray-200 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
-        }
-      `}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate">{note.title}</span>
-
-                    {isOpen && (
-                      <span className="shrink-0 rounded-full bg-blue-200 px-2 py-0.5 text-xs text-blue-800 dark:bg-blue-800 dark:text-blue-100">
-                        open
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+          <div className="border-t border-gray-200 pt-5 dark:border-gray-800">
+            <NotesList
+              notes={notes}
+              openNoteIds={openNoteIds}
+              onToggleNote={toggleNote}
+            />
           </div>
         </aside>
 
@@ -169,24 +136,23 @@ export default function NotesWorkspace({
                 key={data.note.id}
                 data={data}
                 compact
+                compactTagLimit={compactTagLimit}
+                compactShouldScroll={
+                  compactShouldScroll && getPlainTextLength(data) > 180
+                }
                 allNotes={noteOptions}
-                allTags={tags}
-                allReferences={references}
                 userTags={tags}
                 userReferences={references}
                 userId={userId}
                 onOpenNote={openNote}
                 onClose={() => closeNote(data.note.id)}
+                
               />
             ))}
           </div>
         </section>
 
-        <NewNoteComposer
-          notes={notes}
-          tags={tags}
-          references={references}
-        />
+        <NewNoteComposer notes={notes} tags={tags} references={references} />
       </div>
     </main>
   );

@@ -7,6 +7,7 @@ const openai = new OpenAI({
 
 export const CaptureAnalysisSchema = z.object({
   summary: z.string(),
+  coreIdeas: z.array(z.string()),
   possibleTasks: z.array(
     z.object({
       title: z.string(),
@@ -38,6 +39,7 @@ export const CaptureAnalysisSchema = z.object({
     }),
   ),
   aiPrompts: z.array(z.string()),
+  connections: z.array(z.string()),
   nextSteps: z.array(z.string()),
   openQuestions: z.array(z.string()),
   risks: z.array(z.string()),
@@ -53,8 +55,57 @@ export async function analyzeCaptureText(
     input: [
       {
         role: "system",
-        content:
-          "You analyze messy brain dumps for a personal knowledge management and project planning app. Extract concrete tasks, possible notes, useful AI prompts, next steps, open questions, and risks. For possibleReferences, suggest relevant articles, official documentation, books, videos, or high-quality learning resources based on the capture topic. Prefer official documentation, well-known sources, or broadly reliable educational resources. If the user includes a specific source or URL, extract it. If they do not include references, suggest useful resources they could explore. Always return at least 2 possibleReferences when the topic involves learning, development, or system design. Do not fabricate obscure titles, fake authors, fake URLs, or unverifiable sources. If you know a reliable official URL, include it. If unsure of the exact URL, leave url as an empty string and explain what to search for in notes. Return only structured data.",
+        content: `
+You analyze messy brain dumps for a personal knowledge management and project planning app.
+
+Your job is to extract structured thinking, not just summarize.
+
+Return JSON with:
+
+1. summary
+- What this is actually about (1–2 sentences)
+
+2. coreIdeas
+- Key insights worth keeping
+- One idea per item (atomic)
+
+3. possibleNotes
+- Turn ideas into reusable notes
+- Each must stand alone and be useful later
+
+4. possibleTasks
+- Only actionable items
+- Include: title, description, priority (low/medium/high), status (todo)
+
+5. possibleReferences
+- Extract user-provided sources if present
+- Otherwise suggest high-quality resources (official docs, well-known sources)
+- Do NOT fabricate sources
+- If unsure of URL, leave blank and explain what to search in notes
+
+6. aiPrompts
+- Useful prompts the user could run next to deepen, organize, or execute the idea
+
+7. connections
+- What this relates to: skills, systems, projects, concepts, or existing knowledge areas
+
+8. risks
+- Weak thinking, confusion, or likely failure points
+
+9. nextSteps
+- Small, concrete, executable actions
+
+10. openQuestions
+- What is unclear or needs validation
+
+Rules:
+- No fluff or repetition
+- Prefer specific over complete
+- Call out uncertainty instead of guessing
+- Notes must be atomic and reusable
+- References must be credible
+- Always return arrays, even when empty
+`.trim(),
       },
       {
         role: "user",
@@ -71,16 +122,22 @@ export async function analyzeCaptureText(
           additionalProperties: false,
           required: [
             "summary",
+            "coreIdeas",
             "possibleTasks",
             "possibleNotes",
             "possibleReferences",
             "aiPrompts",
+            "connections",
             "nextSteps",
             "openQuestions",
             "risks",
           ],
           properties: {
             summary: { type: "string" },
+            coreIdeas: {
+              type: "array",
+              items: { type: "string" },
+            },
             possibleTasks: {
               type: "array",
               items: {
@@ -142,6 +199,10 @@ export async function analyzeCaptureText(
               type: "array",
               items: { type: "string" },
             },
+            connections: {
+              type: "array",
+              items: { type: "string" },
+            },
             nextSteps: {
               type: "array",
               items: { type: "string" },
@@ -165,3 +226,5 @@ export async function analyzeCaptureText(
 
   return CaptureAnalysisSchema.parse(parsed);
 }
+
+

@@ -10,7 +10,6 @@ import { useState, useEffect, useRef } from "react";
 import { TagMark } from "@/lib/tiptap/extensions/TagMark";
 import { ReferenceMark } from "@/lib/tiptap/extensions/ReferenceMark";
 
-
 type MentionSuggestionItem = {
   id: string;
   label: string;
@@ -89,7 +88,7 @@ export default function RichNoteEditor({
       window.removeEventListener("mousedown", handleClick);
     };
   }, []);
-  
+
   const editor = useEditor(
     {
       extensions: [
@@ -292,108 +291,116 @@ export default function RichNoteEditor({
     setContextMenu(null);
   }
 
-function getSelectedMarkInfo(from: number, to: number) {
-  const foundTags = new Map<string, ContextMenuTag>();
-  const foundReferences = new Map<string, ContextMenuReference>();
+  function getSelectedMarkInfo(from: number, to: number) {
+    const foundTags = new Map<string, ContextMenuTag>();
+    const foundReferences = new Map<string, ContextMenuReference>();
 
-  editor?.state.doc.nodesBetween(from, to, (node) => {
-    node.marks.forEach((mark) => {
-      if (mark.type.name === "tagMark") {
-        const tagId = mark.attrs.tagId as string | undefined;
-        const tagName = mark.attrs.tagName as string | undefined;
-        const key = tagId || tagName;
+    editor?.state.doc.nodesBetween(from, to, (node) => {
+      node.marks.forEach((mark) => {
+        if (mark.type.name === "tagMark") {
+          const tagId = mark.attrs.tagId as string | undefined;
+          const tagName = mark.attrs.tagName as string | undefined;
+          const key = tagId || tagName;
 
-        if (key) {
-          foundTags.set(key, { tagId, tagName });
-        }
-      }
-
-      if (mark.type.name === "referenceMark") {
-        const referenceId = mark.attrs.referenceId as string | undefined;
-        const referenceTitle = mark.attrs.referenceTitle as string | undefined;
-        const key = referenceId || referenceTitle;
-
-        if (key) {
-          foundReferences.set(key, { referenceId, referenceTitle });
-        }
-      }
-    });
-  });
-
-  const tagMarks = Array.from(foundTags.values());
-  const referenceMarks = Array.from(foundReferences.values());
-
-  return {
-    tags: tagMarks,
-    references: referenceMarks,
-    hasTagMark: tagMarks.length > 0,
-    hasReferenceMark: referenceMarks.length > 0,
-  };
-}
-
-function removeSpecificTagFromSelection(tagToRemove: ContextMenuTag) {
-  if (!editor || !contextMenu) return;
-
-  const { from, to } = contextMenu;
-
-  editor
-    .chain()
-    .focus()
-    .command(({ tr, state }) => {
-      state.doc.nodesBetween(from, to, (node, pos) => {
-        node.marks.forEach((mark) => {
-          if (
-            mark.type.name === "tagMark" &&
-            mark.attrs.tagId === tagToRemove.tagId &&
-            mark.attrs.tagName === tagToRemove.tagName
-          ) {
-            tr.removeMark(pos, pos + node.nodeSize, mark);
+          if (key) {
+            foundTags.set(key, { tagId, tagName });
           }
-        });
+        }
+
+        if (mark.type.name === "referenceMark") {
+          const referenceId = mark.attrs.referenceId as string | undefined;
+          const referenceTitle = mark.attrs.referenceTitle as
+            | string
+            | undefined;
+          const key = referenceId || referenceTitle;
+
+          if (key) {
+            foundReferences.set(key, { referenceId, referenceTitle });
+          }
+        }
       });
+    });
 
-      return true;
-    })
-    .run();
+    const tagMarks = Array.from(foundTags.values());
+    const referenceMarks = Array.from(foundReferences.values());
 
-  if (tagToRemove.tagName) {
-    onTagRemoved?.(tagToRemove.tagName);
+    return {
+      tags: tagMarks,
+      references: referenceMarks,
+      hasTagMark: tagMarks.length > 0,
+      hasReferenceMark: referenceMarks.length > 0,
+    };
   }
 
-  closeContextMenu();
-}
+  function removeSpecificTagFromSelection(tagToRemove: ContextMenuTag) {
+    if (!editor || !contextMenu) return;
 
-function removeSpecificReferenceFromSelection(
-  referenceToRemove: ContextMenuReference,
-) {
-  if (!editor || !contextMenu) return;
+    const { from, to } = contextMenu;
 
-  const { from, to } = contextMenu;
+    editor
+      .chain()
+      .focus()
+      .command(({ tr, state }) => {
+        state.doc.nodesBetween(from, to, (node, pos) => {
+          node.marks.forEach((mark) => {
+            if (
+              mark.type.name === "tagMark" &&
+              mark.attrs.tagId === tagToRemove.tagId &&
+              mark.attrs.tagName === tagToRemove.tagName
+            ) {
+              const markFrom = Math.max(pos, from);
+              const markTo = Math.min(pos + node.nodeSize, to);
 
-  editor
-    .chain()
-    .focus()
-    .command(({ tr, state }) => {
-      state.doc.nodesBetween(from, to, (node, pos) => {
-        node.marks.forEach((mark) => {
-          if (
-            mark.type.name === "referenceMark" &&
-            mark.attrs.referenceId === referenceToRemove.referenceId &&
-            mark.attrs.referenceTitle === referenceToRemove.referenceTitle
-          ) {
-            tr.removeMark(pos, pos + node.nodeSize, mark);
-          }
+              tr.removeMark(markFrom, markTo, mark);
+            }
+          });
         });
-      });
 
-      return true;
-    })
-    .run();
-if (referenceToRemove.referenceId) {
-  onReferenceRemoved?.(referenceToRemove.referenceId);
-}
-  closeContextMenu();
-}
+        return true;
+      })
+      .run();
+
+    if (tagToRemove.tagName) {
+      onTagRemoved?.(tagToRemove.tagName);
+    }
+
+    closeContextMenu();
+  }
+
+  function removeSpecificReferenceFromSelection(
+    referenceToRemove: ContextMenuReference,
+  ) {
+    if (!editor || !contextMenu) return;
+
+    const { from, to } = contextMenu;
+
+    editor
+      .chain()
+      .focus()
+      .command(({ tr, state }) => {
+        state.doc.nodesBetween(from, to, (node, pos) => {
+          node.marks.forEach((mark) => {
+            if (
+              mark.type.name === "referenceMark" &&
+              mark.attrs.referenceId === referenceToRemove.referenceId &&
+              mark.attrs.referenceTitle === referenceToRemove.referenceTitle
+            ) {
+              const markFrom = Math.max(pos, from);
+              const markTo = Math.min(pos + node.nodeSize, to);
+
+              tr.removeMark(markFrom, markTo, mark);
+            }
+          });
+        });
+
+        return true;
+      })
+      .run();
+    if (referenceToRemove.referenceId) {
+      onReferenceRemoved?.(referenceToRemove.referenceId);
+    }
+    closeContextMenu();
+  }
   function highlightSelection() {
     if (!editor) return;
 
@@ -401,59 +408,59 @@ if (referenceToRemove.referenceId) {
     closeContextMenu();
   }
 
-function linkSelectionToReference(reference: Reference) {
-  if (!editor || !contextMenu) return;
-const alreadyHasReference = contextMenu.references.some(
-  (item) => item.referenceId === reference.id,
-);
+  function linkSelectionToReference(reference: Reference) {
+    if (!editor || !contextMenu) return;
+    const alreadyHasReference = contextMenu.references.some(
+      (item) => item.referenceId === reference.id,
+    );
 
-if (alreadyHasReference) {
-  closeContextMenu();
-  return;
-}
-  editor
-    .chain()
-    .focus()
-    .setTextSelection({
-      from: contextMenu.from,
-      to: contextMenu.to,
-    })
-    .setMark("referenceMark", {
-      referenceId: reference.id,
-      referenceTitle: getReferenceLabel(reference),
-    })
-    .run();
+    if (alreadyHasReference) {
+      closeContextMenu();
+      return;
+    }
+    editor
+      .chain()
+      .focus()
+      .setTextSelection({
+        from: contextMenu.from,
+        to: contextMenu.to,
+      })
+      .setMark("referenceMark", {
+        referenceId: reference.id,
+        referenceTitle: getReferenceLabel(reference),
+      })
+      .run();
 
-  onReferenceUsed?.(reference.id);
-  closeContextMenu();
-}
+    onReferenceUsed?.(reference.id);
+    closeContextMenu();
+  }
 
-function tagSelection(tag: Tag) {
-  if (!editor || !contextMenu) return;
-const alreadyHasTag = contextMenu.tags.some(
-  (item) => item.tagId === tag.id || item.tagName === tag.name,
-);
+  function tagSelection(tag: Tag) {
+    if (!editor || !contextMenu) return;
+    const alreadyHasTag = contextMenu.tags.some(
+      (item) => item.tagId === tag.id || item.tagName === tag.name,
+    );
 
-if (alreadyHasTag) {
-  closeContextMenu();
-  return;
-}
-  editor
-    .chain()
-    .focus()
-    .setTextSelection({
-      from: contextMenu.from,
-      to: contextMenu.to,
-    })
-    .setMark("tagMark", {
-      tagId: tag.id,
-      tagName: tag.name,
-    })
-    .run();
+    if (alreadyHasTag) {
+      closeContextMenu();
+      return;
+    }
+    editor
+      .chain()
+      .focus()
+      .setTextSelection({
+        from: contextMenu.from,
+        to: contextMenu.to,
+      })
+      .setMark("tagMark", {
+        tagId: tag.id,
+        tagName: tag.name,
+      })
+      .run();
 
-  onTagUsed?.(tag.name);
-  closeContextMenu();
-}
+    onTagUsed?.(tag.name);
+    closeContextMenu();
+  }
 
   function createTagFromSelection() {
     if (!editor || !selectedText || !contextMenu) return;

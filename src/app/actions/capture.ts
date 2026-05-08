@@ -1,14 +1,12 @@
 "use server";
 
-"use server";
-
 import { revalidatePath } from "next/cache";
 import { createNote } from "@/db/queries/notes";
 import { getCurrentUserId } from "@/db/queries/users";
 import { analyzeCaptureText } from "@/lib/ai/analyzeCapture";
-import { createTask, findSimilarTasks } from "@/db/queries/tasks";
+import { createUserTask, findSimilarTasks } from "@/db/queries/tasks";
 import {
-  createReference,
+  createUserReference,
   findExistingReference,
 } from "@/db/queries/references";
 import { createEntityLink } from "@/db/queries/entitylinks";
@@ -31,6 +29,7 @@ function parseTaskPriority(value: FormDataEntryValue | null): TaskPriority {
 
   return "medium";
 }
+
 type ReferenceType =
   | "book"
   | "website"
@@ -62,26 +61,35 @@ function isCaptureStatus(value: string): value is CaptureStatus {
   return captureStatuses.includes(value as CaptureStatus);
 }
 
+function revalidateCaptureWorkflows() {
+  revalidatePath("/capture");
+  revalidatePath("/tasks");
+  revalidatePath("/notes");
+  revalidatePath("/workspace");
+  revalidatePath("/notes/references");
+  revalidatePath("/calendar");
+}
+
 export async function createCaptureAction(formData: FormData) {
   const rawText = String(formData.get("rawText") ?? "").trim();
 
   if (!rawText) {
-    return;
+    return null;
   }
 
   const userId = await getCurrentUserId();
-
   const rawStatus = String(formData.get("status") ?? "new");
-
   const status: CaptureStatus = isCaptureStatus(rawStatus) ? rawStatus : "new";
 
-  await createCapture({
+  const capture = await createCapture({
     userId,
     rawText,
     status,
   });
 
   revalidatePath("/capture");
+
+  return capture;
 }
 
 export async function getCapturesAction() {
@@ -94,14 +102,16 @@ export async function analyzeCaptureAction(captureId: string) {
   const capture = await getCaptureById(captureId, userId);
 
   if (!capture) {
-    return;
+    return null;
   }
 
-  if (capture.analysisJson) return;
+  if (capture.analysisJson) {
+    return capture;
+  }
 
   const analysis = await analyzeCaptureText(capture.rawText);
 
-  await updateCaptureAnalysis({
+  const updatedCapture = await updateCaptureAnalysis({
     id: captureId,
     userId,
     summary: analysis.summary,
@@ -110,47 +120,51 @@ export async function analyzeCaptureAction(captureId: string) {
   });
 
   revalidatePath("/capture");
+
+  return updatedCapture;
 }
 
 export async function markCaptureProcessedAction(captureId: string) {
   const userId = await getCurrentUserId();
 
-  await updateCaptureStatus({
+  const capture = await updateCaptureStatus({
     id: captureId,
     userId,
     status: "processed",
   });
 
   revalidatePath("/capture");
+
+  return capture;
 }
 
 export async function archiveCaptureAction(captureId: string) {
   const userId = await getCurrentUserId();
 
-  await updateCaptureStatus({
+  const capture = await updateCaptureStatus({
     id: captureId,
     userId,
     status: "archived",
   });
 
   revalidatePath("/capture");
+
+  return capture;
 }
 
 export async function deleteCaptureAction(captureId: string) {
   const userId = await getCurrentUserId();
   const capture = await getCaptureById(captureId, userId);
 
-  if (!capture) {
-    return;
+  if (!capture || capture.status !== "archived") {
+    return null;
   }
 
-  if (capture.status !== "archived") {
-    return;
-  }
-
-  await deleteCapture(captureId, userId);
+  const deleted = await deleteCapture(captureId, userId);
 
   revalidatePath("/capture");
+
+  return deleted;
 }
 
 export async function createTaskFromCaptureAction(formData: FormData) {
@@ -162,11 +176,13 @@ export async function createTaskFromCaptureAction(formData: FormData) {
   const userId = await getCurrentUserId();
 
   if (!title || !captureId || Number.isNaN(taskIndex)) {
-    return;
+    return null;
   }
+
   const similarTasks = await findSimilarTasks({
     userId,
     title,
+    description,
   });
 
   if (similarTasks.length > 0) {
@@ -194,23 +210,34 @@ export async function createTaskFromCaptureAction(formData: FormData) {
     }
 
     revalidatePath("/capture");
-    return;
+
+    return {
+      duplicate: true,
+      similarTasks,
+      task: null,
+    };
   }
-  const task = await createTask({
+
+  const task = await createUserTask(userId, {
     title,
-    userId,
     description,
     priority,
     status: "todo",
   });
+
+  if (!task) {
+    return null;
+  }
+
   await createEntityLink({
-    userId,
+    createdByUserId: userId,
     sourceType: "capture",
     sourceId: captureId,
     targetType: "task",
     targetId: task.id,
     relationshipType: "created_from",
   });
+
   const capture = await getCaptureById(captureId, userId);
 
   if (capture?.analysisJson) {
@@ -220,7 +247,7 @@ export async function createTaskFromCaptureAction(formData: FormData) {
       analysis.possibleTasks[taskIndex] = {
         ...analysis.possibleTasks[taskIndex],
         created: true,
-        taskId: task?.id,
+        taskId: task.id,
       };
 
       await updateCaptureAnalysis({
@@ -233,8 +260,13 @@ export async function createTaskFromCaptureAction(formData: FormData) {
     }
   }
 
-  revalidatePath("/capture");
-  revalidatePath("/tasks");
+  revalidateCaptureWorkflows();
+
+  return {
+    duplicate: false,
+    similarTasks: [],
+    task,
+  };
 }
 
 export async function createNoteFromCaptureAction(formData: FormData) {
@@ -245,7 +277,7 @@ export async function createNoteFromCaptureAction(formData: FormData) {
   const userId = await getCurrentUserId();
 
   if (!title || !captureId || Number.isNaN(noteIndex)) {
-    return;
+    return null;
   }
 
   const note = await createNote({
@@ -269,14 +301,20 @@ export async function createNoteFromCaptureAction(formData: FormData) {
     }),
     userId,
   });
-await createEntityLink({
-  userId,
-  sourceType: "capture",
-  sourceId: captureId,
-  targetType: "note",
-  targetId: note.id,
-  relationshipType: "created_from",
-});
+
+  if (!note) {
+    return null;
+  }
+
+  await createEntityLink({
+    createdByUserId: userId,
+    sourceType: "capture",
+    sourceId: captureId,
+    targetType: "note",
+    targetId: note.id,
+    relationshipType: "created_from",
+  });
+
   const capture = await getCaptureById(captureId, userId);
 
   if (capture?.analysisJson) {
@@ -286,7 +324,7 @@ await createEntityLink({
       analysis.possibleNotes[noteIndex] = {
         ...analysis.possibleNotes[noteIndex],
         created: true,
-        noteId: note?.id,
+        noteId: note.id,
       };
 
       await updateCaptureAnalysis({
@@ -299,9 +337,9 @@ await createEntityLink({
     }
   }
 
-  revalidatePath("/capture");
-  revalidatePath("/notes");
-  revalidatePath("/workspace");
+  revalidateCaptureWorkflows();
+
+  return note;
 }
 
 export async function createReferenceFromCaptureAction(formData: FormData) {
@@ -317,8 +355,9 @@ export async function createReferenceFromCaptureAction(formData: FormData) {
   const userId = await getCurrentUserId();
 
   if (!title || !captureId || Number.isNaN(referenceIndex)) {
-    return;
+    return null;
   }
+
   const existingReference = await findExistingReference({
     userId,
     title,
@@ -351,24 +390,33 @@ export async function createReferenceFromCaptureAction(formData: FormData) {
 
     revalidatePath("/capture");
 
-    return; // 🚨 THIS IS IMPORTANT — stops creation
+    return {
+      duplicate: true,
+      reference: existingReference,
+    };
   }
-  const reference = await createReference({
-    userId,
+
+  const reference = await createUserReference(userId, {
     type,
     title,
     author,
     url,
     notes,
   });
-await createEntityLink({
-  userId,
-  sourceType: "capture",
-  sourceId: captureId,
-  targetType: "reference",
-  targetId: reference.id,
-  relationshipType: "created_from",
-});
+
+  if (!reference) {
+    return null;
+  }
+
+  await createEntityLink({
+    createdByUserId: userId,
+    sourceType: "capture",
+    sourceId: captureId,
+    targetType: "reference",
+    targetId: reference.id,
+    relationshipType: "created_from",
+  });
+
   const capture = await getCaptureById(captureId, userId);
 
   if (capture?.analysisJson) {
@@ -378,7 +426,7 @@ await createEntityLink({
       analysis.possibleReferences[referenceIndex] = {
         ...analysis.possibleReferences[referenceIndex],
         created: true,
-        referenceId: reference?.id,
+        referenceId: reference.id,
       };
 
       await updateCaptureAnalysis({
@@ -386,12 +434,15 @@ await createEntityLink({
         summary: analysis.summary,
         analysisJson: JSON.stringify(analysis),
         status: capture.status,
-        userId
+        userId,
       });
     }
   }
 
-  revalidatePath("/capture");
-  revalidatePath("/references");
-  revalidatePath("/notes");
+  revalidateCaptureWorkflows();
+
+  return {
+    duplicate: false,
+    reference,
+  };
 }

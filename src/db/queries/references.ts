@@ -1,4 +1,4 @@
-import { eq, and, desc, count, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNull, or } from "drizzle-orm";
 import { db } from "../index";
 import {
   referencesTable,
@@ -14,33 +14,84 @@ export async function createReference(reference: NewReference) {
     .values(reference)
     .returning();
 
-  return result;
+  return result ?? null;
+}
+
+export async function createUserReference(
+  userId: string,
+  reference: Omit<
+    NewReference,
+    "createdByUserId" | "ownerType" | "ownerId" | "visibility"
+  >,
+) {
+  const [result] = await db
+    .insert(referencesTable)
+    .values({
+      ...reference,
+      createdByUserId: userId,
+      ownerType: "user",
+      ownerId: userId,
+      visibility: "private",
+    })
+    .returning();
+
+  return result ?? null;
 }
 
 export async function getReferencesForUser(userId: string) {
-  return await db
+  return db
     .select()
     .from(referencesTable)
-    .where(eq(referencesTable.userId, userId));
+    .where(
+      and(
+        eq(referencesTable.ownerType, "user"),
+        eq(referencesTable.ownerId, userId),
+      ),
+    )
+    .orderBy(desc(referencesTable.createdAt));
 }
 
-export async function getReferenceById(id: string) {
+export async function getReferenceById(id: string, userId: string) {
   const [result] = await db
     .select()
     .from(referencesTable)
-    .where(eq(referencesTable.id, id));
+    .where(
+      and(
+        eq(referencesTable.id, id),
+        or(
+          and(
+            eq(referencesTable.ownerType, "user"),
+            eq(referencesTable.ownerId, userId),
+          ),
+          eq(referencesTable.visibility, "public"),
+        ),
+      ),
+    );
 
-  return result;
+  return result ?? null;
 }
 
-export async function updateReference(id: string, data: Partial<NewReference>) {
+export async function updateReference(
+  id: string,
+  userId: string,
+  data: Partial<NewReference>,
+) {
   const [result] = await db
     .update(referencesTable)
-    .set(data)
-    .where(eq(referencesTable.id, id))
+    .set({
+      ...data,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(referencesTable.id, id),
+        eq(referencesTable.ownerType, "user"),
+        eq(referencesTable.ownerId, userId),
+      ),
+    )
     .returning();
 
-  return result;
+  return result ?? null;
 }
 
 export async function getReferenceLinkCount(referenceId: string) {
@@ -54,28 +105,39 @@ export async function getReferenceLinkCount(referenceId: string) {
   return result?.linkCount ?? 0;
 }
 
-export async function deleteReference(id: string) {
+export async function deleteReference(id: string, userId: string) {
   const [result] = await db
     .delete(referencesTable)
-    .where(eq(referencesTable.id, id))
+    .where(
+      and(
+        eq(referencesTable.id, id),
+        eq(referencesTable.ownerType, "user"),
+        eq(referencesTable.ownerId, userId),
+      ),
+    )
     .returning();
 
-  return result;
+  return result ?? null;
 }
 
 export async function addReferenceToNote(noteReference: NewNoteReference) {
   const [result] = await db
     .insert(noteReferences)
     .values(noteReference)
+    .onConflictDoNothing()
     .returning();
 
-  return result;
+  return result ?? null;
 }
 
-export async function getReferencesForNote(noteId: string) {
-  return await db
+export async function getReferencesForNote(userId: string, noteId: string) {
+  return db
     .select({
       id: referencesTable.id,
+      createdByUserId: referencesTable.createdByUserId,
+      ownerType: referencesTable.ownerType,
+      ownerId: referencesTable.ownerId,
+      visibility: referencesTable.visibility,
       type: referencesTable.type,
       title: referencesTable.title,
       author: referencesTable.author,
@@ -98,20 +160,35 @@ export async function getReferencesForNote(noteId: string) {
       referencesTable,
       eq(noteReferences.referenceId, referencesTable.id),
     )
-    .where(eq(noteReferences.noteId, noteId));
+    .where(
+      and(
+        eq(noteReferences.noteId, noteId),
+        or(
+          and(
+            eq(referencesTable.ownerType, "user"),
+            eq(referencesTable.ownerId, userId),
+          ),
+          eq(referencesTable.visibility, "public"),
+        ),
+      ),
+    );
 }
 
 export async function updateNoteReference(
   noteReferenceId: string,
+  userId: string,
   data: Partial<NewNoteReference>,
 ) {
   const [result] = await db
     .update(noteReferences)
-    .set(data)
+    .set({
+      ...data,
+      updatedAt: new Date(),
+    })
     .where(eq(noteReferences.id, noteReferenceId))
     .returning();
 
-  return result;
+  return result ?? null;
 }
 
 export async function removeReferenceFromNote(
@@ -128,13 +205,17 @@ export async function removeReferenceFromNote(
     )
     .returning();
 
-  return result;
+  return result ?? null;
 }
 
 export async function getNoteReferencesByUserId(userId: string) {
-  return await db
+  return db
     .select({
       id: referencesTable.id,
+      createdByUserId: referencesTable.createdByUserId,
+      ownerType: referencesTable.ownerType,
+      ownerId: referencesTable.ownerId,
+      visibility: referencesTable.visibility,
       type: referencesTable.type,
       title: referencesTable.title,
       author: referencesTable.author,
@@ -160,9 +241,16 @@ export async function getNoteReferencesByUserId(userId: string) {
     .innerJoin(notes, eq(noteReferences.noteId, notes.id))
     .where(
       and(
-        eq(referencesTable.userId, userId),
-        eq(notes.userId, userId),
+        eq(notes.ownerType, "user"),
+        eq(notes.ownerId, userId),
         isNull(notes.deletedAt),
+        or(
+          and(
+            eq(referencesTable.ownerType, "user"),
+            eq(referencesTable.ownerId, userId),
+          ),
+          eq(referencesTable.visibility, "public"),
+        ),
       ),
     );
 }
@@ -179,7 +267,12 @@ export async function findExistingReference({
   const existingReferences = await db
     .select()
     .from(referencesTable)
-    .where(eq(referencesTable.userId, userId));
+    .where(
+      and(
+        eq(referencesTable.ownerType, "user"),
+        eq(referencesTable.ownerId, userId),
+      ),
+    );
 
   return existingReferences.find((reference) => {
     const sameUrl = url && reference.url === url;
@@ -190,11 +283,14 @@ export async function findExistingReference({
   });
 }
 
-export async function getReferences() {
+export async function getReferences(userId: string) {
   const references = await db
     .select({
       id: referencesTable.id,
-      userId: referencesTable.userId,
+      createdByUserId: referencesTable.createdByUserId,
+      ownerType: referencesTable.ownerType,
+      ownerId: referencesTable.ownerId,
+      visibility: referencesTable.visibility,
       type: referencesTable.type,
       title: referencesTable.title,
       author: referencesTable.author,
@@ -207,6 +303,12 @@ export async function getReferences() {
       updatedAt: referencesTable.updatedAt,
     })
     .from(referencesTable)
+    .where(
+      and(
+        eq(referencesTable.ownerType, "user"),
+        eq(referencesTable.ownerId, userId),
+      ),
+    )
     .orderBy(desc(referencesTable.createdAt));
 
   const links = await db
@@ -218,7 +320,13 @@ export async function getReferences() {
     })
     .from(noteReferences)
     .innerJoin(notes, eq(noteReferences.noteId, notes.id))
-    .where(isNull(notes.deletedAt));
+    .where(
+      and(
+        eq(notes.ownerType, "user"),
+        eq(notes.ownerId, userId),
+        isNull(notes.deletedAt),
+      ),
+    );
 
   return references.map((reference) => {
     const linkedNotes = links

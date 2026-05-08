@@ -20,10 +20,23 @@ type UpdateNoteActionInput = {
   title: string;
   content: string;
   contentJson: string;
-  inlineTagNames: string[];
-  selectedReferenceIds: string[];
+  inlineTagNames?: string[];
+  selectedReferenceIds?: string[];
   linkedNoteIds?: string[];
 };
+
+function revalidateNoteWorkflows(noteId?: string) {
+  if (noteId) {
+    revalidatePath(`/notes/${noteId}`);
+    revalidatePath(`/notes/${noteId}/edit`);
+  }
+
+  revalidatePath("/notes");
+  revalidatePath("/workspace");
+  revalidatePath("/capture");
+  revalidatePath("/tasks");
+  revalidatePath("/calendar");
+}
 
 export async function updateNoteAction(input: UpdateNoteActionInput) {
   const userId = await getCurrentUserId();
@@ -34,18 +47,12 @@ export async function updateNoteAction(input: UpdateNoteActionInput) {
     input.title,
     input.content,
     input.contentJson,
-    input.inlineTagNames,
-    input.selectedReferenceIds,
+    input.inlineTagNames ?? [],
+    input.selectedReferenceIds ?? [],
     input.linkedNoteIds ?? [],
   );
 
-  revalidatePath(`/notes/${input.id}`);
-  revalidatePath(`/notes/${input.id}/edit`);
-  revalidatePath("/notes");
-  revalidatePath("/workspace");
-  revalidatePath("/capture");
-  revalidatePath("/tasks");
-  revalidatePath("/calendar");
+  revalidateNoteWorkflows(input.id);
 
   return note;
 }
@@ -58,11 +65,7 @@ export async function createNoteAction(input: CreateNoteActionInput) {
     userId,
   });
 
-  revalidatePath("/workspace");
-  revalidatePath("/notes");
-  revalidatePath("/capture");
-  revalidatePath("/tasks");
-  revalidatePath("/calendar");
+  revalidateNoteWorkflows(note?.id);
 
   return note;
 }

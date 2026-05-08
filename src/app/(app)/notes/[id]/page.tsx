@@ -1,12 +1,11 @@
 // app/notes/[id]/page.tsx
 
 import NoteCard from "@/components/notes/NoteCard";
-import { getNoteDetailsById } from "@/db/queries/notes";
+import PageQuickActions from "@/components/shared/PageQuickActions";
+import { getNoteDetailsById, getNotesForUser } from "@/db/queries/notes";
+import { getReferencesForUser } from "@/db/queries/references";
+import { getTagsForUser } from "@/db/queries/tags";
 import Link from "next/link";
-import { getNotesForUser } from "@/db/queries/notes";
-import { getReferences, getReferencesForUser } from "@/db/queries/references";
-import { getAllTags, getTagsForUser } from "@/db/queries/tags";
-
 
 type NoteDetailsPageProps = {
   params: Promise<{
@@ -30,14 +29,21 @@ export default async function NoteDetailsPage({
       </main>
     );
   }
-const notes = await getNotesForUser(data.note.userId);
-const allReferences = await getReferences();
-const allTags = await getAllTags();
-  const userTags = await getTagsForUser(data.note.userId);
-  const userReferences = await getReferencesForUser(data.note.userId);
+
+  const userId = data.note.ownerId;
+
+  const notes = await getNotesForUser(userId);
+  const userTags = await getTagsForUser(userId);
+  const userReferences = await getReferencesForUser(userId);
+
+  const noteOptions = notes.map((note) => ({
+    id: note.id,
+    title: note.title,
+  }));
+
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-8 dark:bg-gray-950">
-      <div className="mx-auto mb-6 flex max-w-3xl items-center justify-between">
+      <div className="mx-auto mb-6 max-w-6xl">
         <Link
           href="/notes"
           className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
@@ -46,18 +52,26 @@ const allTags = await getAllTags();
         </Link>
       </div>
 
-      <NoteCard
-        data={data}
-        userId={data.note.userId}
-        allNotes={notes.map((note) => ({
-          id: note.id,
-          title: note.title,
-        }))}
-        allTags={allTags}
-        allReferences={allReferences}
-        userTags={userTags}
-        userReferences={userReferences}
-      />
+      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[240px_1fr]">
+        <PageQuickActions
+          entityType="note"
+          entityId={data.note.id}
+          userId={userId}
+          tags={userTags}
+          references={userReferences}
+          notes={noteOptions}
+        />
+
+        <NoteCard
+          data={data}
+          userId={userId}
+          allNotes={noteOptions}
+          allTags={userTags}
+          allReferences={userReferences}
+          userTags={userTags}
+          userReferences={userReferences}
+        />
+      </div>
     </main>
   );
 }
