@@ -70,7 +70,9 @@ export default function EventFormPopup({
         </div>
 
         <form
-          action={createEventAction}
+          action={async (formData) => {
+            await createEventAction(formData);
+          }}
           onSubmit={onClose}
           className="space-y-3"
         >

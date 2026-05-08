@@ -24,7 +24,9 @@ export default async function CapturePage() {
         </p>
       </div>
 
-      <form action={createCaptureAction} className="mb-10 space-y-4">
+      <form action={async (formData) => {
+        await createCaptureAction(formData);
+      }} className="mb-10 space-y-4">
         <textarea
           name="rawText"
           rows={10}

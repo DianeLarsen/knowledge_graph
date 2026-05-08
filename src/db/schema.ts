@@ -24,6 +24,11 @@ export const relationshipTypes = [
   "mentions",
   "uses",
   "follow_up",
+  "depends_on",
+  "duplicates",
+  "is_duplicate_of",
+  "references",
+  "extends",
 ] as const;
 
 export const visibilityTypes = ["private", "shared", "public"] as const;
@@ -126,7 +131,7 @@ export const tags = sqliteTable(
       .notNull()
       .default("user"),
 
-    scopeId: text("scope_id"),
+    scopeId: text("scope_id").notNull(),
     color: text("color", {
       enum: [
         "blue",
@@ -257,6 +262,10 @@ export const users = sqliteTable("users", {
     .$defaultFn(() => new Date()),
   clerkId: text("clerk_id").notNull().unique(),
   email: text("email").notNull().unique(),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date()),
 });
 
 export const projects = sqliteTable("projects", {
@@ -271,7 +280,7 @@ export const projects = sqliteTable("projects", {
   createdByUserId: text("created_by_user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  
+
   ownerId: text("owner_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -281,7 +290,11 @@ export const projects = sqliteTable("projects", {
   })
     .notNull()
     .default("private"),
-
+  status: text("status", {
+    enum: ["active", "paused", "completed", "archived"],
+  })
+    .notNull()
+    .default("active"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -508,6 +521,7 @@ export const tasks = sqliteTable("tasks", {
     .notNull()
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date()),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
 
 export const events = sqliteTable("events", {

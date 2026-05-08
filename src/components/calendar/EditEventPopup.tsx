@@ -73,7 +73,9 @@ export default function EditEventPopup({
         </div>
 
         <form
-          action={updateEventAction}
+          action={async (formData) => {
+            await updateEventAction(formData);
+          }}
           onSubmit={onClose}
           className="space-y-3"
         >

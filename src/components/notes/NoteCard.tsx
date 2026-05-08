@@ -1,6 +1,6 @@
 "use client";
 
-import { Note, Reference, Tag } from "@/db/schema";
+import { Note, Reference, Tag, type RelationshipType } from "@/db/schema";
 import TagPill from "@/components/notes/TagPill";
 import ReadOnlyNoteContent from "@/components/notes/ReadOnlyNoteContent";
 import EditNoteForm from "@/components/notes/EditNoteForm";
@@ -11,6 +11,8 @@ import {
   attachReferenceToNoteAction,
   removeReferenceFromNoteAction,
 } from "@/app/actions/references";
+import { getRelationshipLabel } from "@/lib/entityRelationships";
+
 
 type LinkedNoteSummary = {
   id: string;
@@ -57,7 +59,7 @@ type NoteReferenceCardItem = {
 };
 type OutgoingLink = {
   id: string;
-  relationshipType: string;
+  relationshipType: RelationshipType;
   label: string | null;
   sourceType: string;
   sourceId: string;
@@ -70,7 +72,7 @@ type OutgoingLink = {
 
 type Backlink = {
   id: string;
-  relationshipType: string;
+  relationshipType: RelationshipType;
   label: string | null;
   sourceType: string;
   sourceId: string;
@@ -444,7 +446,7 @@ export default function NoteCard({
                     {outgoingLinks.map((link) => (
                       <button
                         type="button"
-                        key={`${link.targetNoteId}-${link.relationshipType}`}
+                        key={link.id}
                         onClick={() => onOpenNote?.(link.targetNoteId)}
                         className="
                   rounded-full border border-blue-200 bg-blue-50 px-3 py-1
@@ -455,7 +457,7 @@ export default function NoteCard({
                       >
                         {link.targetTitle ?? "Untitled note"}
                         <span className="ml-1 text-[10px] opacity-70">
-                          ({link.relationshipType})
+                          ({getRelationshipLabel(link.relationshipType)})
                         </span>
                       </button>
                     ))}
@@ -473,7 +475,7 @@ export default function NoteCard({
                     {backlinks.map((link) => (
                       <button
                         type="button"
-                        key={`${link.sourceNoteId}-${link.relationshipType}`}
+                        key={link.id}
                         onClick={() => onOpenNote?.(link.sourceNoteId)}
                         className="
                   rounded-full border border-purple-200 bg-purple-50 px-3 py-1
@@ -484,7 +486,7 @@ export default function NoteCard({
                       >
                         {link.sourceTitle ?? "Untitled note"}
                         <span className="ml-1 text-[10px] opacity-70">
-                          ({link.relationshipType})
+                          ({getRelationshipLabel(link.relationshipType)})
                         </span>
                       </button>
                     ))}

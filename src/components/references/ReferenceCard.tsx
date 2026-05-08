@@ -50,7 +50,7 @@ export default function ReferenceCard({ reference }: { reference: Reference }) {
               <Pencil className="h-4 w-4" />
             </button>
 
-            <form action={deleteReferenceAction.bind(null, reference.id)}>
+            <form action={ () => { deleteReferenceAction.bind(null, reference.id)}}>
               <button
                 type="submit"
                 disabled={isLinked}
@@ -214,7 +214,7 @@ export default function ReferenceCard({ reference }: { reference: Reference }) {
           )}
         </>
       ) : (
-        <form action={updateReferenceAction} className="space-y-3">
+          <form action={() => { updateReferenceAction }} className="space-y-3">
           <input type="hidden" name="id" value={reference.id} />
 
           <input

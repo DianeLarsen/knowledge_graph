@@ -81,7 +81,9 @@ export default function SingleEventPopup({
           </button>
 
           <form
-            action={deleteEventAction}
+            action={async (formData) => {
+              await deleteEventAction(formData);
+            }}
             onSubmit={(formEvent) => {
               const confirmed = window.confirm(
                 "Delete this event? This cannot be undone.",

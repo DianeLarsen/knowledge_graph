@@ -119,6 +119,7 @@ export async function getOutgoingLinks(noteId: string, userId: string) {
     )
     .where(
       and(
+        eq(entityLinks.createdByUserId, userId),
         eq(entityLinks.sourceType, "note"),
         eq(entityLinks.sourceId, noteId),
         eq(notes.ownerType, "user"),
@@ -154,6 +155,7 @@ export async function getBacklinks(noteId: string, userId: string) {
     )
     .where(
       and(
+        eq(entityLinks.createdByUserId, userId),
         eq(entityLinks.targetType, "note"),
         eq(entityLinks.targetId, noteId),
         eq(notes.ownerType, "user"),

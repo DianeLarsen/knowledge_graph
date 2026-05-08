@@ -29,7 +29,7 @@ const navItems = [
     label: "Current Work",
     description: "Focus",
     icon: Play,
-    href: "/projects/current",
+    href: "/projects",
   },
   {
     label: "Workspace",
