@@ -6,12 +6,14 @@ import {
   check,
 } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+
 export const entityTypes = [
   "note",
   "task",
   "event",
   "capture",
   "reference",
+  "project",
 ] as const;
 
 export type EntityType = (typeof entityTypes)[number];
@@ -232,6 +234,8 @@ export const entityLinks = sqliteTable(
 
     label: text("label"),
 
+    metadata: text("metadata"),
+
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -380,7 +384,7 @@ export const projectItems = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
 
     projectRole: text("project_role", {
-      enum: ["source", "working", "output", "reference"],
+      enum: ["source", "working", "completed", "reference"],
     })
       .notNull()
       .default("working"),
@@ -439,39 +443,8 @@ export const referencesTable = sqliteTable("references", {
     .notNull()
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date()),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
-
-export const noteReferences = sqliteTable(
-  "note_references",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-
-    noteId: text("note_id")
-      .notNull()
-      .references(() => notes.id, { onDelete: "cascade" }),
-
-    referenceId: text("reference_id")
-      .notNull()
-      .references(() => referencesTable.id, { onDelete: "cascade" }),
-
-    pageNumber: text("page_number"),
-    location: text("location"),
-    quote: text("quote"),
-    summary: text("summary"),
-
-    createdAt: integer("created_at", { mode: "timestamp" })
-      .notNull()
-      .$defaultFn(() => new Date()),
-
-    updatedAt: integer("updated_at", { mode: "timestamp" })
-      .notNull()
-      .$defaultFn(() => new Date())
-      .$onUpdate(() => new Date()),
-  },
-  (t) => [unique("unique_note_reference").on(t.noteId, t.referenceId)],
-);
 
 export const tasks = sqliteTable("tasks", {
   id: text("id")
@@ -576,6 +549,7 @@ export const events = sqliteTable("events", {
     .notNull()
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date()),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
 
 export const captures = sqliteTable("captures", {
@@ -619,6 +593,7 @@ export const captures = sqliteTable("captures", {
     .notNull()
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date()),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
 
 export type Note = typeof notes.$inferSelect;
@@ -633,9 +608,6 @@ export type NewEntityLink = typeof entityLinks.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Reference = typeof referencesTable.$inferSelect;
 export type NewReference = typeof referencesTable.$inferInsert;
-
-export type NoteReference = typeof noteReferences.$inferSelect;
-export type NewNoteReference = typeof noteReferences.$inferInsert;
 
 export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;

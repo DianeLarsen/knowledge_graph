@@ -3,9 +3,10 @@ import { createNote } from "./queries/notes";
 import { createTag } from "./queries/tags";
 import { addTagToNote } from "./queries/entitytags";
 import { createEntityLink } from "./queries/entitylinks";
-import { createUserReference, addReferenceToNote } from "./queries/references";
+import { createUserReference } from "./queries/references";
 import { createUserTask } from "./queries/tasks";
 import { createUserEvent } from "./queries/calendar";
+import { createProject, addEntityToProject } from "./queries/projects";
 
 type TipTapMark = {
   type: string;
@@ -69,22 +70,22 @@ function requireSeedValue<T>(value: T | null | undefined, label: string): T {
 }
 
 async function seed() {
-const existingUsers = await getAllUsers();
-const existingSeedUser = existingUsers.find(
-  (user) => user.email === "annieml99@hotmail.com",
-);
-if (existingSeedUser) {
-  console.log("Seed user already exists, skipping");
-  return;
-}
-const user = requireSeedValue(
-  await createUser({
-    name: "Diane Dev",
-    email: "annieml99@hotmail.com",
-    clerkId: "user_3DJTiW2TXDvMMqCIbAw8zbaSTLC",
-  }),
-  "user",
-);
+  const existingUsers = await getAllUsers();
+  const existingSeedUser = existingUsers.find(
+    (user) => user.email === "annieml99@hotmail.com",
+  );
+  if (existingSeedUser) {
+    console.log("Seed user already exists, skipping");
+    return;
+  }
+  const user = requireSeedValue(
+    await createUser({
+      name: "Diane Dev",
+      email: "annieml99@hotmail.com",
+      clerkId: "user_3DJTiW2TXDvMMqCIbAw8zbaSTLC",
+    }),
+    "user",
+  );
 
   console.log("Created user:", user);
 
@@ -438,54 +439,69 @@ const user = requireSeedValue(
     noteTag14: await addTagToNote(user.id, captureworkflow.id, project.id),
   });
 
-  console.log("Added references to notes:", {
-    noteRef1: await addReferenceToNote({
-      noteId: sqljoins.id,
-      referenceId: sqlReference.id,
-      summary: "Used as a general SQL joins reference.",
+  console.log("Linked references to notes:", {
+    refLink1: await createEntityLink({
+      createdByUserId: user.id,
+      sourceType: "note",
+      sourceId: sqljoins.id,
+      targetType: "reference",
+      targetId: sqlReference.id,
+      relationshipType: "references",
+      label: "SQL joins reference",
     }),
-    noteRef2: await addReferenceToNote({
-      noteId: drizzleorm.id,
-      referenceId: drizzleReference.id,
-      summary: "Used as the main Drizzle ORM reference.",
+    refLink2: await createEntityLink({
+      createdByUserId: user.id,
+      sourceType: "note",
+      sourceId: drizzleorm.id,
+      targetType: "reference",
+      targetId: drizzleReference.id,
+      relationshipType: "references",
+      label: "Drizzle docs",
     }),
-    noteRef3: await addReferenceToNote({
-      noteId: sqlite.id,
-      referenceId: sqliteReference.id,
-      summary: "Used as the main SQLite reference.",
+    refLink3: await createEntityLink({
+      createdByUserId: user.id,
+      sourceType: "note",
+      sourceId: sqlite.id,
+      targetType: "reference",
+      targetId: sqliteReference.id,
+      relationshipType: "references",
+      label: "SQLite docs",
     }),
-    noteRef4: await addReferenceToNote({
-      noteId: knowledgegraphs.id,
-      referenceId: graphReference.id,
-      summary:
-        "Used as a concept reference for graph-based note relationships.",
+    refLink4: await createEntityLink({
+      createdByUserId: user.id,
+      sourceType: "note",
+      sourceId: knowledgegraphs.id,
+      targetType: "reference",
+      targetId: graphReference.id,
+      relationshipType: "references",
+      label: "Knowledge graph concepts",
     }),
-    noteRef5: await addReferenceToNote({
-      noteId: backlinks.id,
-      referenceId: graphReference.id,
-      summary: "Backlinks are related to graph-style note connections.",
+    refLink5: await createEntityLink({
+      createdByUserId: user.id,
+      sourceType: "note",
+      sourceId: captureworkflow.id,
+      targetType: "reference",
+      targetId: captureReference.id,
+      relationshipType: "references",
+      label: "Capture planning",
     }),
-    noteRef6: await addReferenceToNote({
-      noteId: searchqueries.id,
-      referenceId: drizzleReference.id,
-      summary:
-        "Search query behavior will likely be implemented through typed database queries.",
+    refLink6: await createEntityLink({
+      createdByUserId: user.id,
+      sourceType: "note",
+      sourceId: giantRendererTest.id,
+      targetType: "reference",
+      targetId: drizzleReference.id,
+      relationshipType: "references",
+      label: "Renderer Drizzle reference",
     }),
-    noteRef7: await addReferenceToNote({
-      noteId: captureworkflow.id,
-      referenceId: captureReference.id,
-      summary:
-        "Used to test Capture-created reference summaries and why-this-matters notes.",
-    }),
-    noteRef8: await addReferenceToNote({
-      noteId: giantRendererTest.id,
-      referenceId: drizzleReference.id,
-      summary: "Tests multiple references on one rich content note.",
-    }),
-    noteRef9: await addReferenceToNote({
-      noteId: giantRendererTest.id,
-      referenceId: sqliteReference.id,
-      summary: "Tests reference rendering and hover behavior.",
+    refLink7: await createEntityLink({
+      createdByUserId: user.id,
+      sourceType: "note",
+      sourceId: giantRendererTest.id,
+      targetType: "reference",
+      targetId: sqliteReference.id,
+      relationshipType: "references",
+      label: "Renderer SQLite reference",
     }),
   });
 
@@ -663,123 +679,152 @@ const user = requireSeedValue(
     }),
   });
 
-  const event1 = await createUserEvent(user.id, {
-    noteId: sqljoins.id,
-    taskId: task1.id,
-    title: "Study SQL joins",
-    description:
-      "Review SQL join examples and connect them to the SQL Joins note.",
-    startDate: "2026-05-15",
-    endDate: "2026-05-15",
-    startTime: "18:00",
-    endTime: "19:30",
-    allDay: false,
-    location: "Portfolio workspace",
-    status: "planned",
-  });
+  const event1 = requireSeedValue(
+    await createUserEvent(user.id, {
+      noteId: sqljoins.id,
+      taskId: task1.id,
+      title: "Study SQL joins",
+      description:
+        "Review SQL join examples and connect them to the SQL Joins note.",
+      startDate: "2026-05-15",
+      endDate: "2026-05-15",
+      startTime: "18:00",
+      endTime: "19:30",
+      allDay: false,
+      location: "Portfolio workspace",
+      status: "planned",
+    }),
+    "event1",
+  );
 
-  const event2 = await createUserEvent(user.id, {
-    noteId: drizzleorm.id,
-    taskId: task2.id,
-    title: "Build Drizzle examples",
-    description: "Work on typed query examples for the Drizzle ORM note.",
-    startDate: "2026-05-16",
-    endDate: "2026-05-16",
-    startTime: "10:00",
-    endTime: "12:00",
-    allDay: false,
-    location: "Portfolio workspace",
-    status: "planned",
-  });
+  const event2 = requireSeedValue(
+    await createUserEvent(user.id, {
+      noteId: drizzleorm.id,
+      taskId: task2.id,
+      title: "Build Drizzle examples",
+      description: "Work on typed query examples for the Drizzle ORM note.",
+      startDate: "2026-05-16",
+      endDate: "2026-05-16",
+      startTime: "10:00",
+      endTime: "12:00",
+      allDay: false,
+      location: "Portfolio workspace",
+      status: "planned",
+    }),
+    "event2",
+  );
 
-  const event3 = await createUserEvent(user.id, {
-    title: "Overlapping test event",
-    description: "Tests overlapping event layout in the day timeline.",
-    startDate: "2026-05-16",
-    endDate: "2026-05-16",
-    startTime: "11:00",
-    endTime: "14:00",
-    allDay: false,
-    location: "Calendar test",
-    status: "planned",
-  });
+  const event3 = requireSeedValue(
+    await createUserEvent(user.id, {
+      title: "Overlapping test event",
+      description: "Tests overlapping event layout in the day timeline.",
+      startDate: "2026-05-16",
+      endDate: "2026-05-16",
+      startTime: "11:00",
+      endTime: "14:00",
+      allDay: false,
+      location: "Calendar test",
+      status: "planned",
+    }),
+    "event3",
+  );
 
-  const event4 = await createUserEvent(user.id, {
-    title: "Deep work session",
-    description: "Focus on calendar + task integration.",
-    startDate: "2026-05-16",
-    endDate: "2026-05-16",
-    startTime: "13:00",
-    endTime: "16:00",
-    allDay: false,
-    location: "Desk",
-    status: "planned",
-  });
+  const event4 = requireSeedValue(
+    await createUserEvent(user.id, {
+      title: "Deep work session",
+      description: "Focus on calendar + task integration.",
+      startDate: "2026-05-16",
+      endDate: "2026-05-16",
+      startTime: "13:00",
+      endTime: "16:00",
+      allDay: false,
+      location: "Desk",
+      status: "planned",
+    }),
+    "event4",
+  );
 
-  const event5 = await createUserEvent(user.id, {
-    noteId: knowledgegraphs.id,
-    taskId: task4.id,
-    title: "Plan knowledge graph map",
-    description: "Sketch system connections across notes, tasks, and calendar.",
-    startDate: "2026-05-17",
-    endDate: "2026-05-17",
-    startTime: "14:00",
-    endTime: "16:00",
-    allDay: false,
-    location: "Planning board",
-    status: "planned",
-  });
+  const event5 = requireSeedValue(
+    await createUserEvent(user.id, {
+      noteId: knowledgegraphs.id,
+      taskId: task4.id,
+      title: "Plan knowledge graph map",
+      description:
+        "Sketch system connections across notes, tasks, and calendar.",
+      startDate: "2026-05-17",
+      endDate: "2026-05-17",
+      startTime: "14:00",
+      endTime: "16:00",
+      allDay: false,
+      location: "Planning board",
+      status: "planned",
+    }),
+    "event5",
+  );
 
-  const event6 = await createUserEvent(user.id, {
-    noteId: captureworkflow.id,
-    taskId: task7.id,
-    title: "Polish Capture workflow",
-    description:
-      "Improve Capture output display so notes, tasks, references, and next steps feel connected.",
-    startDate: "2026-05-18",
-    endDate: "2026-05-18",
-    startTime: "18:00",
-    endTime: "19:30",
-    allDay: false,
-    location: "Portfolio workspace",
-    status: "planned",
-  });
+  const event6 = requireSeedValue(
+    await createUserEvent(user.id, {
+      noteId: captureworkflow.id,
+      taskId: task7.id,
+      title: "Polish Capture workflow",
+      description:
+        "Improve Capture output display so notes, tasks, references, and next steps feel connected.",
+      startDate: "2026-05-18",
+      endDate: "2026-05-18",
+      startTime: "18:00",
+      endTime: "19:30",
+      allDay: false,
+      location: "Portfolio workspace",
+      status: "planned",
+    }),
+    "event6",
+  );
 
-  const event7 = await createUserEvent(user.id, {
-    title: "Feature sprint: Calendar",
-    description: "Build event editing, time support, and UI polish.",
-    startDate: "2026-05-19",
-    endDate: "2026-05-21",
-    startTime: "09:00",
-    endTime: "17:00",
-    allDay: false,
-    location: "Workspace",
-    status: "planned",
-  });
+  const event7 = requireSeedValue(
+    await createUserEvent(user.id, {
+      title: "Feature sprint: Calendar",
+      description: "Build event editing, time support, and UI polish.",
+      startDate: "2026-05-19",
+      endDate: "2026-05-21",
+      startTime: "09:00",
+      endTime: "17:00",
+      allDay: false,
+      location: "Workspace",
+      status: "planned",
+    }),
+    "event7",
+  );
 
-  const event8 = await createUserEvent(user.id, {
-    title: "Family day",
-    description: "No coding. Try to remember sunlight exists.",
-    startDate: "2026-05-24",
-    endDate: "2026-05-24",
-    allDay: true,
-    location: "Outside (allegedly)",
-    status: "planned",
-  });
+  const event8 = requireSeedValue(
+    await createUserEvent(user.id, {
+      title: "Family day",
+      description: "No coding. Try to remember sunlight exists.",
+      startDate: "2026-05-24",
+      endDate: "2026-05-24",
+      allDay: true,
+      location: "Outside (allegedly)",
+      status: "planned",
+    }),
+    "event8",
+  );
 
-  const event9 = await createUserEvent(user.id, {
-    noteId: backlinks.id,
-    taskId: task5.id,
-    title: "Past completed backlink review",
-    description: "Past event used to test history and completed work display.",
-    startDate: "2026-05-01",
-    endDate: "2026-05-01",
-    startTime: "09:00",
-    endTime: "10:00",
-    allDay: false,
-    location: "Archive test",
-    status: "planned",
-  });
+  const event9 = requireSeedValue(
+    await createUserEvent(user.id, {
+      noteId: backlinks.id,
+      taskId: task5.id,
+      title: "Past completed backlink review",
+      description:
+        "Past event used to test history and completed work display.",
+      startDate: "2026-05-01",
+      endDate: "2026-05-01",
+      startTime: "09:00",
+      endTime: "10:00",
+      allDay: false,
+      location: "Archive test",
+      status: "planned",
+    }),
+    "event9",
+  );
 
   console.log("Created events:", {
     event1,
@@ -792,7 +837,110 @@ const user = requireSeedValue(
     event8,
     event9,
   });
+  const knowledgeGraphProject = requireSeedValue(
+    await createProject(user.id, {
+      title: "Knowledge Graph Portfolio App",
+      description:
+        "Build and polish the local knowledge graph app with notes, tags, references, tasks, calendar, capture, and projects.",
+      status: "active",
+      visibility: "private",
+    }),
+    "Knowledge Graph Portfolio App project",
+  );
 
+  const captureSystemProject = requireSeedValue(
+    await createProject(user.id, {
+      title: "Capture Workflow System",
+      description:
+        "Improve the capture pipeline so messy input becomes useful notes, tasks, references, prompts, risks, and next steps.",
+      status: "active",
+      visibility: "private",
+    }),
+    "Capture Workflow System project",
+  );
+
+  const rendererProject = requireSeedValue(
+    await createProject(user.id, {
+      title: "Rich Note Renderer Polish",
+      description:
+        "Test and refine rich content rendering, inline tags, reference marks, scrolling, and card layout behavior.",
+      status: "active",
+      visibility: "private",
+    }),
+    "Rich Note Renderer Polish project",
+  );
+
+  console.log("Created projects:", {
+    knowledgeGraphProject,
+    captureSystemProject,
+    rendererProject,
+  });
+  console.log("Added items to projects:", {
+    kgNote1: await addEntityToProject(user.id, {
+      projectId: knowledgeGraphProject.id,
+      entityType: "note",
+      entityId: knowledgegraphs.id,
+      projectRole: "working",
+    }),
+    kgNote2: await addEntityToProject(user.id, {
+      projectId: knowledgeGraphProject.id,
+      entityType: "note",
+      entityId: sqljoins.id,
+      projectRole: "source",
+    }),
+    kgTask1: await addEntityToProject(user.id, {
+      projectId: knowledgeGraphProject.id,
+      entityType: "task",
+      entityId: task4.id,
+      projectRole: "working",
+    }),
+    kgEvent1: event5
+      ? await addEntityToProject(user.id, {
+          projectId: knowledgeGraphProject.id,
+          entityType: "event",
+          entityId: event5.id,
+          projectRole: "working",
+        })
+      : null,
+
+    captureNote: await addEntityToProject(user.id, {
+      projectId: captureSystemProject.id,
+      entityType: "note",
+      entityId: captureworkflow.id,
+      projectRole: "working",
+    }),
+    captureTask: await addEntityToProject(user.id, {
+      projectId: captureSystemProject.id,
+      entityType: "task",
+      entityId: task7.id,
+      projectRole: "working",
+    }),
+    captureReference: await addEntityToProject(user.id, {
+      projectId: captureSystemProject.id,
+      entityType: "reference",
+      entityId: captureReference.id,
+      projectRole: "reference",
+    }),
+
+    rendererNote: await addEntityToProject(user.id, {
+      projectId: rendererProject.id,
+      entityType: "note",
+      entityId: giantRendererTest.id,
+      projectRole: "working",
+    }),
+    rendererTask: await addEntityToProject(user.id, {
+      projectId: rendererProject.id,
+      entityType: "task",
+      entityId: task8.id,
+      projectRole: "working",
+    }),
+    rendererReference: await addEntityToProject(user.id, {
+      projectId: rendererProject.id,
+      entityType: "reference",
+      entityId: drizzleReference.id,
+      projectRole: "reference",
+    }),
+  });
   console.log("Seeding complete.");
 }
 

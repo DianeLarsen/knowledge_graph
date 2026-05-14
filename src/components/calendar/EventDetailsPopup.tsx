@@ -9,7 +9,6 @@ type EventDetailsPopupProps = {
   items: CalendarItem[];
   onClose: () => void;
   onCreateEvent: () => void;
-  onEditEvent: (item: CalendarItem) => void;
   onOpenEvent: (item: CalendarItem) => void;
 };
 

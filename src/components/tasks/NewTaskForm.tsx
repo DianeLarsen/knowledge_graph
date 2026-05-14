@@ -3,6 +3,8 @@ import { TaskStatus } from "@/components/tasks/Taskboard";
 
 type NewTaskFormProps = {
   status: TaskStatus;
+  startOpen?: boolean;
+  hideToggle?: boolean;
   onCreateTask: (input: {
     title: string;
     description?: string;
@@ -12,8 +14,13 @@ type NewTaskFormProps = {
   }) => Promise<void>;
 };
 
-export default function NewTaskForm({ status, onCreateTask }: NewTaskFormProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function NewTaskForm({
+  status,
+  startOpen = false,
+  hideToggle = false,
+  onCreateTask,
+}: NewTaskFormProps) {
+  const [isOpen, setIsOpen] = useState(startOpen);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
@@ -38,13 +45,27 @@ export default function NewTaskForm({ status, onCreateTask }: NewTaskFormProps) 
       setDescription("");
       setPriority("medium");
       setDueDate("");
-      setIsOpen(false);
+
+      if (!hideToggle) {
+        setIsOpen(false);
+      }
     } finally {
       setIsSaving(false);
     }
   }
 
-  if (!isOpen) {
+  if (!isOpen && !hideToggle) {
+    return (
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="mb-3 w-full rounded-xl border border-dashed border-gray-300 px-3 py-2 text-left text-sm text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+      >
+        + New task
+      </button>
+    );
+  }
+  if (!isOpen && !hideToggle) {
     return (
       <button
         type="button"
@@ -56,6 +77,9 @@ export default function NewTaskForm({ status, onCreateTask }: NewTaskFormProps) 
     );
   }
 
+  if (!isOpen && hideToggle) {
+    return null;
+  }
   return (
     <div className="mb-3 space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-950">
       <input
@@ -107,7 +131,10 @@ export default function NewTaskForm({ status, onCreateTask }: NewTaskFormProps) 
         <button
           type="button"
           onClick={() => {
-            setIsOpen(false);
+            if (!hideToggle) {
+              setIsOpen(false);
+            }
+
             setTitle("");
             setDescription("");
             setPriority("medium");

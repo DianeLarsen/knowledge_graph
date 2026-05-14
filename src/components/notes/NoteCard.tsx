@@ -4,7 +4,7 @@ import { Note, Reference, Tag, type RelationshipType } from "@/db/schema";
 import TagPill from "@/components/notes/TagPill";
 import ReadOnlyNoteContent from "@/components/notes/ReadOnlyNoteContent";
 import EditNoteForm from "@/components/notes/EditNoteForm";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TagColor } from "@/lib/tags/tagColors";
 import {
@@ -12,7 +12,6 @@ import {
   removeReferenceFromNoteAction,
 } from "@/app/actions/references";
 import { getRelationshipLabel } from "@/lib/entityRelationships";
-
 
 type LinkedNoteSummary = {
   id: string;
@@ -99,18 +98,33 @@ type SharedTagNote = {
   sharedTagName: string;
 };
 
+type RichTextNode = {
+  type?: string;
+  attrs?: {
+    tagId?: string;
+    id?: string;
+  };
+  marks?: {
+    type?: string;
+    attrs?: {
+      tagId?: string;
+    };
+  }[];
+  content?: RichTextNode[];
+};
+
 function getInlineTagIds(contentJson: string | null) {
   if (!contentJson) return new Set<string>();
 
   try {
-    const doc = JSON.parse(contentJson);
+    const doc: RichTextNode = JSON.parse(contentJson);
     const ids = new Set<string>();
 
-    function walk(node: any) {
+    function walk(node: RichTextNode) {
       if (!node) return;
 
       if (Array.isArray(node.marks)) {
-        node.marks.forEach((mark: any) => {
+        node.marks.forEach((mark) => {
           if (mark.type === "tagMark" && mark.attrs?.tagId) {
             ids.add(mark.attrs.tagId);
           }
@@ -127,6 +141,7 @@ function getInlineTagIds(contentJson: string | null) {
     }
 
     walk(doc);
+
     return ids;
   } catch {
     return new Set<string>();
@@ -154,11 +169,11 @@ export default function NoteCard({
   userReferences?: Reference[];
   userId: string;
   compactShouldScroll?: boolean;
-  compactTagLimit: number;
+  compactTagLimit?: number;
 }) {
-  const [currentData, setCurrentData] = useState(data);
   const [isEditing, setIsEditing] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const router = useRouter();
 
   const {
     note,
@@ -168,7 +183,7 @@ export default function NoteCard({
     sharedTags,
     tagStats,
     references = [],
-  } = currentData;
+  } = data;
 
   const inlineTagIds = getInlineTagIds(note.contentJson);
 
@@ -198,11 +213,6 @@ export default function NoteCard({
   const attachedReferenceIds = new Set(
     references.map((reference) => reference.id),
   );
-
-  const router = useRouter();
-  useEffect(() => {
-    setCurrentData(data);
-  }, [data]);
 
   const referenceOptions = userReferences;
 
@@ -682,17 +692,9 @@ export default function NoteCard({
               tags={userTags}
               noteTags={tags}
               references={referenceOptions}
-              noteReferences={currentData.references ?? []}
+              noteReferences={data.references ?? []}
               onCancel={() => setIsEditing(false)}
-              onSave={(updatedNote) => {
-                setCurrentData((current) => ({
-                  ...current,
-                  note: {
-                    ...current.note,
-                    ...updatedNote,
-                  },
-                }));
-
+              onSave={() => {
                 setIsEditing(false);
                 router.refresh();
               }}

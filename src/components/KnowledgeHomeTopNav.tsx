@@ -24,7 +24,7 @@ const navItems = [
     icon: CalendarDays,
     href: "/calendar",
   },
-  { label: "Capture", description: "Dump ideas", icon: Zap, href: "/capture" },
+  { label: "Capture", description: "Dump ideas", icon: Zap, href: "/captures" },
   {
     label: "Current Work",
     description: "Focus",

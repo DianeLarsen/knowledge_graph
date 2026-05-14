@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   createTaskFromCaptureAction,
@@ -53,7 +54,57 @@ export default function CaptureAnalysis({
 }) {
   const [isOpen, setIsOpen] = useState(true);
   const analysis = JSON.parse(analysisJson) as CaptureAnalysisData;
+  const router = useRouter();
 
+  async function handleCreateTaskFromCapture(
+    index: number,
+    task: CaptureAnalysisData["possibleTasks"][number],
+  ) {
+    const formData = new FormData();
+
+    formData.set("captureId", captureId);
+    formData.set("taskIndex", String(index));
+    formData.set("title", task.title);
+    formData.set("description", task.description);
+    formData.set("priority", task.priority);
+
+    await createTaskFromCaptureAction(formData);
+    router.refresh();
+  }
+
+  async function handleCreateNoteFromCapture(
+    index: number,
+    note: CaptureAnalysisData["possibleNotes"][number],
+  ) {
+    const formData = new FormData();
+
+    formData.set("captureId", captureId);
+    formData.set("noteIndex", String(index));
+    formData.set("title", note.title);
+    formData.set("content", note.content);
+
+    await createNoteFromCaptureAction(formData);
+    router.refresh();
+  }
+
+  async function handleCreateReferenceFromCapture(
+    index: number,
+    reference: CaptureAnalysisData["possibleReferences"][number],
+  ) {
+    const formData = new FormData();
+
+    formData.set("captureId", captureId);
+    formData.set("referenceIndex", String(index));
+    formData.set("type", reference.type ?? "other");
+    formData.set("title", reference.title ?? "");
+    formData.set("author", reference.author ?? "");
+    formData.set("url", reference.url ?? "");
+    formData.set("notes", reference.notes ?? "");
+
+    await createReferenceFromCaptureAction(formData);
+    router.refresh();
+  }
+  
   return (
     <div className="mt-5 rounded-xl border border-purple-200 bg-purple-50 p-4 dark:border-purple-900 dark:bg-purple-950/30">
       <button
@@ -109,25 +160,7 @@ export default function CaptureAnalysis({
                       Priority: {task.priority}
                     </p>
 
-                    <form
-                      action={async (formData) => {
-                        await createTaskFromCaptureAction(formData);
-                      }}
-                      className="mt-3"
-                    >
-                      <input type="hidden" name="captureId" value={captureId} />
-                      <input type="hidden" name="taskIndex" value={index} />
-                      <input type="hidden" name="title" value={task.title} />
-                      <input
-                        type="hidden"
-                        name="description"
-                        value={task.description}
-                      />
-                      <input
-                        type="hidden"
-                        name="priority"
-                        value={task.priority}
-                      />
+                    <div className="mt-3">
                       {task.duplicateWarning && (
                         <div className="mt-3 rounded-md border border-yellow-300 bg-yellow-50 px-3 py-2 text-xs text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200">
                           Similar task found:{" "}
@@ -153,13 +186,16 @@ export default function CaptureAnalysis({
                         </span>
                       ) : (
                         <button
-                          type="submit"
+                          type="button"
+                          onClick={async () => {
+                            await handleCreateTaskFromCapture(index, task);
+                          }}
                           className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                         >
                           Create Task
                         </button>
                       )}
-                    </form>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -184,22 +220,7 @@ export default function CaptureAnalysis({
                     <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-300">
                       {note.content}
                     </p>
-
-                    <form
-                      action={async (formData) => {
-                        await createNoteFromCaptureAction(formData);
-                      }}
-                      className="mt-3"
-                    >
-                      <input type="hidden" name="captureId" value={captureId} />
-                      <input type="hidden" name="noteIndex" value={index} />
-                      <input type="hidden" name="title" value={note.title} />
-                      <input
-                        type="hidden"
-                        name="content"
-                        value={note.content}
-                      />
-
+                    <div className="mt-3">
                       {note.created && note.noteId ? (
                         <a
                           href={`/notes/${note.noteId}`}
@@ -213,13 +234,16 @@ export default function CaptureAnalysis({
                         </span>
                       ) : (
                         <button
-                          type="submit"
+                          type="button"
+                          onClick={async () => {
+                            await handleCreateNoteFromCapture(index, note);
+                          }}
                           className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                         >
                           Create Note
                         </button>
                       )}
-                    </form>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -278,45 +302,7 @@ export default function CaptureAnalysis({
                         </div>
                       )}
                     </div>
-
-                    <form
-                      action={async (formData) => {
-                        await createReferenceFromCaptureAction(formData);
-                      }}
-                      className="mt-3"
-                    >
-                      <input type="hidden" name="captureId" value={captureId} />
-                      <input
-                        type="hidden"
-                        name="referenceIndex"
-                        value={index}
-                      />
-                      <input
-                        type="hidden"
-                        name="type"
-                        value={reference.type ?? "other"}
-                      />
-                      <input
-                        type="hidden"
-                        name="title"
-                        value={reference.title ?? ""}
-                      />
-                      <input
-                        type="hidden"
-                        name="author"
-                        value={reference.author ?? ""}
-                      />
-                      <input
-                        type="hidden"
-                        name="url"
-                        value={reference.url ?? ""}
-                      />
-                      <input
-                        type="hidden"
-                        name="notes"
-                        value={reference.notes ?? ""}
-                      />
-
+                    <div className="mt-3">
                       {reference.created && reference.referenceId ? (
                         <span className="inline-flex rounded-md bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 dark:bg-green-950 dark:text-green-300">
                           Reference Created
@@ -327,13 +313,19 @@ export default function CaptureAnalysis({
                         </span>
                       ) : (
                         <button
-                          type="submit"
+                          type="button"
+                          onClick={async () => {
+                            await handleCreateReferenceFromCapture(
+                              index,
+                              reference,
+                            );
+                          }}
                           className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                         >
                           Create Reference
                         </button>
                       )}
-                    </form>
+                    </div>
                   </div>
                 ))}
               </div>

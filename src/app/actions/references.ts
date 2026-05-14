@@ -4,10 +4,8 @@ import {
   createUserReference,
   updateReference,
   deleteReference,
-  getReferenceLinkCount,
+  getReferenceEntityLinkCount,
   getReferences,
-  addReferenceToNote,
-  removeReferenceFromNote,
   getReferencesForNote,
 } from "@/db/queries/references";
 import { createEntityLink, deleteEntityLink } from "@/db/queries/entitylinks";
@@ -77,18 +75,24 @@ export async function updateReferenceAction(formData: FormData) {
   const author = String(formData.get("author") ?? "").trim();
   const url = String(formData.get("url") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
+  const publisher = String(formData.get("publisher") ?? "").trim();
+  const publishedDate = String(formData.get("publishedDate") ?? "").trim();
+  const citation = String(formData.get("citation") ?? "").trim();
 
   if (!id || !title) {
     return null;
   }
 
-  const reference = await updateReference(id, userId, {
-    type,
-    title,
-    author,
-    url,
-    notes,
-  });
+const reference = await updateReference(id, userId, {
+  type,
+  title,
+  author: author || null,
+  url: url || null,
+  publisher: publisher || null,
+  publishedDate: publishedDate || null,
+  citation: citation || null,
+  notes: notes || null,
+});
 
   revalidateReferenceWorkflows();
 
@@ -98,7 +102,7 @@ export async function updateReferenceAction(formData: FormData) {
 export async function deleteReferenceAction(referenceId: string) {
   const userId = await getCurrentUserId();
 
-  const linkCount = await getReferenceLinkCount(referenceId);
+  const linkCount = await getReferenceEntityLinkCount(referenceId, userId);
 
   if (linkCount > 0) {
     return null;
@@ -116,41 +120,36 @@ export async function attachReferenceToNoteAction(formData: FormData) {
 
   const noteId = String(formData.get("noteId") ?? "");
   const referenceId = String(formData.get("referenceId") ?? "");
+
   const pageNumber = String(formData.get("pageNumber") ?? "").trim();
+  const location = String(formData.get("location") ?? "").trim();
+  const quote = String(formData.get("quote") ?? "").trim();
   const summary = String(formData.get("summary") ?? "").trim();
 
   if (!noteId || !referenceId) {
     return null;
   }
 
-  const existingReferences = await getReferencesForNote(userId, noteId);
-  const alreadyAttached = existingReferences.some(
-    (reference) => reference.id === referenceId,
-  );
-
-  if (alreadyAttached) {
-    return null;
-  }
-
-  const noteReference = await addReferenceToNote({
-    noteId,
-    referenceId,
+  const metadata = {
     pageNumber: pageNumber || null,
+    location: location || null,
+    quote: quote || null,
     summary: summary || null,
-  });
+  };
 
-  await createEntityLink({
+  const link = await createEntityLink({
     createdByUserId: userId,
     sourceType: "note",
     sourceId: noteId,
     targetType: "reference",
     targetId: referenceId,
     relationshipType: "uses",
+    metadata: JSON.stringify(metadata),
   });
 
   revalidateReferenceWorkflows(noteId);
 
-  return noteReference;
+  return link;
 }
 
 export async function removeReferenceFromNoteAction(formData: FormData) {
@@ -163,9 +162,7 @@ export async function removeReferenceFromNoteAction(formData: FormData) {
     return null;
   }
 
-  const removed = await removeReferenceFromNote(noteId, referenceId);
-
-  await deleteEntityLink({
+  const removed = await deleteEntityLink({
     userId,
     sourceType: "note",
     sourceId: noteId,

@@ -3,8 +3,16 @@
 import { useState, useEffect } from "react";
 import { Task } from "@/db/schema";
 import { createTaskAction, updateTaskAction } from "@/app/actions/tasks";
+import type { Project } from "@/db/schema";
+import { QuickTag, QuickReference, QuickNote } from "@/lib/tags/tagTypes";
 
 import TaskColumn from "@/components/tasks/TaskColumn";
+
+type TaskWithQuickActionState = Task & {
+  attachedTagIds?: string[];
+  linkedNoteIds?: string[];
+  linkedReferenceIds?: string[];
+};
 
 export type TaskStatus =
   | "todo"
@@ -13,13 +21,20 @@ export type TaskStatus =
   | "done"
   | "archived";
 type VisibleTaskStatus = Exclude<TaskStatus, "archived">;
+
 type TaskBoardProps = {
   userId: string;
-  initialTasks: Task[];
+  initialTasks: TaskWithQuickActionState[];
+  projects: Project[];
+  tags: QuickTag[];
+  references: QuickReference[];
+  notes: QuickNote[];
 };
+
 type SimilarTask = Task & {
   similarity?: number;
 };
+
 const baseColumns: { status: VisibleTaskStatus; title: string }[] = [
   { status: "todo", title: "New" },
   { status: "in_progress", title: "In Progress" },
@@ -27,8 +42,15 @@ const baseColumns: { status: VisibleTaskStatus; title: string }[] = [
   { status: "done", title: "Done" },
 ];
 
-export default function TaskBoard({ initialTasks }: TaskBoardProps) {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+export default function TaskBoard({
+  userId,
+  initialTasks,
+  projects,
+  tags,
+  references,
+  notes,
+}: TaskBoardProps) {
+  const [tasks, setTasks] = useState<TaskWithQuickActionState[]>(initialTasks);
   const [showArchived, setShowArchived] = useState(false);
   const [openMenuTaskId, setOpenMenuTaskId] = useState<string | null>(null);
 
@@ -42,10 +64,10 @@ export default function TaskBoard({ initialTasks }: TaskBoardProps) {
     };
     similarTasks: SimilarTask[];
   } | null>(null);
-const [hoveredDuplicateTaskId, setHoveredDuplicateTaskId] = useState<
-  string | null
+  const [hoveredDuplicateTaskId, setHoveredDuplicateTaskId] = useState<
+    string | null
   >(null);
-  
+
   useEffect(() => {
     const hash = window.location.hash;
 
@@ -70,9 +92,11 @@ const [hoveredDuplicateTaskId, setHoveredDuplicateTaskId] = useState<
 
     return () => clearTimeout(timeout);
   }, []);
+
   const columns = showArchived
     ? [...baseColumns, { status: "archived" as const, title: "Archived" }]
     : baseColumns;
+  
   async function moveTask(taskId: string, newStatus: TaskStatus) {
     const previousTasks = tasks;
 
@@ -107,52 +131,70 @@ const [hoveredDuplicateTaskId, setHoveredDuplicateTaskId] = useState<
     }
   }
 
-async function createTask(input: {
-  title: string;
-  description?: string;
-  status: TaskStatus;
-  priority: "low" | "medium" | "high";
-  dueDate?: string;
-}) {
-  const result = await createTaskAction({
-    title: input.title,
-    description: input.description,
-    status: input.status,
-    priority: input.priority,
-    dueDate: input.dueDate,
-  });
-
-  if (result.duplicate) {
-    setDuplicateWarning({
-      attemptedTask: input,
-      similarTasks: result.similarTasks,
+  async function createTask(input: {
+    title: string;
+    description?: string;
+    status: TaskStatus;
+    priority: "low" | "medium" | "high";
+    dueDate?: string;
+  }) {
+    const result = await createTaskAction({
+      title: input.title,
+      description: input.description,
+      status: input.status,
+      priority: input.priority,
+      dueDate: input.dueDate,
     });
-    return;
+
+    if (result.duplicate) {
+      setDuplicateWarning({
+        attemptedTask: input,
+        similarTasks: result.similarTasks,
+      });
+      return;
+    }
+
+    if (!result.task) return;
+
+    setTasks((current) => [
+      {
+        ...result.task!,
+        attachedTagIds: [],
+        linkedNoteIds: [],
+        linkedReferenceIds: [],
+      },
+      ...current,
+    ]);
+    setDuplicateWarning(null);
   }
 
-  if (!result.task) return;
+  async function createTaskAnyway() {
+    if (!duplicateWarning) return;
 
-  setTasks((current) => [result.task!, ...current]);
-  setDuplicateWarning(null);
-}
-async function createTaskAnyway() {
-  if (!duplicateWarning) return;
+    const task = await createTaskAction({
+      title: duplicateWarning.attemptedTask.title,
+      description: duplicateWarning.attemptedTask.description,
+      status: duplicateWarning.attemptedTask.status,
+      priority: duplicateWarning.attemptedTask.priority,
+      dueDate: duplicateWarning.attemptedTask.dueDate,
+      skipDuplicateCheck: true,
+    });
 
-  const task = await createTaskAction({
-    title: duplicateWarning.attemptedTask.title,
-    description: duplicateWarning.attemptedTask.description,
-    status: duplicateWarning.attemptedTask.status,
-    priority: duplicateWarning.attemptedTask.priority,
-    dueDate: duplicateWarning.attemptedTask.dueDate,
-    skipDuplicateCheck: true,
-  });
+    if (task.task) {
+      setTasks((current) => [
+        {
+          ...task.task!,
+          attachedTagIds: [],
+          linkedNoteIds: [],
+          linkedReferenceIds: [],
+        },
+        ...current,
+      ]);
+    }
 
-  if (task.task) {
-    setTasks((current) => [task.task!, ...current]);
+    setDuplicateWarning(null);
   }
 
-  setDuplicateWarning(null);
-}
   async function editTask(
     taskId: string,
     data: {
@@ -186,7 +228,7 @@ async function createTaskAnyway() {
     }
   }
 
-  function sortTasks(tasks: Task[]) {
+  function sortTasks(tasks: TaskWithQuickActionState[]) {
     const priorityOrder = {
       high: 0,
       medium: 1,
@@ -323,6 +365,11 @@ async function createTaskAnyway() {
               onEditTask={editTask}
               openMenuTaskId={openMenuTaskId}
               setOpenMenuTaskId={setOpenMenuTaskId}
+              userId={userId}
+              projects={projects}
+              tags={tags}
+              references={references}
+              notes={notes}
             />
           );
         })}

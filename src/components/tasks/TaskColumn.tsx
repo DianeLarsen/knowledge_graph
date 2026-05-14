@@ -3,13 +3,25 @@
 import { useState } from "react";
 import NewTaskForm from "@/components/tasks/NewTaskForm";
 import { TaskStatus } from "./Taskboard";
-import { Task } from "@/db/schema";
 import TaskCard from "@/components/tasks/TaskCard";
+import { QuickTag, QuickReference, QuickNote } from "@/lib/tags/tagTypes";
+import type { Project, Task } from "@/db/schema";
+
+type TaskWithQuickActionState = Task & {
+  attachedTagIds?: string[];
+  linkedNoteIds?: string[];
+  linkedReferenceIds?: string[];
+};
 
 type TaskColumnProps = {
   title: string;
   status: TaskStatus;
-  tasks: Task[];
+  tasks: TaskWithQuickActionState[];
+  userId: string;
+  projects: Project[];
+  tags: QuickTag[];
+  references: QuickReference[];
+  notes: QuickNote[];
   onMoveTask: (taskId: string, status: TaskStatus) => void;
   onArchiveTask: (taskId: string) => void;
   onCreateTask: (input: {
@@ -70,21 +82,26 @@ const columnStyles: Record<
     badge: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
   },
 };
+
 export default function TaskColumn({
   title,
   status,
   tasks,
+  userId,
+  projects,
+  tags,
+  references,
+  notes,
   onMoveTask,
   onArchiveTask,
   onCreateTask,
   onEditTask,
   openMenuTaskId,
-  setOpenMenuTaskId
+  setOpenMenuTaskId,
 }: TaskColumnProps) {
+  const [isCreating, setIsCreating] = useState(false);
 
-    const [isCreating, setIsCreating] = useState(false);
-
-    const styles = columnStyles[status];
+  const styles = columnStyles[status];
   function handleDrop(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();
 
@@ -139,13 +156,20 @@ export default function TaskColumn({
         {tasks.map((task) => (
           <div id={`task-${task.id}`} key={task.id}>
             <TaskCard
-   
               task={task}
               onArchiveTask={onArchiveTask}
               onEditTask={onEditTask}
               isMenuOpen={openMenuTaskId === task.id}
               onOpenMenu={() => setOpenMenuTaskId(task.id)}
               onCloseMenu={() => setOpenMenuTaskId(null)}
+              userId={userId}
+              projects={projects}
+              tags={tags}
+              references={references}
+              notes={notes}
+              attachedTagIds={task.attachedTagIds ?? []}
+              linkedNoteIds={task.linkedNoteIds ?? []}
+              linkedReferenceIds={task.linkedReferenceIds ?? []}
             />
           </div>
         ))}

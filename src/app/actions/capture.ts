@@ -70,6 +70,12 @@ function revalidateCaptureWorkflows() {
   revalidatePath("/calendar");
 }
 
+export async function createCaptureFormAction(
+  formData: FormData,
+): Promise<void> {
+  await createCaptureAction(formData);
+}
+
 export async function createCaptureAction(formData: FormData) {
   const rawText = String(formData.get("rawText") ?? "").trim();
 

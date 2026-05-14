@@ -3,6 +3,9 @@
 import { createNote, updateNote } from "@/db/queries/notes";
 import { getCurrentUserId } from "@/db/queries/users";
 import { revalidatePath } from "next/cache";
+import { addEntityToProject } from "@/db/queries/projects";
+
+type ProjectRole = "source" | "working" | "completed" | "reference";
 
 type CreateNoteActionInput = {
   title: string;
@@ -13,6 +16,8 @@ type CreateNoteActionInput = {
   linkedNoteIds?: string[];
   inlineTagNames?: string[];
   selectedReferenceIds?: string[];
+  projectId?: string;
+  projectRole?: ProjectRole;
 };
 
 type UpdateNoteActionInput = {
@@ -64,6 +69,18 @@ export async function createNoteAction(input: CreateNoteActionInput) {
     ...input,
     userId,
   });
+
+  if (input.projectId && note) {
+    await addEntityToProject(userId, {
+      projectId: input.projectId,
+      entityType: "note",
+      entityId: note.id,
+      projectRole: input.projectRole ?? "working",
+    });
+
+    revalidatePath(`/projects/${input.projectId}`);
+    revalidatePath(`/projects/${input.projectId}/workspace`);
+  }
 
   revalidateNoteWorkflows(note?.id);
 

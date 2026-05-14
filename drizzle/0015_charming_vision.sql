@@ -1,0 +1,1 @@
+ALTER TABLE `entity_links` ADD `metadata` text;

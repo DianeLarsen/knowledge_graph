@@ -5,6 +5,7 @@ import PageQuickActions from "@/components/shared/PageQuickActions";
 import { getNoteDetailsById, getNotesForUser } from "@/db/queries/notes";
 import { getReferencesForUser } from "@/db/queries/references";
 import { getTagsForUser } from "@/db/queries/tags";
+import { getUserProjectsAction } from "@/app/actions/projects";
 import Link from "next/link";
 
 type NoteDetailsPageProps = {
@@ -20,6 +21,8 @@ export default async function NoteDetailsPage({
 
   const data = await getNoteDetailsById(id);
 
+
+
   if (!data) {
     return (
       <main className="min-h-screen bg-gray-50 px-6 py-8 dark:bg-gray-950">
@@ -29,17 +32,18 @@ export default async function NoteDetailsPage({
       </main>
     );
   }
-
-  const userId = data.note.ownerId;
+  const projects = await getUserProjectsAction();
+  const userId = data.note.createdByUserId;
 
   const notes = await getNotesForUser(userId);
   const userTags = await getTagsForUser(userId);
   const userReferences = await getReferencesForUser(userId);
 
-  const noteOptions = notes.map((note) => ({
-    id: note.id,
-    title: note.title,
-  }));
+const noteOptions = notes.map((note) => ({
+  id: note.id,
+  title: note.title,
+  content: note.content ?? "",
+}));
 
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-8 dark:bg-gray-950">
@@ -60,14 +64,13 @@ export default async function NoteDetailsPage({
           tags={userTags}
           references={userReferences}
           notes={noteOptions}
+          projects={projects}
         />
 
         <NoteCard
           data={data}
           userId={userId}
           allNotes={noteOptions}
-          allTags={userTags}
-          allReferences={userReferences}
           userTags={userTags}
           userReferences={userReferences}
         />

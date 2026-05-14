@@ -1,36 +1,42 @@
 import { db } from "./index";
 import {
-  noteReferences,
   tasks,
   notes,
   tags,
   referencesTable,
   users,
-  events, 
+  events,
   captures,
   entityLinks,
-  entityTags
+  entityTags,
+  projectItems,
+  projectMemberPermissions,
+  projectMembers,
+  projects,
 } from "./schema";
 
 export async function resetDatabase() {
   console.log("Resetting database...");
 
-  // Children first (anything with foreign keys)
-
+  // Relationship / join tables first
   await db.delete(entityLinks);
   await db.delete(entityTags);
-  await db.delete(noteReferences);
+  await db.delete(projectItems);
+  await db.delete(projectMemberPermissions);
+  await db.delete(projectMembers);
 
-  await db.delete(events); // <-- must come before tasks/notes
-
-  // Then main tables
+  // Child tables
+  await db.delete(events);
   await db.delete(tasks);
+  await db.delete(captures);
+
+  // Main entity tables
   await db.delete(notes);
   await db.delete(tags);
   await db.delete(referencesTable);
+  await db.delete(projects);
 
-  await db.delete(captures);
-  // Finally users (top-level parent)
+  // Top-level parent
   await db.delete(users);
 
   console.log("Database cleared.");
@@ -38,4 +44,5 @@ export async function resetDatabase() {
 
 resetDatabase().catch((err) => {
   console.error("Reset failed:", err);
+  process.exit(1);
 });

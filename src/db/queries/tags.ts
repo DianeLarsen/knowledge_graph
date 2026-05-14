@@ -1,12 +1,11 @@
 import { asc, and, count, eq, isNull, or } from "drizzle-orm";
 import { db } from "../index";
-import { EntityType, entityTags, notes, tags } from "@/db/schema";
+import { type EntityType, entityTags, notes, tags } from "@/db/schema";
 import { getRandomTagColor } from "@/lib/tags/tagColors";
 
 function slugifyTag(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, "-");
 }
-
 
 export async function createTag(userId: string, name: string) {
   const cleanName = name.trim().toLowerCase();
@@ -41,12 +40,27 @@ export async function getTagsForUser(userId: string) {
       scopeId: tags.scopeId,
       name: tags.name,
       slug: tags.slug,
+      color: tags.color,
       visibility: tags.visibility,
       createdAt: tags.createdAt,
       updatedAt: tags.updatedAt,
       deletedAt: tags.deletedAt,
+      noteCount: count(notes.id),
     })
     .from(tags)
+    .leftJoin(
+      entityTags,
+      and(eq(entityTags.tagId, tags.id), eq(entityTags.entityType, "note")),
+    )
+    .leftJoin(
+      notes,
+      and(
+        eq(entityTags.entityId, notes.id),
+        eq(notes.ownerType, "user"),
+        eq(notes.ownerId, userId),
+        isNull(notes.deletedAt),
+      ),
+    )
     .where(
       and(
         eq(tags.scopeType, "user"),
@@ -54,6 +68,7 @@ export async function getTagsForUser(userId: string) {
         isNull(tags.deletedAt),
       ),
     )
+    .groupBy(tags.id)
     .orderBy(asc(tags.name));
 }
 
@@ -271,4 +286,24 @@ export async function getTagStats(tagId: string, userId: string) {
     .groupBy(tags.id);
 
   return result ?? null;
+}
+
+export async function removeTagFromEntity({
+  entityType,
+  entityId,
+  tagId,
+}: {
+  entityType: EntityType;
+  entityId: string;
+  tagId: string;
+}) {
+  return db
+    .delete(entityTags)
+    .where(
+      and(
+        eq(entityTags.entityType, entityType),
+        eq(entityTags.entityId, entityId),
+        eq(entityTags.tagId, tagId),
+      ),
+    );
 }

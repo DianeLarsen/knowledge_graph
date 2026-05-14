@@ -49,7 +49,7 @@ export default function TagPill({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-const tagColor = color ?? tag.color ?? "blue";
+
 
 const colorClasses = {
   blue: "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-200",

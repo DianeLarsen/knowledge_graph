@@ -3,7 +3,6 @@ import {
   entityTags,
   entityLinks,
   tags,
-  noteReferences,
   referencesTable,
   type RelationshipType,
   type NewEntityLink,
@@ -165,19 +164,28 @@ export async function createNote(input: CreateNoteInput) {
       tx.insert(entityLinks).values(linkValues).onConflictDoNothing().run();
     }
 
-    const selectedReferenceIds = input.selectedReferenceIds ?? [];
+const selectedReferenceIds = [
+  ...new Set((input.selectedReferenceIds ?? []).filter(Boolean)),
+];
 
-    if (selectedReferenceIds.length > 0) {
-      tx.insert(noteReferences)
-        .values(
-          selectedReferenceIds.map((referenceId) => ({
-            noteId: newNote.id,
-            referenceId,
-          })),
-        )
-        .onConflictDoNothing()
-        .run();
-    }
+if (selectedReferenceIds.length > 0) {
+  const referenceLinkValues: NewEntityLink[] = selectedReferenceIds.map(
+    (referenceId) => ({
+      createdByUserId: input.userId,
+      sourceType: "note",
+      sourceId: newNote.id,
+      targetType: "reference",
+      targetId: referenceId,
+      relationshipType: "uses",
+      metadata: null,
+    }),
+  );
+
+  tx.insert(entityLinks)
+    .values(referenceLinkValues)
+    .onConflictDoNothing()
+    .run();
+}
 
     return newNote;
   });
@@ -240,8 +248,42 @@ export async function searchNotesByUser(userId: string, query: string) {
     );
 }
 
+function parseReferenceMetadata(metadata: string | null) {
+  if (!metadata) {
+    return {
+      pageNumber: null,
+      location: null,
+      quote: null,
+      summary: null,
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(metadata) as {
+      pageNumber?: string | null;
+      location?: string | null;
+      quote?: string | null;
+      summary?: string | null;
+    };
+
+    return {
+      pageNumber: parsed.pageNumber ?? null,
+      location: parsed.location ?? null,
+      quote: parsed.quote ?? null,
+      summary: parsed.summary ?? null,
+    };
+  } catch {
+    return {
+      pageNumber: null,
+      location: null,
+      quote: null,
+      summary: null,
+    };
+  }
+}
+
 export async function getReferencesForNote(userId: string, noteId: string) {
-  return db
+  const rows = await db
     .select({
       id: referencesTable.id,
       type: referencesTable.type,
@@ -253,20 +295,25 @@ export async function getReferencesForNote(userId: string, noteId: string) {
       citation: referencesTable.citation,
       notes: referencesTable.notes,
 
-      noteReferenceId: noteReferences.id,
-      pageNumber: noteReferences.pageNumber,
-      location: noteReferences.location,
-      quote: noteReferences.quote,
-      summary: noteReferences.summary,
+      linkId: entityLinks.id,
+      relationshipType: entityLinks.relationshipType,
+      label: entityLinks.label,
+      metadata: entityLinks.metadata,
     })
-    .from(noteReferences)
+    .from(entityLinks)
     .innerJoin(
       referencesTable,
-      eq(noteReferences.referenceId, referencesTable.id),
+      and(
+        eq(entityLinks.targetType, "reference"),
+        eq(entityLinks.targetId, referencesTable.id),
+      ),
     )
     .where(
       and(
-        eq(noteReferences.noteId, noteId),
+        eq(entityLinks.createdByUserId, userId),
+        eq(entityLinks.sourceType, "note"),
+        eq(entityLinks.sourceId, noteId),
+        eq(entityLinks.targetType, "reference"),
         or(
           and(
             eq(referencesTable.ownerType, "user"),
@@ -276,6 +323,19 @@ export async function getReferencesForNote(userId: string, noteId: string) {
         ),
       ),
     );
+
+  return rows.map((row) => {
+    const parsedMetadata = parseReferenceMetadata(row.metadata);
+
+    return {
+      ...row,
+      noteReferenceId: row.linkId,
+      pageNumber: parsedMetadata.pageNumber,
+      location: parsedMetadata.location,
+      quote: parsedMetadata.quote,
+      summary: parsedMetadata.summary,
+    };
+  });
 }
 
 export async function getNoteDetailsById(id: string) {
@@ -395,19 +455,37 @@ export async function updateNote(
         .run();
     }
 
-    tx.delete(noteReferences).where(eq(noteReferences.noteId, id)).run();
+tx.delete(entityLinks)
+  .where(
+    and(
+      eq(entityLinks.createdByUserId, userId),
+      eq(entityLinks.sourceType, "note"),
+      eq(entityLinks.sourceId, id),
+      eq(entityLinks.targetType, "reference"),
+    ),
+  )
+  .run();
 
-    if (selectedReferenceIds.length > 0) {
-      tx.insert(noteReferences)
-        .values(
-          selectedReferenceIds.map((referenceId) => ({
-            noteId: id,
-            referenceId,
-          })),
-        )
-        .onConflictDoNothing()
-        .run();
-    }
+const cleanedReferenceIds = [...new Set(selectedReferenceIds.filter(Boolean))];
+
+if (cleanedReferenceIds.length > 0) {
+  const referenceLinkValues: NewEntityLink[] = cleanedReferenceIds.map(
+    (referenceId) => ({
+      createdByUserId: userId,
+      sourceType: "note",
+      sourceId: id,
+      targetType: "reference",
+      targetId: referenceId,
+      relationshipType: "uses",
+      metadata: null,
+    }),
+  );
+
+  tx.insert(entityLinks)
+    .values(referenceLinkValues)
+    .onConflictDoNothing()
+    .run();
+}
 
     tx.delete(entityLinks)
       .where(

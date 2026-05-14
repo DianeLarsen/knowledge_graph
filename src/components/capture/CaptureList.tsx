@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import CaptureAnalysis from "@/components/capture/CaptureAnalysis";
 import {
   analyzeCaptureAction,
@@ -71,10 +72,14 @@ function getCaptureProgress(analysisJson: string | null): CaptureProgress {
     };
   }
 }
+
 export default function CaptureList({ captures }: { captures: Capture[] }) {
+  const router = useRouter();
+
   const [filter, setFilter] = useState<CaptureStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [pendingCaptureId, setPendingCaptureId] = useState<string | null>(null);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
@@ -91,7 +96,20 @@ export default function CaptureList({ captures }: { captures: Capture[] }) {
 
     return matchesArchiveSetting && matchesStatus && matchesSearch;
   });
- 
+
+  async function runCaptureAction(
+    captureId: string,
+    action: () => Promise<unknown>,
+  ) {
+    setPendingCaptureId(captureId);
+
+    try {
+      await action();
+      router.refresh();
+    } finally {
+      setPendingCaptureId(null);
+    }
+  }
 
   return (
     <section>
@@ -149,6 +167,7 @@ export default function CaptureList({ captures }: { captures: Capture[] }) {
         <div className="space-y-4">
           {filteredCaptures.map((capture) => {
             const progress = getCaptureProgress(capture.analysisJson);
+            const isPending = pendingCaptureId === capture.id;
 
             return (
               <article
@@ -164,6 +183,7 @@ export default function CaptureList({ captures }: { captures: Capture[] }) {
                     {new Date(capture.createdAt).toLocaleString()}
                   </time>
                 </div>
+
                 {progress.readyToProcess && capture.status !== "processed" && (
                   <div className="mb-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
                     {progress.createdTasks} task
@@ -175,24 +195,25 @@ export default function CaptureList({ captures }: { captures: Capture[] }) {
                     Ready to process
                   </div>
                 )}
+
                 <p className="whitespace-pre-wrap text-sm leading-6 text-gray-800 dark:text-gray-200">
                   {capture.rawText}
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   {!capture.analysisJson && capture.status === "new" ? (
-                    <form
-                      action={async () => {
-                        await archiveCaptureAction(capture.id);
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={async () => {
+                        await runCaptureAction(capture.id, () =>
+                          analyzeCaptureAction(capture.id),
+                        );
                       }}
+                      className="rounded-lg border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950"
                     >
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950"
-                      >
-                        Analyze
-                      </button>
-                    </form>
+                      {isPending ? "Analyzing..." : "Analyze"}
+                    </button>
                   ) : (
                     <span className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-400 dark:border-gray-700 dark:text-gray-500">
                       Analyzed
@@ -201,51 +222,52 @@ export default function CaptureList({ captures }: { captures: Capture[] }) {
 
                   {progress.readyToProcess &&
                     capture.status !== "processed" && (
-                      <form
-                        action={async () => {
-                          await markCaptureProcessedAction(capture.id);
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={async () => {
+                          await runCaptureAction(capture.id, () =>
+                            markCaptureProcessedAction(capture.id),
+                          );
                         }}
+                        className="rounded-lg border border-green-300 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-950"
                       >
-                        <button
-                          type="submit"
-                          className="rounded-lg border border-green-300 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-950"
-                        >
-                          Mark Processed
-                        </button>
-                      </form>
+                        {isPending ? "Processing..." : "Mark Processed"}
+                      </button>
                     )}
+
                   {capture.status === "processed" && (
-                    <form
-                      action={async () => {
-                        await archiveCaptureAction(capture.id);
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={async () => {
+                        await runCaptureAction(capture.id, () =>
+                          archiveCaptureAction(capture.id),
+                        );
                       }}
+                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                     >
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-                      >
-                        Archive
-                      </button>
-                    </form>
+                      {isPending ? "Archiving..." : "Archive"}
+                    </button>
                   )}
+
                   {capture.status === "archived" && (
-                    <form
-                      action={async () => {
-                        await deleteCaptureAction(capture.id);
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={async () => {
+                        if (!confirm("Delete this capture permanently?")) {
+                          return;
+                        }
+
+                        await runCaptureAction(capture.id, () =>
+                          deleteCaptureAction(capture.id),
+                        );
                       }}
+                      className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950"
                     >
-                      <button
-                        type="submit"
-                        onClick={(event) => {
-                          if (!confirm("Delete this capture permanently?")) {
-                            event.preventDefault();
-                          }
-                        }}
-                        className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950"
-                      >
-                        Delete
-                      </button>
-                    </form>
+                      {isPending ? "Deleting..." : "Delete"}
+                    </button>
                   )}
                 </div>
 

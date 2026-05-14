@@ -5,7 +5,10 @@ import ReferenceCard from "@/components/references/ReferenceCard";
 
 type Reference = {
   id: string;
-  userId: string;
+  createdByUserId: string;
+  ownerType: "user" | "project";
+  ownerId: string;
+  visibility: "private" | "shared" | "public";
   type: "book" | "website" | "article" | "video" | "conversation" | "other";
   title: string;
   author: string | null;
@@ -21,6 +24,22 @@ type Reference = {
     id: string;
     title: string;
     content: string | null;
+  }[];
+  linkedTasks?: {
+    id: string;
+    title: string;
+    description: string | null;
+  }[];
+
+  linkedCaptures?: {
+    id: string;
+    title?: string | null;
+    summary?: string | null;
+  }[];
+
+  linkedReferences?: {
+    id: string;
+    title: string;
   }[];
 };
 

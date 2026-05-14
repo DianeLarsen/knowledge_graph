@@ -134,11 +134,8 @@ export default function CalendarClient({
         <EventDetailsPopup
           date={selectedDate}
           items={items}
-          notes={notes}
-          tasks={tasks}
           onClose={() => setShowDetails(false)}
           onCreateEvent={() => openCreateForm(selectedDate)}
-          onEditEvent={openEditEvent}
           onOpenEvent={openEventDetails}
         />
       )}

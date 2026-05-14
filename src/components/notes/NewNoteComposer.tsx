@@ -12,12 +12,20 @@ type NewNoteComposerProps = {
   notes: Note[];
   tags: Tag[];
   references: Reference[];
+  projectId?: string;
+  projectRole?: "source" | "working" | "completed" | "reference";
+  heading?: string;
+  compact?: boolean;
 };
 
 export default function NewNoteComposer({
   notes,
   tags,
   references,
+  projectId,
+  projectRole = "working",
+  heading = "Create New Card",
+  compact = false,
 }: NewNoteComposerProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -39,7 +47,7 @@ export default function NewNoteComposer({
 
   const router = useRouter();
   const titleMissing = savedMessage.includes("card title");
-  
+
   function toggleTag(tagId: string) {
     setSelectedTagIds((current) =>
       current.includes(tagId)
@@ -110,6 +118,8 @@ export default function NewNoteComposer({
         linkedNoteIds,
         inlineTagNames,
         selectedReferenceIds: finalReferenceIds,
+        projectId,
+        projectRole,
       });
 
       setHasSaved(true);
@@ -144,9 +154,15 @@ export default function NewNoteComposer({
     );
   }
   return (
-    <aside className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <aside
+      className={
+        compact
+          ? "rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-900/60"
+          : "rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+      }
+    >
       <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
-        Create New Card
+        {heading}
       </h2>
 
       <input

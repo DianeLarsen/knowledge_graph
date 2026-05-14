@@ -6,12 +6,18 @@ import {
   addEntityToProject,
   archiveProject,
   createProject,
+  getAvailableProjectItems,
   getProjectById,
   getProjectItems,
+  getProjectItemsWithDetails,
   getUserProjects,
   removeEntityFromProject,
   updateProject,
 } from "@/db/queries/projects";
+import { createNote } from "@/db/queries/notes";
+import { createUserTask } from "@/db/queries/tasks";
+import { createUserReference } from "@/db/queries/references";
+import { createUserEvent } from "@/db/queries/calendar";
 
 import type { EntityType, NewProject, NewProjectItem } from "@/db/schema";
 
@@ -103,6 +109,7 @@ export async function addEntityToProjectAction(formData: FormData) {
 
   revalidatePath("/projects");
   revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/workspace`);
 
   return item;
 }
@@ -146,4 +153,177 @@ export async function getProjectItemsAction(projectId: string) {
   const userId = await getCurrentUserId();
 
   return getProjectItems(projectId, userId);
+}
+
+export async function getProjectItemsWithDetailsAction(projectId: string) {
+  const userId = await getCurrentUserId();
+
+  return getProjectItemsWithDetails(projectId, userId);
+}
+
+export async function getAvailableProjectItemsAction(projectId: string) {
+  const userId = await getCurrentUserId();
+
+  return getAvailableProjectItems(projectId, userId);
+}
+
+export async function createProjectNoteAction(formData: FormData) {
+  const userId = await getCurrentUserId();
+
+  const projectId = String(formData.get("projectId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const content = String(formData.get("content") ?? "").trim();
+
+  if (!projectId || !title) {
+    throw new Error("Project and note title are required");
+  }
+
+  const note = await createNote({
+    title,
+    content,
+    contentJson: JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: content
+            ? [
+                {
+                  type: "text",
+                  text: content,
+                },
+              ]
+            : [],
+        },
+      ],
+    }),
+    userId,
+  });
+
+  if (!note) {
+    throw new Error("Could not create note");
+  }
+
+  await addEntityToProject(userId, {
+    projectId,
+    entityType: "note",
+    entityId: note.id,
+    projectRole: "working",
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/workspace`);
+  revalidatePath("/notes");
+}
+
+type CreateProjectTaskActionInput = {
+  projectId: string;
+  title: string;
+  description?: string;
+  status: "todo" | "in_progress" | "awaiting" | "done" | "archived";
+  priority: "low" | "medium" | "high";
+  dueDate?: string;
+};
+
+export async function createProjectTaskAction(
+  input: CreateProjectTaskActionInput,
+) {
+  const userId = await getCurrentUserId();
+
+  if (!input.projectId || !input.title.trim()) {
+    throw new Error("Project and task title are required");
+  }
+
+  const task = await createUserTask(userId, {
+    title: input.title.trim(),
+    description: input.description?.trim() || null,
+    status: input.status,
+    priority: input.priority,
+    dueDate: input.dueDate || null,
+  });
+
+  if (!task) {
+    throw new Error("Could not create task");
+  }
+
+  await addEntityToProject(userId, {
+    projectId: input.projectId,
+    entityType: "task",
+    entityId: task.id,
+    projectRole: "working",
+  });
+
+  revalidatePath("/tasks");
+  revalidatePath(`/projects/${input.projectId}`);
+  revalidatePath(`/projects/${input.projectId}/workspace`);
+
+  return task;
+}
+
+export async function createProjectReferenceAction(formData: FormData) {
+  const userId = await getCurrentUserId();
+
+  const projectId = String(formData.get("projectId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const url = String(formData.get("url") ?? "").trim();
+
+  if (!projectId || !title) {
+    throw new Error("Project and reference title are required");
+  }
+
+  const reference = await createUserReference(userId, {
+    type: url ? "website" : "other",
+    title,
+    url: url || null,
+  });
+
+  if (!reference) {
+    throw new Error("Could not create reference");
+  }
+
+  await addEntityToProject(userId, {
+    projectId,
+    entityType: "reference",
+    entityId: reference.id,
+    projectRole: "reference",
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/workspace`);
+  revalidatePath("/references");
+}
+
+export async function createProjectEventAction(formData: FormData) {
+  const userId = await getCurrentUserId();
+
+  const projectId = String(formData.get("projectId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const startDate = String(formData.get("startDate") ?? "");
+
+  if (!projectId || !title || !startDate) {
+    throw new Error("Project, event title, and start date are required");
+  }
+
+  const event = await createUserEvent(userId, {
+    title,
+    startDate,
+    endDate: startDate,
+    allDay: true,
+    status: "planned",
+  });
+
+  if (!event) {
+    throw new Error("Could not create event");
+  }
+
+  await addEntityToProject(userId, {
+    projectId,
+    entityType: "event",
+    entityId: event.id,
+    projectRole: "working",
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/workspace`);
+  revalidatePath("/calendar");
 }

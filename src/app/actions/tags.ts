@@ -30,6 +30,8 @@ export async function createTagAction(formData: FormData) {
       name,
       slug: slugify(name),
       createdByUserId: userId,
+      scopeType: "user",
+      scopeId: userId,
     })
     .onConflictDoNothing();
 

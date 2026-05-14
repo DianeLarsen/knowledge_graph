@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Task } from "@/db/schema";
 import EditTaskModal from "@/components/tasks/EditTaskModal";
+import TaskDetailsModal from "@/components/tasks/TaskDetailsModal";
+import { QuickTag, QuickReference, QuickNote } from "@/lib/tags/tagTypes";
+import type { Project, Task } from "@/db/schema";
 
 export type EditTaskInput = {
   title: string;
@@ -18,7 +20,17 @@ type TaskCardProps = {
   isMenuOpen: boolean;
   onOpenMenu: () => void;
   onCloseMenu: () => void;
+  userId: string;
+  projects: Project[];
+  tags: QuickTag[];
+  references: QuickReference[];
+  notes: QuickNote[];
+
+  attachedTagIds?: string[];
+  linkedNoteIds?: string[];
+  linkedReferenceIds?: string[];
 };
+
 const priorityStyles = {
   high: {
     card: "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/30",
@@ -37,44 +49,62 @@ const priorityStyles = {
     label: "Low",
   },
 };
+
 export default function TaskCard({
   task,
   onArchiveTask,
   onEditTask,
   isMenuOpen,
   onOpenMenu,
-  onCloseMenu
+  onCloseMenu,
+  userId,
+  projects,
+  tags,
+  references,
+  notes,
+  attachedTagIds = [],
+  linkedNoteIds = [],
+  linkedReferenceIds = [],
 }: TaskCardProps) {
   const [menuPosition, setMenuPosition] = useState<{
     x: number;
     y: number;
   } | null>(null);
-    
-    
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-const priority = task.priority ?? "medium";
-    const styles = priorityStyles[priority];
-    
-useEffect(() => {
-  function closeMenu() {
-    onCloseMenu();
-  }
+  const priority = task.priority ?? "medium";
+  const styles = priorityStyles[priority];
 
-  window.addEventListener("click", closeMenu);
-  window.addEventListener("contextmenu", closeMenu);
+  useEffect(() => {
+    function closeMenu() {
+      onCloseMenu();
+    }
 
-  return () => {
-    window.removeEventListener("click", closeMenu);
-    window.removeEventListener("contextmenu", closeMenu);
-  };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("contextmenu", closeMenu);
+
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("contextmenu", closeMenu);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <>
       <article
         draggable
         onDragStart={(event) => {
+          setIsDragging(true);
           event.dataTransfer.setData("taskId", task.id);
+        }}
+        onDragEnd={() => {
+          setTimeout(() => setIsDragging(false), 0);
+        }}
+        onClick={() => {
+          if (!isDragging) {
+            setIsDetailsOpen(true);
+          }
         }}
         onContextMenu={(event) => {
           event.preventDefault();
@@ -145,6 +175,21 @@ useEffect(() => {
             await onEditTask(task.id, data);
             setIsEditing(false);
           }}
+        />
+      )}
+      {isDetailsOpen && (
+        <TaskDetailsModal
+          task={task}
+          userId={userId}
+          projects={projects}
+          tags={tags}
+          references={references}
+          notes={notes}
+          attachedTagIds={attachedTagIds}
+          linkedNoteIds={linkedNoteIds}
+          linkedReferenceIds={linkedReferenceIds}
+          onClose={() => setIsDetailsOpen(false)}
+          onEditTask={onEditTask}
         />
       )}
     </>

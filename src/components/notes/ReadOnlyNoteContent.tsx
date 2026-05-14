@@ -29,29 +29,6 @@ type ReadOnlyNoteContentProps = {
   tagColorMap?: Record<string, TagColor>;
 };
 
-export default function ReadOnlyNoteContent({
-  content,
-  references = [],
-  tags = [],
-  tagColorMap = {},
-}: ReadOnlyNoteContentProps) {
-
-  const [preview, setPreview] = useState<
-    | {
-        type: "reference";
-        x: number;
-        y: number;
-        reference: ReadOnlyReference;
-      }
-    | {
-        type: "tag";
-        x: number;
-        y: number;
-        tag: ReadOnlyTag;
-      }
-    | null
-    >(null);
-  const contentRef = useRef<HTMLDivElement>(null);
 const colorClassMap: Record<TagColor, string[]> = {
   blue: [
     "bg-blue-100",
@@ -138,6 +115,31 @@ const colorClassMap: Record<TagColor, string[]> = {
     "dark:text-indigo-200",
   ],
 };
+
+export default function ReadOnlyNoteContent({
+  content,
+  references = [],
+  tags = [],
+  tagColorMap = {},
+}: ReadOnlyNoteContentProps) {
+
+  const [preview, setPreview] = useState<
+    | {
+        type: "reference";
+        x: number;
+        y: number;
+        reference: ReadOnlyReference;
+      }
+    | {
+        type: "tag";
+        x: number;
+        y: number;
+        tag: ReadOnlyTag;
+      }
+    | null
+    >(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
 
 function getTagColorClasses(tagId?: string | null) {
   if (!tagId) return colorClassMap.blue.join(" ");

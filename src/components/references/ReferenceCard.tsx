@@ -1,13 +1,20 @@
 "use client";
 
-
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import {
-  updateReferenceAction,
+  ChevronDown,
+  ChevronRight,
+  Pencil,
+  Trash2,
+  Copy,
+  Check,
+} from "lucide-react";
+import {
   deleteReferenceAction,
 } from "@/app/actions/references";
 import { getApaCitation, getApaReference } from "@/lib/apa";
+import Link from "next/link";
+import EditReferenceForm from "@/components/references/EditReferenceForm";
 
 type Reference = {
   id: string;
@@ -24,18 +31,53 @@ type Reference = {
     title: string;
     content: string | null;
   }[];
+  linkedTasks?: {
+    id: string;
+    title: string;
+    description: string | null;
+  }[];
+  linkedCaptures?: {
+    id: string;
+    title?: string | null;
+    summary?: string | null;
+  }[];
+  linkedReferences?: {
+    id: string;
+    title: string;
+  }[];
 };
 
 export default function ReferenceCard({ reference }: { reference: Reference }) {
   const [isEditing, setIsEditing] = useState(false);
   const [showApa, setShowApa] = useState(false);
   const [showLinkedNotes, setShowLinkedNotes] = useState(false);
-  const linkCount = reference.linkCount ?? 0;
-  const isLinked = linkCount > 0;
+  const [copiedApaReference, setCopiedApaReference] = useState(false);
+  const [copiedApaCitation, setCopiedApaCitation] = useState(false);
+
+
+  const noteCount = reference.linkedNotes?.length ?? 0;
+  const taskCount = reference.linkedTasks?.length ?? 0;
+  const captureCount = reference.linkedCaptures?.length ?? 0;
+  const referenceCount = reference.linkedReferences?.length ?? 0;
+
+  const totalLinkCount =
+    reference.linkCount ??
+    noteCount + taskCount + captureCount + referenceCount;
+
+  const isLinked = totalLinkCount > 0;
 
   const apaReference = getApaReference(reference);
   const apaCitation = getApaCitation(reference);
 
+  async function copyText(text: string, setCopied: (value: boolean) => void) {
+    await navigator.clipboard.writeText(text);
+
+    setCopied(true);
+
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
+  }
   return (
     <article className="relative rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
       {!isEditing ? (
@@ -50,7 +92,11 @@ export default function ReferenceCard({ reference }: { reference: Reference }) {
               <Pencil className="h-4 w-4" />
             </button>
 
-            <form action={ () => { deleteReferenceAction.bind(null, reference.id)}}>
+            <form
+              action={() => {
+                deleteReferenceAction.bind(null, reference.id);
+              }}
+            >
               <button
                 type="submit"
                 disabled={isLinked}
@@ -88,15 +134,18 @@ export default function ReferenceCard({ reference }: { reference: Reference }) {
             <div className="relative inline-flex">
               <button
                 type="button"
-                disabled={linkCount === 0}
+                disabled={totalLinkCount === 0}
                 onClick={() => setShowLinkedNotes((current) => !current)}
                 className={`text-xs underline decoration-dotted underline-offset-2 ${
-                  linkCount === 0
+                  totalLinkCount === 0
                     ? "cursor-default text-gray-400 no-underline dark:text-gray-600"
                     : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
                 }`}
               >
-                Linked to {linkCount} note{linkCount === 1 ? "" : "s"}
+                Linked to {noteCount} note{noteCount === 1 ? "" : "s"},{" "}
+                {taskCount} task{taskCount === 1 ? "" : "s"}, {captureCount}{" "}
+                capture{captureCount === 1 ? "" : "s"}, {referenceCount}{" "}
+                reference{referenceCount === 1 ? "" : "s"}
               </button>
 
               {showLinkedNotes &&
@@ -105,7 +154,7 @@ export default function ReferenceCard({ reference }: { reference: Reference }) {
                   <div className="absolute left-0 top-6 z-30 w-80 rounded-xl border border-gray-200 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-950">
                     <div className="mb-2 flex items-center justify-between">
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                        Linked Notes
+                        Linked Items
                       </p>
 
                       <button
@@ -144,15 +193,76 @@ export default function ReferenceCard({ reference }: { reference: Reference }) {
                           </div>
                         </div>
                       ))}
+                      {reference.linkedTasks &&
+                        reference.linkedTasks.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                              Tasks
+                            </p>
+
+                            {reference.linkedTasks.map((task) => (
+                              <a
+                                key={task.id}
+                                href={`/tasks#task-${task.id}`}
+                                className="block rounded-lg px-2 py-1.5 text-sm font-semibold text-blue-700 hover:bg-gray-100 dark:text-blue-300 dark:hover:bg-gray-800"
+                              >
+                                {task.title}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      {reference.linkedCaptures &&
+                        reference.linkedCaptures.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                              Captures
+                            </p>
+
+                            {reference.linkedCaptures.map((capture) => (
+                              <a
+                                key={capture.id}
+                                href={`/capture#capture-${capture.id}`}
+                                className="block rounded-lg px-2 py-1.5 text-sm font-semibold text-blue-700 hover:bg-gray-100 dark:text-blue-300 dark:hover:bg-gray-800"
+                              >
+                                {capture.title ??
+                                  capture.summary ??
+                                  "Untitled capture"}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      {reference.linkedReferences &&
+                        reference.linkedReferences.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                              References
+                            </p>
+
+                            {reference.linkedReferences.map(
+                              (linkedReference) => (
+                                <a
+                                  key={linkedReference.id}
+                                  href={`/notes/references/${linkedReference.id}?from=/notes/references/${reference.id}`}
+                                  className="block rounded-lg px-2 py-1.5 text-sm font-semibold text-blue-700 hover:bg-gray-100 dark:text-blue-300 dark:hover:bg-gray-800"
+                                >
+                                  {linkedReference.title}
+                                </a>
+                              ),
+                            )}
+                          </div>
+                        )}
                     </div>
                   </div>
                 )}
             </div>
           </div>
 
-          <h2 className="pr-24 text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <Link
+            href={`/notes/references/${reference.id}?from=/notes/references`}
+            className="block pr-24 text-lg font-semibold text-gray-900 hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-300"
+          >
             {reference.title}
-          </h2>
+          </Link>
 
           {reference.author && (
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
@@ -194,18 +304,54 @@ export default function ReferenceCard({ reference }: { reference: Reference }) {
           {showApa && (
             <div className="mt-2 space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-950">
               <div>
-                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  APA Reference
-                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                    APA Reference
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      copyText(apaReference, setCopiedApaReference)
+                    }
+                    title={copiedApaReference ? "Copied" : "Copy APA reference"}
+                    className="rounded-lg border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                  >
+                    {copiedApaReference ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+
                 <p className="mt-1 text-gray-800 dark:text-gray-200">
                   {apaReference}
                 </p>
               </div>
 
               <div>
-                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  In-text Citation
-                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                    In-text Citation
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => copyText(apaCitation, setCopiedApaCitation)}
+                    title={
+                      copiedApaCitation ? "Copied" : "Copy in-text citation"
+                    }
+                    className="rounded-lg border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                  >
+                    {copiedApaCitation ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+
                 <p className="mt-1 text-gray-800 dark:text-gray-200">
                   {apaCitation}
                 </p>
@@ -214,67 +360,10 @@ export default function ReferenceCard({ reference }: { reference: Reference }) {
           )}
         </>
       ) : (
-          <form action={() => { updateReferenceAction }} className="space-y-3">
-          <input type="hidden" name="id" value={reference.id} />
-
-          <input
-            name="title"
-            defaultValue={reference.title}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-          />
-
-          <input
-            name="author"
-            defaultValue={reference.author ?? ""}
-            placeholder="Author"
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-          />
-
-          <input
-            name="url"
-            defaultValue={reference.url ?? ""}
-            placeholder="URL"
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-          />
-
-          <select
-            name="type"
-            defaultValue={reference.type}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-          >
-            <option value="book">Book</option>
-            <option value="website">Website</option>
-            <option value="article">Article</option>
-            <option value="video">Video</option>
-            <option value="conversation">Conversation</option>
-            <option value="other">Other</option>
-          </select>
-
-          <textarea
-            name="notes"
-            defaultValue={reference.notes ?? ""}
-            placeholder="Why this matters"
-            rows={4}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-          />
-
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
-            >
-              Save
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsEditing(false)}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
+        <EditReferenceForm
+          reference={reference}
+          onCancel={() => setIsEditing(false)}
+        />
       )}
     </article>
   );

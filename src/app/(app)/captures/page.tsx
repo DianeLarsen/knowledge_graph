@@ -1,6 +1,6 @@
 import {
-  createCaptureAction,
   getCapturesAction,
+  createCaptureFormAction,
 } from "@/app/actions/capture";
 import { Zap } from "lucide-react";
 import CaptureList from "@/components/capture/CaptureList";
@@ -24,9 +24,7 @@ export default async function CapturePage() {
         </p>
       </div>
 
-      <form action={async (formData) => {
-        await createCaptureAction(formData);
-      }} className="mb-10 space-y-4">
+      <form action={createCaptureFormAction} className="mb-10 space-y-4">
         <textarea
           name="rawText"
           rows={10}
