@@ -69,106 +69,107 @@ export default function CalendarClient({
     setShowCreateForm(true);
   }
 
-  return (
-    <main className="space-y-6 p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Calendar
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Plan your events, deadlines, and scheduled work.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => openCreateForm(todayDate)}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-300"
-        >
-          New Event
-        </button>
+return (
+  <main className="min-h-screen space-y-6 bg-[rgb(var(--bg))] p-6 text-[rgb(var(--text))]">
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <h1 className="text-2xl font-bold text-[rgb(var(--text))]">Calendar</h1>
+        <p className="text-sm text-[rgb(var(--muted))]">
+          Plan your events, deadlines, and scheduled work.
+        </p>
       </div>
 
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
+      <button
+        type="button"
+        onClick={() => openCreateForm(todayDate)}
+        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-300"
+      >
+        New Event
+      </button>
+    </div>
+
+    <section className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Link
+          href={`/calendar?year=${previousMonth.getFullYear()}&month=${previousMonth.getMonth()}`}
+          className="rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2 text-sm text-[rgb(var(--text))] hover:bg-slate-200 dark:hover:bg-slate-800"
+        >
+          Previous
+        </Link>
+
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-[rgb(var(--text))]">
+            {getMonthLabel(year, month)}
+          </h2>
+
           <Link
-            href={`/calendar?year=${previousMonth.getFullYear()}&month=${previousMonth.getMonth()}`}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+            href={`/calendar?year=${today.getFullYear()}&month=${today.getMonth()}`}
+            className="rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2 text-sm text-[rgb(var(--text))] hover:bg-slate-200 dark:hover:bg-slate-800"
           >
-            Previous
-          </Link>
-
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              {getMonthLabel(year, month)}
-            </h2>
-
-            <Link
-              href={`/calendar?year=${today.getFullYear()}&month=${today.getMonth()}`}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-            >
-              Today
-            </Link>
-          </div>
-
-          <Link
-            href={`/calendar?year=${nextMonth.getFullYear()}&month=${nextMonth.getMonth()}`}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-          >
-            Next
+            Today
           </Link>
         </div>
 
-        <CalendarGrid
-          year={year}
-          month={month}
-          items={items}
-          todayDate={todayDate}
-          selectedDate={selectedDate}
-          onSelectDate={openDayDetails}
-        />
-      </section>
+        <Link
+          href={`/calendar?year=${nextMonth.getFullYear()}&month=${nextMonth.getMonth()}`}
+          className="rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2 text-sm text-[rgb(var(--text))] hover:bg-slate-200 dark:hover:bg-slate-800"
+        >
+          Next
+        </Link>
+      </div>
 
-      {showDetails && selectedDate && (
-        <EventDetailsPopup
-          date={selectedDate}
-          items={items}
-          onClose={() => setShowDetails(false)}
-          onCreateEvent={() => openCreateForm(selectedDate)}
-          onOpenEvent={openEventDetails}
-        />
-      )}
-      {selectedEvent && (
-        <SingleEventPopup
-          event={selectedEvent}
-          notes={notes}
-          tasks={tasks}
-          onClose={() => setSelectedEvent(null)}
-          onEdit={() => {
-            setSelectedEvent(null);
-            openEditEvent(selectedEvent);
-          }}
-        />
-      )}
-      {editingEvent && (
-        <EditEventPopup
-          event={editingEvent}
-          items={items}
-          notes={notes}
-          tasks={tasks}
-          onClose={() => setEditingEvent(null)}
-        />
-      )}
-      {showCreateForm && (
-        <EventFormPopup
-          selectedDate={createDate}
-          items={items}
-          notes={notes}
-          tasks={tasks}
-          onClose={() => setShowCreateForm(false)}
-        />
-      )}
-    </main>
-  );
+      <CalendarGrid
+        year={year}
+        month={month}
+        items={items}
+        todayDate={todayDate}
+        selectedDate={selectedDate}
+        onSelectDate={openDayDetails}
+      />
+    </section>
+
+    {showDetails && selectedDate && (
+      <EventDetailsPopup
+        date={selectedDate}
+        items={items}
+        onClose={() => setShowDetails(false)}
+        onCreateEvent={() => openCreateForm(selectedDate)}
+        onOpenEvent={openEventDetails}
+      />
+    )}
+
+    {selectedEvent && (
+      <SingleEventPopup
+        event={selectedEvent}
+        notes={notes}
+        tasks={tasks}
+        onClose={() => setSelectedEvent(null)}
+        onEdit={() => {
+          setSelectedEvent(null);
+          openEditEvent(selectedEvent);
+        }}
+      />
+    )}
+
+    {editingEvent && (
+      <EditEventPopup
+        event={editingEvent}
+        items={items}
+        notes={notes}
+        tasks={tasks}
+        onClose={() => setEditingEvent(null)}
+      />
+    )}
+
+    {showCreateForm && (
+      <EventFormPopup
+        selectedDate={createDate}
+        items={items}
+        notes={notes}
+        tasks={tasks}
+        onClose={() => setShowCreateForm(false)}
+      />
+    )}
+  </main>
+);
 }

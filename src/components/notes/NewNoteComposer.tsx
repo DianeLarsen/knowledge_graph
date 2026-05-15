@@ -43,6 +43,8 @@ export default function NewNoteComposer({
   const [availableReferences, setAvailableReferences] =
     useState<Reference[]>(references);
   const [showReferenceComposer, setShowReferenceComposer] = useState(false);
+const [editorResetKey, setEditorResetKey] = useState(0);
+
   const inlineReferenceIds = extractReferenceIdsFromContentJson(contentJson);
 
   const router = useRouter();
@@ -56,19 +58,20 @@ export default function NewNoteComposer({
     );
   }
 
-  function resetComposer() {
-    setTitle("");
-    setContent("");
-    setContentJson("");
-    setSelectedTagIds([]);
-    setNewTagName("");
-    setLinkedNoteIds([]);
-    setHasSaved(false);
-    setSavedMessage("");
-    setInlineTagNames([]);
-    setSelectedReferenceIds([]);
-    setShowReferenceComposer(false);
-  }
+function resetComposer() {
+  setTitle("");
+  setContent("");
+  setContentJson("");
+  setSelectedTagIds([]);
+  setNewTagName("");
+  setLinkedNoteIds([]);
+  setHasSaved(false);
+  setSavedMessage("");
+  setInlineTagNames([]);
+  setSelectedReferenceIds([]);
+  setShowReferenceComposer(false);
+  setEditorResetKey((current) => current + 1);
+}
 
   function toggleLinkedNote(noteId: string) {
     setLinkedNoteIds((current) =>
@@ -153,137 +156,104 @@ export default function NewNoteComposer({
       "Untitled reference"
     );
   }
-  return (
-    <aside
-      className={
-        compact
-          ? "rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-900/60"
-          : "rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-      }
-    >
-      <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
+
+return (
+  <aside
+    className={
+      compact
+        ? "rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3 text-[rgb(var(--text))]"
+        : "rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-5 text-[rgb(var(--text))] shadow-sm"
+    }
+  >
+    <div className="mb-5">
+      <h2 className="text-lg font-semibold text-[rgb(var(--text))]">
         {heading}
       </h2>
+      <p className="mt-1 text-xs text-[rgb(var(--muted))]">
+        Add the note, choose references, then organize it with tags and linked
+        cards.
+      </p>
+    </div>
 
-      <input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="Card title"
-        className={`mb-3 w-full rounded-xl border px-3 py-2 text-sm dark:bg-gray-950 dark:text-gray-100 ${
-          titleMissing
-            ? "border-red-400 bg-red-50 dark:border-red-700 dark:bg-red-950/30"
-            : "border-gray-300 dark:border-gray-700"
-        }`}
-      />
-
-      <RichNoteEditor
-        initialContent={contentJson || content}
-        tags={tags}
-        references={availableReferences}
-        onTagUsed={(tagName) => {
-          setInlineTagNames((current) =>
-            current.includes(tagName) ? current : [...current, tagName],
-          );
-        }}
-        onReferenceUsed={(referenceId) => {
-          setSelectedReferenceIds((current) =>
-            current.includes(referenceId) ? current : [...current, referenceId],
-          );
-        }}
-        onChange={({ plainText, json }) => {
-          setContent(plainText);
-          setContentJson(json);
-        }}
-        getReferenceLabel={getReferenceLabel}
-        onReferenceRemoved={() => {}}
-        onTagRemoved={(tagName) => {
-          setInlineTagNames((current) =>
-            current.filter((name) => name !== tagName),
-          );
-        }}
-        inlineReferenceIds={inlineReferenceIds}
-        selectedReferenceIds={selectedReferenceIds}
-      />
-
-      <section className="mb-4">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-          Existing Tags
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+      <section className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] p-4">
+        <h3 className="mb-3 text-sm font-semibold text-[rgb(var(--text))]">
+          Note
         </h3>
 
-        <div className="mb-3 flex max-h-28 flex-wrap gap-2 overflow-y-auto rounded-xl border border-gray-200 p-2 dark:border-gray-700">
-          {tags.length > 0 ? (
-            tags.map((tag) => {
-              const selected = selectedTagIds.includes(tag.id);
+        <div className="space-y-4">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Card title"
+            className={`w-full rounded-xl border px-3 py-2 text-sm text-[rgb(var(--text))] placeholder:text-[rgb(var(--muted))] ${
+              titleMissing
+                ? "border-red-400 bg-red-50 dark:border-red-700 dark:bg-red-950/30"
+                : "border-[rgb(var(--border))] bg-[rgb(var(--card))]"
+            }`}
+          />
 
-              return (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => toggleTag(tag.id)}
-                  className={`rounded-full border px-3 py-1 text-xs ${
-                    selected
-                      ? "border-blue-500 bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200"
-                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 dark:hover:bg-gray-800"
-                  }`}
-                >
-                  #{tag.name}
-                </button>
+          <RichNoteEditor
+            key={editorResetKey}
+            initialContent={contentJson || content}
+            tags={tags}
+            references={availableReferences}
+            onTagUsed={(tagName) => {
+              setInlineTagNames((current) =>
+                current.includes(tagName) ? current : [...current, tagName],
               );
-            })
-          ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              No tags yet.
-            </p>
-          )}
+            }}
+            onReferenceUsed={(referenceId) => {
+              setSelectedReferenceIds((current) =>
+                current.includes(referenceId)
+                  ? current
+                  : [...current, referenceId],
+              );
+            }}
+            onChange={({ plainText, json }) => {
+              setContent(plainText);
+              setContentJson(json);
+            }}
+            getReferenceLabel={getReferenceLabel}
+            onReferenceRemoved={() => {}}
+            onTagRemoved={(tagName) => {
+              setInlineTagNames((current) =>
+                current.filter((name) => name !== tagName),
+              );
+            }}
+            inlineReferenceIds={inlineReferenceIds}
+            selectedReferenceIds={selectedReferenceIds}
+          />
         </div>
-
-        <input
-          value={newTagName}
-          onChange={(e) => setNewTagName(e.target.value)}
-          placeholder="Create new tag"
-          className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-        />
+        {savedMessage && (
+          <p
+            className={`mt-3 text-sm ${
+              hasSaved
+                ? "text-green-600 dark:text-green-400"
+                : "text-red-600 dark:text-red-400"
+            }`}
+          >
+            {savedMessage}
+          </p>
+        )}
       </section>
 
-      <section className="mb-4">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-          Link Existing Cards
-        </h3>
+      <section className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-[rgb(var(--text))]">
+            References
+          </h3>
 
-        <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-gray-200 p-2 dark:border-gray-700">
-          {notes.length > 0 ? (
-            notes.map((note) => {
-              const selected = linkedNoteIds.includes(note.id);
-
-              return (
-                <button
-                  key={note.id}
-                  type="button"
-                  onClick={() => toggleLinkedNote(note.id)}
-                  className={`block w-full rounded-lg px-3 py-2 text-left text-sm ${
-                    selected
-                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
-                      : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                  }`}
-                >
-                  {note.title}
-                </button>
-              );
-            })
-          ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              No cards to link yet.
-            </p>
-          )}
+          <button
+            type="button"
+            onClick={() => setShowReferenceComposer((current) => !current)}
+            className="rounded-full border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-1.5 text-xs font-semibold text-[rgb(var(--text))] shadow-sm hover:bg-slate-200 dark:hover:bg-slate-800"
+          >
+            {showReferenceComposer ? "Hide form" : "+ Reference"}
+          </button>
         </div>
-      </section>
 
-      <section className="mb-4">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-          References
-        </h3>
-
-        <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-gray-200 p-2 dark:border-gray-700">
+        <div className="max-h-[420px] space-y-2 overflow-y-auto rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-2">
           {availableReferences.length > 0 ? (
             availableReferences.map((reference) => {
               const selected = selectedReferenceIds.includes(reference.id);
@@ -293,17 +263,18 @@ export default function NewNoteComposer({
                   key={reference.id}
                   type="button"
                   onClick={() => toggleReference(reference.id)}
-                  className={`block w-full rounded-lg px-3 py-2 text-left text-sm ${
+                  className={`block w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
                     selected
-                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
-                      : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                      ? "border-blue-400 bg-blue-100 text-blue-900 shadow-sm dark:border-blue-700 dark:bg-blue-950 dark:text-blue-100"
+                      : "border-transparent text-[rgb(var(--text))] hover:border-[rgb(var(--border))] hover:bg-slate-200 dark:hover:bg-slate-800"
                   }`}
                 >
                   <span className="block font-medium">
                     {getReferenceLabel(reference)}
                   </span>
+
                   {reference.author && (
-                    <span className="block text-xs opacity-75">
+                    <span className="block text-xs text-[rgb(var(--muted))]">
                       {reference.author}
                     </span>
                   )}
@@ -311,73 +282,137 @@ export default function NewNoteComposer({
               );
             })
           ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-[rgb(var(--muted))]">
               No references yet.
             </p>
           )}
         </div>
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => setShowReferenceComposer((current) => !current)}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-          >
-            {showReferenceComposer
-              ? "Hide new reference form"
-              : "Add new reference"}
-          </button>
 
-          {showReferenceComposer && (
-            <div className="mt-3">
-              <ReferenceComposer
-                onReferenceCreated={(reference) => {
-                  setAvailableReferences((current) => [reference, ...current]);
-                  setSelectedReferenceIds((current) =>
-                    current.includes(reference.id)
-                      ? current
-                      : [...current, reference.id],
-                  );
-                  setShowReferenceComposer(false);
-                }}
-              />
-            </div>
+        {showReferenceComposer && (
+          <div className="mt-3 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3">
+            <ReferenceComposer
+              onReferenceCreated={(reference) => {
+                setAvailableReferences((current) => [reference, ...current]);
+                setSelectedReferenceIds((current) =>
+                  current.includes(reference.id)
+                    ? current
+                    : [...current, reference.id],
+                );
+                setShowReferenceComposer(false);
+              }}
+            />
+          </div>
+        )}
+      </section>
+    </div>
+
+    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <section className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] p-4">
+        <h3 className="mb-3 text-sm font-semibold text-[rgb(var(--text))]">
+          Tags
+        </h3>
+
+        <div className="mb-3 flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-2">
+          {tags.length > 0 ? (
+            tags.map((tag) => {
+              const selected = selectedTagIds.includes(tag.id);
+
+              return (
+                <button
+                  key={tag.id}
+                  type="button"
+                  onClick={() => toggleTag(tag.id)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                    selected
+                      ? "border-blue-500 bg-blue-100 text-blue-800 shadow-sm dark:bg-blue-900/40 dark:text-blue-200"
+                      : "border-[rgb(var(--border))] bg-[rgb(var(--bg))] text-[rgb(var(--text))] hover:bg-slate-200 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  #{tag.name}
+                </button>
+              );
+            })
+          ) : (
+            <p className="text-sm text-[rgb(var(--muted))]">No tags yet.</p>
+          )}
+        </div>
+
+        <input
+          value={newTagName}
+          onChange={(e) => setNewTagName(e.target.value)}
+          placeholder="Create new tag"
+          className="w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2 text-sm text-[rgb(var(--text))] placeholder:text-[rgb(var(--muted))]"
+        />
+      </section>
+
+      <section className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] p-4">
+        <h3 className="mb-3 text-sm font-semibold text-[rgb(var(--text))]">
+          Link Existing Cards
+        </h3>
+
+        <div className="max-h-52 space-y-2 overflow-y-auto rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-2">
+          {notes.length > 0 ? (
+            notes.map((note) => {
+              const selected = linkedNoteIds.includes(note.id);
+
+              return (
+                <button
+                  key={note.id}
+                  type="button"
+                  onClick={() => toggleLinkedNote(note.id)}
+                  className={`block w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
+                    selected
+                      ? "border-blue-400 bg-blue-100 text-blue-900 shadow-sm dark:border-blue-700 dark:bg-blue-950 dark:text-blue-100"
+                      : "border-transparent text-[rgb(var(--text))] hover:border-[rgb(var(--border))] hover:bg-slate-200 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {note.title}
+                </button>
+              );
+            })
+          ) : (
+            <p className="text-sm text-[rgb(var(--muted))]">
+              No cards to link yet.
+            </p>
           )}
         </div>
       </section>
+    </div>
 
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={isSaving || hasSaved}
-        className={`
-    w-full rounded-xl px-4 py-2 font-medium text-white
-    ${
-      isSaving || hasSaved
-        ? "cursor-not-allowed bg-gray-400"
-        : "bg-blue-600 hover:bg-blue-700"
-    }
-  `}
-      >
-        {isSaving ? "Saving..." : hasSaved ? "Saved" : "Save Card"}
-      </button>
+    <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end sm:items-start">
       <button
         type="button"
         onClick={resetComposer}
-        className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+        className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-5 py-2.5 text-sm font-semibold text-[rgb(var(--text))] shadow-sm hover:bg-slate-200 dark:hover:bg-slate-800"
       >
-        New Card
+        Clear Form
       </button>
-      {savedMessage && (
-        <p
-          className={`mt-2 text-sm ${
-            hasSaved
-              ? "text-green-600 dark:text-green-400"
-              : "text-red-600 dark:text-red-400"
+      <div className="flex flex-col">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving || hasSaved}
+          className={`rounded-xl px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition ${
+            isSaving || hasSaved
+              ? "cursor-not-allowed bg-slate-400"
+              : "bg-blue-600 hover:bg-blue-700"
           }`}
         >
-          {savedMessage}
-        </p>
-      )}
-    </aside>
-  );
+          {isSaving ? "Saving..." : hasSaved ? "Saved" : "Save Note"}
+        </button>
+        {savedMessage && (
+          <p
+            className={`mt-2 px-1 text-sm ${
+              hasSaved
+                ? "text-green-600 dark:text-green-400"
+                : "text-red-600 dark:text-red-400"
+            }`}
+          >
+            {savedMessage}
+          </p>
+        )}
+      </div>
+    </div>
+  </aside>
+);
 }

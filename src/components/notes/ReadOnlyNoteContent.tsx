@@ -177,7 +177,7 @@ function getTagColorClasses(tagId?: string | null) {
       }).configure({
         HTMLAttributes: {
           class:
-            "mention inline-flex cursor-help rounded bg-blue-100 px-1 text-blue-700 align-baseline leading-none dark:bg-blue-900/40 dark:text-blue-200",
+            "mention inline cursor-help rounded bg-blue-100 px-1 text-blue-700 align-baseline leading-[inherit] dark:bg-blue-900/40 dark:text-blue-200",
         },
 
         renderText({ node }) {
@@ -191,7 +191,7 @@ function getTagColorClasses(tagId?: string | null) {
           return [
             "span",
             {
-              class: `mention inline-flex cursor-help rounded px-1 align-baseline leading-none ${getTagColorClasses(
+              class: `mention inline cursor-help rounded px-1 align-baseline leading-[inherit] ${getTagColorClasses(
                 tagId,
               )}`,
               title: tagName ? `#${tagName}` : "Tag",
@@ -305,12 +305,30 @@ useEffect(() => {
           }
         }}
         className="
-        min-h-40 px-3 py-2
-        text-sm text-gray-900 dark:text-gray-100
+ px-3 text-sm leading-[30px] text-gray-900 dark:text-gray-100
 
-        [&_.ProseMirror]:min-h-40
-        [&_.ProseMirror]:outline-none
-        [&_.ProseMirror_p]:my-2
+[&_.ProseMirror]:leading-[30px]
+[&_.ProseMirror_p]:m-0
+[&_.ProseMirror_p]:min-h-[30px]
+[&_.ProseMirror_p]:leading-[30px]
+
+[&_.ProseMirror_a]:align-baseline
+[&_.ProseMirror_a]:leading-[inherit]
+
+[&_mark]:align-baseline
+[&_mark]:leading-[inherit]
+
+[&_.mention]:inline
+[&_.mention]:align-baseline
+[&_.mention]:leading-[inherit]
+
+[&_.tag-mark]:inline
+[&_.tag-mark]:align-baseline
+[&_.tag-mark]:leading-[inherit]
+
+[&_.reference-mark]:inline
+[&_.reference-mark]:align-baseline
+[&_.reference-mark]:leading-[inherit]
 
         [&_.ProseMirror_a]:rounded
         [&_.ProseMirror_a]:px-1

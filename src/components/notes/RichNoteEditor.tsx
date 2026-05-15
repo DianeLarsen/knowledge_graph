@@ -141,7 +141,7 @@ export default function RichNoteEditor({
 
           suggestion: {
             char: "#",
-
+            allowedPrefixes: null,
             items: ({ query }) => {
               const cleanQuery = query.trim();
 
@@ -275,6 +275,7 @@ export default function RichNoteEditor({
   if (!editor) {
     return null;
   }
+
   function getInitialEditorContent(initialContent?: string) {
     if (!initialContent) {
       return "<p></p>";
@@ -401,6 +402,7 @@ export default function RichNoteEditor({
     }
     closeContextMenu();
   }
+
   function highlightSelection() {
     if (!editor) return;
 
@@ -506,6 +508,42 @@ export default function RichNoteEditor({
     };
   }
 
+const editorHeights = "min-h-[220px] md:min-h-[260px] xl:min-h-[300px]";
+
+const proseStyles = `
+  [&_.ProseMirror]:min-h-[220px]
+  md:[&_.ProseMirror]:min-h-[260px]
+  xl:[&_.ProseMirror]:min-h-[300px]
+  [&_.ProseMirror]:outline-none
+  [&_.ProseMirror_p]:my-2
+`;
+
+const markStyles = `
+  [&_.ProseMirror_a]:rounded
+  [&_.ProseMirror_a]:px-1
+  [&_.ProseMirror_a]:underline
+
+  [&_.tag-mark]:rounded
+  [&_.tag-mark]:bg-blue-50
+  [&_.tag-mark]:px-1
+  [&_.tag-mark]:text-blue-700
+  [&_.tag-mark]:underline
+  [&_.tag-mark]:decoration-dotted
+  [&_.tag-mark]:underline-offset-2
+  dark:[&_.tag-mark]:bg-blue-900/30
+  dark:[&_.tag-mark]:text-blue-200
+
+  [&_.reference-mark]:rounded
+  [&_.reference-mark]:bg-amber-50
+  [&_.reference-mark]:px-1
+  [&_.reference-mark]:text-amber-800
+  [&_.reference-mark]:underline
+  [&_.reference-mark]:decoration-dotted
+  [&_.reference-mark]:underline-offset-2
+  dark:[&_.reference-mark]:bg-amber-900/30
+  dark:[&_.reference-mark]:text-amber-200
+`;
+
   return (
     <div className="rounded-xl border border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-950">
       <div className="flex flex-wrap gap-2 border-b border-gray-200 p-2 dark:border-gray-700">
@@ -564,38 +602,14 @@ export default function RichNoteEditor({
       >
         <EditorContent
           editor={editor}
-          className="
-    min-h-40 px-3 py-2
-    text-sm text-gray-900 dark:text-gray-100
+          className={`
+    ${editorHeights}
+    ${proseStyles}
+    ${markStyles}
 
-    [&_.ProseMirror]:min-h-40
-    [&_.ProseMirror]:outline-none
-    [&_.ProseMirror_p]:my-2
-
-    [&_.ProseMirror_a]:rounded
-    [&_.ProseMirror_a]:px-1
-    [&_.ProseMirror_a]:underline
-
-    [&_.tag-mark]:rounded
-    [&_.tag-mark]:bg-blue-50
-    [&_.tag-mark]:px-1
-    [&_.tag-mark]:text-blue-700
-    [&_.tag-mark]:underline
-    [&_.tag-mark]:decoration-dotted
-    [&_.tag-mark]:underline-offset-2
-    dark:[&_.tag-mark]:bg-blue-900/30
-    dark:[&_.tag-mark]:text-blue-200
-
-    [&_.reference-mark]:rounded
-    [&_.reference-mark]:bg-amber-50
-    [&_.reference-mark]:px-1
-    [&_.reference-mark]:text-amber-800
-    [&_.reference-mark]:underline
-    [&_.reference-mark]:decoration-dotted
-    [&_.reference-mark]:underline-offset-2
-    dark:[&_.reference-mark]:bg-amber-900/30
-    dark:[&_.reference-mark]:text-amber-200
-  "
+    px-4 py-3
+    text-sm text-[rgb(var(--text))]
+  `}
         />
 
         {contextMenu && (

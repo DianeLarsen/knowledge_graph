@@ -11,18 +11,17 @@ export default async function ProjectsPage() {
   const projects = await getUserProjectsAction();
 
   return (
-    <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8">
+    <main className="mx-auto min-h-screen w-full max-w-5xl space-y-6 bg-[rgb(var(--bg))] px-4 py-8 text-[rgb(var(--text))]">
       <header>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Projects
-        </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <h1 className="text-2xl font-bold text-[rgb(var(--text))]">Projects</h1>
+
+        <p className="mt-1 text-sm text-[rgb(var(--muted))]">
           Group notes, tasks, references, and events into focused work.
         </p>
       </header>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-950">
-        <h2 className="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">
+      <section className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-sm">
+        <h2 className="mb-3 text-sm font-semibold text-[rgb(var(--text))]">
           Create Project
         </h2>
 
@@ -31,20 +30,20 @@ export default async function ProjectsPage() {
             name="title"
             placeholder="Project title"
             required
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            className="w-full rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm text-[rgb(var(--text))] placeholder:text-[rgb(var(--muted))]"
           />
 
           <textarea
             name="description"
             placeholder="What is this project trying to accomplish?"
             rows={3}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            className="w-full rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm text-[rgb(var(--text))] placeholder:text-[rgb(var(--muted))]"
           />
 
           <select
             name="visibility"
             defaultValue="private"
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            className="rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm text-[rgb(var(--text))]"
           >
             <option value="private">Private</option>
             <option value="shared">Shared</option>

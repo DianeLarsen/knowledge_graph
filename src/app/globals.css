@@ -28,11 +28,11 @@ body {
 }
 
 :root {
-  --bg: 255 255 255;
-  --card: 248 250 252;
-  --border: 226 232 240;
-  --text: 15 23 42;
-  --muted: 100 116 139;
+  --bg: 241 245 249;        /* slate-100 */
+  --card: 255 255 255;      /* white */
+  --border: 203 213 225;    /* slate-300 */
+  --text: 15 23 42;         /* slate-900 */
+  --muted: 71 85 105;       /* slate-600 */
 }
 
 .dark {
@@ -68,15 +68,15 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f3f4f6;
+  background: #e2e8f0;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #94a3b8;
+  background: #64748b;
   border-radius: 9999px;
-  border: 2px solid #f3f4f6;
+  border: 2px solid #e2e8f0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #475569;
 }

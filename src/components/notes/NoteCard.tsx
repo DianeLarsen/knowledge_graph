@@ -224,7 +224,7 @@ export default function NoteCard({
     <div className={compact ? "w-full" : "mx-auto w-full max-w-3xl"}>
       <article
         className={`
-    relative w-full border bg-white
+    relative isolate w-full border bg-white
     ${
       compact
         ? "border-gray-300 shadow-[4px_4px_0_rgba(0,0,0,0.05)]"
@@ -233,7 +233,7 @@ export default function NoteCard({
     dark:border-gray-800 dark:bg-gray-950
   `}
       >
-        <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
+        <div className="absolute right-2 top-2 z-50 flex items-center gap-1">
           {userId && (
             <button
               type="button"
@@ -406,7 +406,32 @@ export default function NoteCard({
       dark:bg-[linear-gradient(to_bottom,transparent_27px,#60a5fa_28px,transparent_29px)]
     `}
           >
-            <div className="-translate-y-2.5 text-sm leading-[30px] [&_p]:m-0 [&_p]:leading-[30px]">
+            <div
+              className="
+    pt-[5.75px]
+    text-sm leading-[30px]
+
+    [&_p]:m-0
+    [&_p]:min-h-[30px]
+    [&_p]:leading-[30px]
+
+    [&_span]:leading-[inherit]
+    [&_a]:leading-[inherit]
+    [&_mark]:leading-[inherit]
+
+    [&_.tag-mark]:inline
+    [&_.tag-mark]:align-baseline
+    [&_.tag-mark]:leading-[inherit]
+
+    [&_.reference-mark]:inline
+    [&_.reference-mark]:align-baseline
+    [&_.reference-mark]:leading-[inherit]
+
+    [&_[data-tag-name]]:inline
+    [&_[data-tag-name]]:align-baseline
+    [&_[data-tag-name]]:leading-[inherit]
+  "
+            >
               <ReadOnlyNoteContent
                 key={
                   note.contentJson ?? note.content ?? note.updatedAt.toString()
