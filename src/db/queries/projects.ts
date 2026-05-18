@@ -46,24 +46,49 @@ export async function getProjectById(projectId: string, userId: string) {
   return project ?? null;
 }
 
+type CreateProjectInput = {
+  userId: string;
+  title: string;
+  description?: string | null;
+  visibility?: NewProject["visibility"];
+  status?: NewProject["status"];
+};
+
 export async function createProject(
-  userId: string,
-  data: {
+  userIdOrInput: string | CreateProjectInput,
+  dataArg?: {
     title: string;
     description?: string | null;
     visibility?: NewProject["visibility"];
     status?: NewProject["status"];
   },
 ) {
+  const input =
+    typeof userIdOrInput === "string"
+      ? {
+          userId: userIdOrInput,
+          title: dataArg?.title ?? "",
+          description: dataArg?.description ?? null,
+          visibility: dataArg?.visibility,
+          status: dataArg?.status,
+        }
+      : userIdOrInput;
+
+  const title = input.title.trim();
+
+  if (!title) {
+    throw new Error("Project title is required.");
+  }
+
   const [project] = await db
     .insert(projects)
     .values({
-      title: data.title,
-      description: data.description ?? null,
-      visibility: data.visibility ?? "private",
-      status: data.status ?? "active",
-      createdByUserId: userId,
-      ownerId: userId,
+      title,
+      description: input.description ?? null,
+      visibility: input.visibility ?? "private",
+      status: input.status ?? "active",
+      createdByUserId: input.userId,
+      ownerId: input.userId,
     })
     .returning();
 
@@ -118,20 +143,39 @@ export async function archiveProject(projectId: string, userId: string) {
   return project ?? null;
 }
 
+type AddEntityToProjectInput = {
+  userId: string;
+  projectId: string;
+  entityType: EntityType;
+  entityId: string;
+  projectRole?: NewProjectItem["projectRole"];
+};
+
 export async function addEntityToProject(
-  userId: string,
-  data: {
+  userIdOrInput: string | AddEntityToProjectInput,
+  dataArg?: {
     projectId: string;
     entityType: EntityType;
     entityId: string;
     projectRole?: NewProjectItem["projectRole"];
   },
 ) {
-  if (!data.projectId || !data.entityType || !data.entityId) {
+  const input =
+    typeof userIdOrInput === "string"
+      ? {
+          userId: userIdOrInput,
+          projectId: dataArg?.projectId ?? "",
+          entityType: dataArg?.entityType,
+          entityId: dataArg?.entityId ?? "",
+          projectRole: dataArg?.projectRole,
+        }
+      : userIdOrInput;
+
+  if (!input.projectId || !input.entityType || !input.entityId) {
     return null;
   }
 
-  const project = await getProjectById(data.projectId, userId);
+  const project = await getProjectById(input.projectId, input.userId);
 
   if (!project) {
     return null;
@@ -140,11 +184,11 @@ export async function addEntityToProject(
   const [item] = await db
     .insert(projectItems)
     .values({
-      projectId: data.projectId,
-      entityType: data.entityType,
-      entityId: data.entityId,
-      addedByUserId: userId,
-      projectRole: data.projectRole ?? "working",
+      projectId: input.projectId,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      addedByUserId: input.userId,
+      projectRole: input.projectRole ?? "working",
     })
     .onConflictDoNothing()
     .returning();

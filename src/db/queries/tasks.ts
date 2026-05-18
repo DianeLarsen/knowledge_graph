@@ -9,21 +9,53 @@ export async function createTask(task: NewTask) {
   return result ?? null;
 }
 
+type CreateUserTaskData = {
+  noteId?: string | null;
+  title: string;
+  description?: string | null;
+  status?: NewTask["status"];
+  priority?: NewTask["priority"];
+  dueDate?: string | null;
+};
+
+type CreateUserTaskInput = CreateUserTaskData & {
+  userId: string;
+  visibility?: NewTask["visibility"];
+};
+
 export async function createUserTask(
-  userId: string,
-  task: Omit<
-    NewTask,
-    "createdByUserId" | "ownerType" | "ownerId" | "visibility"
-  >,
+  userIdOrInput: string | CreateUserTaskInput,
+  taskArg?: CreateUserTaskData,
 ) {
+  const input =
+    typeof userIdOrInput === "string"
+      ? {
+          userId: userIdOrInput,
+          task: taskArg,
+        }
+      : {
+          userId: userIdOrInput.userId,
+          task: userIdOrInput,
+          visibility: userIdOrInput.visibility,
+        };
+
+  if (!input.task?.title?.trim()) {
+    throw new Error("Task title is required.");
+  }
+
   const [result] = await db
     .insert(tasks)
     .values({
-      ...task,
-      createdByUserId: userId,
+      noteId: input.task.noteId ?? null,
+      title: input.task.title.trim(),
+      description: input.task.description ?? null,
+      status: input.task.status ?? "todo",
+      priority: input.task.priority ?? "medium",
+      dueDate: input.task.dueDate ?? null,
+      createdByUserId: input.userId,
       ownerType: "user",
-      ownerId: userId,
-      visibility: "private",
+      ownerId: input.userId,
+      visibility: input.visibility ?? "private",
     })
     .returning();
 

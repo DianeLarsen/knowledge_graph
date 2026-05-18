@@ -37,6 +37,19 @@ export type NoteDetails = {
   references?: NoteLinkedReference[];
 };
 
+type LinkedTaskSummary = {
+  id: string;
+  title: string;
+  status: "todo" | "in_progress" | "awaiting" | "done" | "archived";
+};
+
+type LinkedEventSummary = {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string | null;
+  status: "planned" | "done" | "cancelled";
+};
 
 type OutgoingLink = {
   id: string;
@@ -46,9 +59,12 @@ type OutgoingLink = {
   sourceId: string;
   targetType: string;
   targetId: string;
-  targetNoteId: string;
+
   targetTitle: string | null;
   targetContent: string | null;
+
+  targetTask?: LinkedTaskSummary | null;
+  targetEvent?: LinkedEventSummary | null;
 };
 
 type Backlink = {
@@ -59,9 +75,12 @@ type Backlink = {
   sourceId: string;
   targetType: string;
   targetId: string;
-  sourceNoteId: string;
+
   sourceTitle: string | null;
   sourceContent: string | null;
+
+  sourceTask?: LinkedTaskSummary | null;
+  sourceEvent?: LinkedEventSummary | null;
 };
 
 type SharedTagNote = {
@@ -128,6 +147,36 @@ function getInlineTagIds(contentJson: string | null) {
   } catch {
     return new Set<string>();
   }
+}
+
+function getLinkedItemLabel(link: {
+  relationshipType: RelationshipType;
+  targetType?: string;
+  sourceType?: string;
+}) {
+  return getRelationshipLabel(link.relationshipType);
+}
+
+function getTaskStatusLabel(status: LinkedTaskSummary["status"]) {
+  if (status === "done") return "Complete";
+  if (status === "in_progress") return "In progress";
+  if (status === "awaiting") return "Awaiting";
+  if (status === "archived") return "Archived";
+  return "To do";
+}
+
+function getEventStatusLabel(status: LinkedEventSummary["status"]) {
+  if (status === "done") return "Past";
+  if (status === "cancelled") return "Cancelled";
+  return "Planned";
+}
+
+function getEventDateLabel(event: LinkedEventSummary) {
+  if (!event.endDate || event.endDate === event.startDate) {
+    return event.startDate;
+  }
+
+  return `${event.startDate} → ${event.endDate}`;
 }
 
 export default function NoteCard({
@@ -453,56 +502,132 @@ export default function NoteCard({
                   </h2>
 
                   <div className="flex flex-wrap gap-2">
-                    {outgoingLinks.map((link) => (
-                      <button
-                        type="button"
-                        key={link.id}
-                        onClick={() => onOpenNote?.(link.targetNoteId)}
-                        className="
-                  rounded-full border border-blue-200 bg-blue-50 px-3 py-1
-                  text-xs text-blue-700 hover:bg-blue-100
-                  dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300
-                  dark:hover:bg-blue-900
-                "
-                      >
-                        {link.targetTitle ?? "Untitled note"}
-                        <span className="ml-1 text-[10px] opacity-70">
-                          ({getRelationshipLabel(link.relationshipType)})
-                        </span>
-                      </button>
-                    ))}
+                    {outgoingLinks.map((link) => {
+                      const isTask = link.targetType === "task";
+                      const isEvent = link.targetType === "event";
+                      const isDoneTask = link.targetTask?.status === "done";
+                      const isPastEvent = link.targetEvent?.status === "done";
+
+                      return (
+                        <button
+                          type="button"
+                          key={link.id}
+                          onClick={() => {
+                            if (link.targetType === "note") {
+                              onOpenNote?.(link.targetId);
+                              return;
+                            }
+
+                            if (link.targetType === "task") {
+                              router.push(`/tasks#${link.targetId}`);
+                              return;
+                            }
+
+                            if (link.targetType === "event") {
+                              router.push(`/calendar#${link.targetId}`);
+                            }
+                          }}
+                          className={`
+              rounded-full border px-3 py-1 text-xs transition
+              ${
+                isTask
+                  ? isDoneTask
+                    ? "border-green-300 bg-green-50 text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
+                    : "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+                  : isEvent
+                    ? isPastEvent
+                      ? "border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                      : "border-cyan-300 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-200"
+                    : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"
+              }
+            `}
+                        >
+                          {link.targetTitle ?? `Untitled ${link.targetType}`}
+
+                          <span className="ml-1 text-[10px] opacity-70">
+                            ({getLinkedItemLabel(link)})
+                          </span>
+
+                          {link.targetTask && (
+                            <span className="ml-1 text-[10px] font-semibold opacity-80">
+                              · {getTaskStatusLabel(link.targetTask.status)}
+                            </span>
+                          )}
+
+                          {link.targetEvent && (
+                            <span className="ml-1 text-[10px] font-semibold opacity-80">
+                              · {getEventStatusLabel(link.targetEvent.status)} ·{" "}
+                              {getEventDateLabel(link.targetEvent)}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </section>
               )}
 
-              {backlinks.length > 0 && (
-                <section>
-                  <h2 className="mb-2 font-semibold text-gray-800 dark:text-gray-200">
-                    Notes that link here
-                  </h2>
+              {backlinks.map((link) => {
+                const isTask = link.sourceType === "task";
+                const isEvent = link.sourceType === "event";
+                const isDoneTask = link.sourceTask?.status === "done";
+                const isPastEvent = link.sourceEvent?.status === "done";
 
-                  <div className="flex flex-wrap gap-2">
-                    {backlinks.map((link) => (
-                      <button
-                        type="button"
-                        key={link.id}
-                        onClick={() => onOpenNote?.(link.sourceNoteId)}
-                        className="
-                  rounded-full border border-purple-200 bg-purple-50 px-3 py-1
-                  text-xs text-purple-700 hover:bg-purple-100
-                  dark:border-purple-800 dark:bg-purple-950 dark:text-purple-300
-                  dark:hover:bg-purple-900
-                "
-                      >
-                        {link.sourceTitle ?? "Untitled note"}
-                        <span className="ml-1 text-[10px] opacity-70">
-                          ({getRelationshipLabel(link.relationshipType)})
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
+                return (
+                  <button
+                    type="button"
+                    key={link.id}
+                    onClick={() => {
+                      if (link.sourceType === "note") {
+                        onOpenNote?.(link.sourceId);
+                        return;
+                      }
+
+                      if (link.sourceType === "task") {
+                        router.push(`/tasks#${link.sourceId}`);
+                        return;
+                      }
+
+                      if (link.sourceType === "event") {
+                        router.push(`/calendar#${link.sourceId}`);
+                      }
+                    }}
+                    className={`
+        rounded-full border px-3 py-1 text-xs transition
+        ${
+          isTask
+            ? isDoneTask
+              ? "border-green-300 bg-green-50 text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
+              : "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+            : isEvent
+              ? isPastEvent
+                ? "border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                : "border-cyan-300 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-200"
+              : "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-300"
+        }
+      `}
+                  >
+                    {link.sourceTitle ?? `Untitled ${link.sourceType}`}
+
+                    <span className="ml-1 text-[10px] opacity-70">
+                      ({getRelationshipLabel(link.relationshipType)})
+                    </span>
+
+                    {link.sourceTask && (
+                      <span className="ml-1 text-[10px] font-semibold opacity-80">
+                        · {getTaskStatusLabel(link.sourceTask.status)}
+                      </span>
+                    )}
+
+                    {link.sourceEvent && (
+                      <span className="ml-1 text-[10px] font-semibold opacity-80">
+                        · {getEventStatusLabel(link.sourceEvent.status)} ·{" "}
+                        {getEventDateLabel(link.sourceEvent)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
 
               {sharedTags.length > 0 && (
                 <section>
@@ -572,7 +697,7 @@ export default function NoteCard({
                 router.refresh();
               }}
               availableNotes={allNotes}
-              linkedNoteIds={outgoingLinks.map((link) => link.targetNoteId)}
+              linkedNoteIds={outgoingLinks.map((link) => link.targetId)}
             />
           </div>
         </div>

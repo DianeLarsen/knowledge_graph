@@ -7,19 +7,47 @@ function slugifyTag(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, "-");
 }
 
-export async function createTag(userId: string, name: string) {
-  const cleanName = name.trim().toLowerCase();
+type CreateTagInput = {
+  userId: string;
+  name: string;
+  scopeType?: "user" | "project" | "public";
+  scopeId?: string;
+  color?: typeof tags.$inferInsert.color;
+  visibility?: typeof tags.$inferInsert.visibility;
+};
+
+export async function createTag(
+  userIdOrInput: string | CreateTagInput,
+  nameArg?: string,
+) {
+  const input =
+    typeof userIdOrInput === "string"
+      ? {
+          userId: userIdOrInput,
+          name: nameArg ?? "",
+        }
+      : userIdOrInput;
+
+  const cleanName = input.name.trim().toLowerCase();
+
+  if (!cleanName) {
+    throw new Error("Tag name is required.");
+  }
+
+  const scopeType = input.scopeType ?? "user";
+  const scopeId = input.scopeId ?? input.userId;
   const slug = slugifyTag(cleanName);
 
   const result = await db
     .insert(tags)
     .values({
-      createdByUserId: userId,
-      scopeType: "user",
-      scopeId: userId,
+      createdByUserId: input.userId,
+      scopeType,
+      scopeId,
       name: cleanName,
-      color: getRandomTagColor(),
+      color: input.color ?? getRandomTagColor(),
       slug,
+      visibility: input.visibility ?? "private",
     })
     .onConflictDoNothing()
     .returning();
@@ -28,7 +56,39 @@ export async function createTag(userId: string, name: string) {
     return result[0];
   }
 
-  return getTagByName(userId, cleanName);
+  return getTagBySlug({
+    userId: input.userId,
+    scopeType,
+    scopeId,
+    slug,
+  });
+}
+
+export async function getTagBySlug({
+  userId,
+  scopeType,
+  scopeId,
+  slug,
+}: {
+  userId: string;
+  scopeType: "user" | "project" | "public";
+  scopeId: string;
+  slug: string;
+}) {
+  const result = await db
+    .select()
+    .from(tags)
+    .where(
+      and(
+        eq(tags.slug, slug),
+        eq(tags.scopeType, scopeType),
+        eq(tags.scopeId, scopeId),
+        or(eq(tags.createdByUserId, userId), eq(tags.scopeType, "public")),
+        isNull(tags.deletedAt),
+      ),
+    );
+
+  return result[0] ?? null;
 }
 
 export async function getTagsForUser(userId: string) {
@@ -118,18 +178,12 @@ export async function getTagById(userId: string, id: string) {
 export async function getTagByName(userId: string, name: string) {
   const slug = slugifyTag(name);
 
-  const result = await db
-    .select()
-    .from(tags)
-    .where(
-      and(
-        eq(tags.slug, slug),
-        and(eq(tags.scopeType, "user"), eq(tags.scopeId, userId)),
-        isNull(tags.deletedAt),
-      ),
-    );
-
-  return result[0] ?? null;
+  return getTagBySlug({
+    userId,
+    scopeType: "user",
+    scopeId: userId,
+    slug,
+  });
 }
 
 export async function updateTag(userId: string, id: string, name: string) {

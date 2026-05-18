@@ -18,25 +18,22 @@ import {
 export async function resetDatabase() {
   console.log("Resetting database...");
 
-  // Relationship / join tables first
   await db.delete(entityLinks);
   await db.delete(entityTags);
+
   await db.delete(projectItems);
   await db.delete(projectMemberPermissions);
   await db.delete(projectMembers);
 
-  // Child tables
   await db.delete(events);
   await db.delete(tasks);
   await db.delete(captures);
 
-  // Main entity tables
   await db.delete(notes);
-  await db.delete(tags);
   await db.delete(referencesTable);
+  await db.delete(tags);
   await db.delete(projects);
 
-  // Top-level parent
   await db.delete(users);
 
   console.log("Database cleared.");

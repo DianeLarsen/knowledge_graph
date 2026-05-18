@@ -1,25 +1,15 @@
-// src/components/shared/PageQuickActions.tsx
-
 "use client";
 
-import { useState } from "react";
-import {
-  Plus,
-  CheckSquare,
-  Zap,
-  LinkIcon,
-  Tags,
-  ChevronDown,
-  ChevronUp,
-  FolderKanban,
-} from "lucide-react";
-import AddToProjectForm from "@/components/projects/AddToProjectForm";
-import {
-  attachTagToEntityAction,
-} from "@/app/actions/entityTags";
-import { createEntityLinkAction } from "@/app/actions/entityLinks";
+import { ReactNode, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+
+import QuickCreateActions from "@/components/shared/quick-actions/QuickCreateActions";
+import QuickProjectActions from "@/components/shared/quick-actions/QuickProjectActions";
+import QuickTagActions from "@/components/shared/quick-actions/QuickTagActions";
+import QuickLinkActions from "@/components/shared/quick-actions/QuickLinkActions";
+
 import type { EntityType, Project } from "@/db/schema";
-import { QuickTag, QuickReference, QuickNote } from "@/lib/tags/tagTypes";
+import type { QuickTag, QuickReference, QuickNote } from "@/lib/tags/tagTypes";
 
 type PageQuickActionsProps = {
   entityType: EntityType;
@@ -29,26 +19,74 @@ type PageQuickActionsProps = {
   references?: QuickReference[];
   notes?: QuickNote[];
   projects: Project[];
-
   attachedTagIds?: string[];
   linkedNoteIds?: string[];
   linkedReferenceIds?: string[];
   inlineTagIds?: string[];
-
   onAttachedTagIdsChange?: (tagIds: string[]) => void;
   onLinkedNoteIdsChange?: (noteIds: string[]) => void;
   onLinkedReferenceIdsChange?: (referenceIds: string[]) => void;
 };
 
-function getDefaultProjectRole(entityType: EntityType) {
-  if (entityType === "reference") return "reference";
-  if (entityType === "capture") return "source";
-  return "working";
+type QuickActionSectionProps = {
+  title: string;
+  description?: string;
+  count?: number;
+  defaultOpen?: boolean;
+  children: ReactNode;
+};
+
+function QuickActionSection({
+  title,
+  description,
+  count,
+  defaultOpen = false,
+  children,
+}: QuickActionSectionProps) {
+  const [sectionOpen, setSectionOpen] = useState(defaultOpen);
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-sm">
+      <button
+        type="button"
+        onClick={() => setSectionOpen((current) => !current)}
+        className="flex w-full items-start justify-between gap-3 bg-slate-100 px-3 py-3 text-left transition hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800"
+      >
+        <span>
+          <span className="flex items-center gap-2 text-sm font-bold text-[rgb(var(--text))]">
+            {title}
+            {typeof count === "number" && (
+              <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-[rgb(var(--muted))] dark:bg-slate-950">
+                {count}
+              </span>
+            )}
+          </span>
+
+          {description && (
+            <span className="mt-0.5 block text-xs normal-case tracking-normal text-[rgb(var(--muted))]">
+              {description}
+            </span>
+          )}
+        </span>
+
+        <span className="mt-0.5 text-[rgb(var(--muted))]">
+          {sectionOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+        </span>
+      </button>
+
+      {sectionOpen && (
+        <div className="border-t border-[rgb(var(--border))] bg-[rgb(var(--bg))] p-4">
+          {children}
+        </div>
+      )}
+    </section>
+  );
 }
 
 export default function PageQuickActions({
   entityType,
   entityId,
+  userId,
   tags,
   references = [],
   notes = [],
@@ -62,334 +100,85 @@ export default function PageQuickActions({
   onLinkedReferenceIdsChange,
 }: PageQuickActionsProps) {
   const [open, setOpen] = useState(false);
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(() => [
-    ...attachedTagIds,
-  ]);
-  const [selectedNoteId, setSelectedNoteId] = useState("");
-  const [selectedReferenceId, setSelectedReferenceId] = useState("");
-  const availableTags = tags.filter(
-    (tag) => !selectedTagIds.includes(tag.id) && !inlineTagIds.includes(tag.id),
-  );
 
-  const attachedTags = tags.filter(
-    (tag) => selectedTagIds.includes(tag.id) || inlineTagIds.includes(tag.id),
-  );
+return (
+  <aside className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-2 text-[rgb(var(--text))] shadow-sm lg:sticky lg:top-6 lg:h-fit">
+    <button
+      type="button"
+      onClick={() => setOpen((current) => !current)}
+      className="flex w-full items-center justify-between rounded-xl bg-slate-100 px-3 py-2 text-left text-[rgb(var(--text))] dark:bg-slate-900 lg:hidden"
+    >
+      <span>
+        <span className="block text-sm font-bold">Quick actions</span>
+        <span className="block text-xs text-[rgb(var(--muted))]">
+          Create, tag, link, and organize this {entityType}
+        </span>
+      </span>
 
-  const availableNotes = notes.filter((note) => {
-    if (entityType === "note" && note.id === entityId) return false;
-    return !linkedNoteIds.includes(note.id);
-  });
+      {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+    </button>
 
-  const linkedNotes = notes.filter((note) => linkedNoteIds.includes(note.id));
-
-  const availableReferences = references.filter((reference) => {
-    if (entityType === "reference" && reference.id === entityId) return false;
-    return !linkedReferenceIds.includes(reference.id);
-  });
-
-  const linkedReferences = references.filter((reference) =>
-    linkedReferenceIds.includes(reference.id),
-  );
-
-  async function handleAttachTag(formData: FormData) {
-    const tagId = String(formData.get("tagId") ?? "");
-
-    await attachTagToEntityAction(formData);
-
-    if (!tagId) return;
-
-    const next = selectedTagIds.includes(tagId)
-      ? selectedTagIds
-      : [...selectedTagIds, tagId];
-
-    setSelectedTagIds(next);
-    onAttachedTagIdsChange?.(next);
-  }
-  return (
-    <aside className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 text-[rgb(var(--text))] shadow-sm lg:sticky lg:top-6 lg:h-fit">
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        className="flex w-full items-center justify-between text-left text-[rgb(var(--text))] lg:hidden"
-      >
-        <span className="text-sm font-semibold">Quick actions</span>
-        {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-      </button>
-
-      <div className={`${open ? "mt-4 block" : "hidden"} space-y-5 lg:block`}>
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[rgb(var(--muted))]">
-            Create
-          </p>
-
-          <div className="space-y-2">
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm text-[rgb(var(--text))] hover:bg-slate-200 dark:hover:bg-slate-800"
-            >
-              <CheckSquare size={16} />
-              Task from this {entityType}
-            </button>
-
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm text-[rgb(var(--text))] hover:bg-slate-200 dark:hover:bg-slate-800"
-            >
-              <Zap size={16} />
-              Capture follow-up
-            </button>
-
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm text-[rgb(var(--text))] hover:bg-slate-200 dark:hover:bg-slate-800"
-            >
-              <Plus size={16} />
-              New linked note
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[rgb(var(--muted))]">
-            <FolderKanban size={14} />
-            Project
-          </p>
-
-          {projects.length > 0 ? (
-            <AddToProjectForm
-              entityType={entityType}
-              entityId={entityId}
-              projects={projects}
-              defaultProjectRole={getDefaultProjectRole(entityType)}
-            />
-          ) : (
-            <p className="text-xs text-[rgb(var(--muted))]">No projects yet.</p>
-          )}
-        </div>
-
-        <div>
-          <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[rgb(var(--muted))]">
-            <Tags size={14} />
-            Tags
-          </p>
-
-          {attachedTags.length > 0 && (
-            <div className="mb-3">
-              <p className="mb-1 text-xs font-medium text-[rgb(var(--muted))]">
-                Already attached
-              </p>
-
-              <div className="flex flex-wrap gap-2">
-                {attachedTags.map((tag) => {
-                  const isInlineTag = inlineTagIds.includes(tag.id);
-
-                  return (
-                    <span
-                      key={tag.id}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                        isInlineTag
-                          ? "border-purple-300 bg-purple-100 text-purple-800 dark:border-purple-700 dark:bg-purple-950 dark:text-purple-200"
-                          : "border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-200"
-                      }`}
-                    >
-                      #{tag.name}
-                      {isInlineTag ? " · inline" : ""}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {availableTags.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {availableTags.map((tag) => (
-                <form key={tag.id} action={handleAttachTag}>
-                  <input type="hidden" name="entityType" value={entityType} />
-                  <input type="hidden" name="entityId" value={entityId} />
-                  <input type="hidden" name="tagId" value={tag.id} />
-                  <button
-                    type="submit"
-                    className="rounded-full border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-1 text-xs font-semibold text-[rgb(var(--text))] transition hover:bg-slate-200 dark:hover:bg-slate-800"
-                  >
-                    #{tag.name}
-                  </button>
-                </form>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-[rgb(var(--muted))]">
-              No unlinked tags available.
-            </p>
-          )}
-        </div>
-
-        <div>
-          <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[rgb(var(--muted))]">
-            <LinkIcon size={14} />
-            Link existing
-          </p>
-
-          {linkedNoteIds.length > 0 && (
-            <div className="mb-3">
-              <p className="mb-1 text-xs font-medium text-[rgb(var(--muted))]">
-                Linked notes
-              </p>
-
-              <div className="space-y-1">
-                {linkedNotes.map((note) => (
-                  <p
-                    key={note.id}
-                    className="rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-2 py-1 text-xs text-[rgb(var(--text))]"
-                  >
-                    {note.title}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {linkedReferenceIds.length > 0 && (
-            <div className="mb-3">
-              <p className="mb-1 text-xs font-medium text-[rgb(var(--muted))]">
-                Linked references
-              </p>
-
-              <div className="space-y-1">
-                {linkedReferences.map((reference) => (
-                  <p
-                    key={reference.id}
-                    className="rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-2 py-1 text-xs text-[rgb(var(--text))]"
-                  >
-                    {reference.title}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-3">
-            {availableNotes.length > 0 && (
-              <form action={createEntityLinkAction} className="space-y-2">
-                <input type="hidden" name="sourceType" value={entityType} />
-                <input type="hidden" name="sourceId" value={entityId} />
-                <input type="hidden" name="targetType" value="note" />
-
-                <select
-                  name="targetId"
-                  required
-                  value={selectedNoteId}
-                  onChange={(event) => setSelectedNoteId(event.target.value)}
-                  className="w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm text-[rgb(var(--text))]"
-                >
-                  <option value="" disabled>
-                    Choose note...
-                  </option>
-
-                  {availableNotes.map((note) => (
-                    <option key={note.id} value={note.id}>
-                      {note.title}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  name="relationshipType"
-                  defaultValue="related"
-                  className="w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm text-[rgb(var(--text))]"
-                >
-                  <option value="related">Related</option>
-                  <option value="supports">Supports</option>
-                  <option value="references">References</option>
-                  <option value="follow_up">Follow up</option>
-                  <option value="depends_on">Depends on</option>
-                  <option value="extends">Extends</option>
-                </select>
-
-                <button
-                  type="submit"
-                  onClick={() => {
-                    if (!selectedNoteId) return;
-
-                    const next = linkedNoteIds.includes(selectedNoteId)
-                      ? linkedNoteIds
-                      : [...linkedNoteIds, selectedNoteId];
-
-                    onLinkedNoteIdsChange?.(next);
-                  }}
-                  className="w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm font-semibold text-[rgb(var(--text))] hover:bg-slate-200 dark:hover:bg-slate-800"
-                >
-                  Link note
-                </button>
-              </form>
-            )}
-
-            {availableReferences.length > 0 && (
-              <form action={createEntityLinkAction} className="space-y-2">
-                <input type="hidden" name="sourceType" value={entityType} />
-                <input type="hidden" name="sourceId" value={entityId} />
-                <input type="hidden" name="targetType" value="reference" />
-
-                <select
-                  name="targetId"
-                  required
-                  value={selectedReferenceId}
-                  onChange={(event) =>
-                    setSelectedReferenceId(event.target.value)
-                  }
-                  className="w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm text-[rgb(var(--text))]"
-                >
-                  <option value="" disabled>
-                    Choose reference...
-                  </option>
-
-                  {availableReferences.map((reference) => (
-                    <option key={reference.id} value={reference.id}>
-                      {reference.title}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  name="relationshipType"
-                  defaultValue="references"
-                  className="w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm text-[rgb(var(--text))]"
-                >
-                  <option value="references">References</option>
-                  <option value="uses">Uses</option>
-                  <option value="supports">Supports</option>
-                  <option value="related">Related</option>
-                </select>
-
-                <button
-                  type="submit"
-                  onClick={() => {
-                    if (!selectedReferenceId) return;
-
-                    const next = linkedReferenceIds.includes(
-                      selectedReferenceId,
-                    )
-                      ? linkedReferenceIds
-                      : [...linkedReferenceIds, selectedReferenceId];
-
-                    onLinkedReferenceIdsChange?.(next);
-                  }}
-                  className="w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm font-semibold text-[rgb(var(--text))] hover:bg-slate-200 dark:hover:bg-slate-800"
-                >
-                  Link reference
-                </button>
-              </form>
-            )}
-
-            {availableNotes.length === 0 &&
-              availableReferences.length === 0 && (
-                <p className="text-xs text-[rgb(var(--muted))]">
-                  Everything available is already linked.
-                </p>
-              )}
-          </div>
-        </div>
+    <div className={`${open ? "mt-4 block" : "hidden"} space-y-3 lg:block`}>
+      <div className="mb-3 hidden lg:block">
+        <h2 className="text-sm font-bold text-[rgb(var(--text))]">
+          Quick actions
+        </h2>
+        <p className="text-xs text-[rgb(var(--muted))]">
+          Create, tag, link, and organize this {entityType}.
+        </p>
       </div>
-    </aside>
-  );
+
+      <QuickActionSection
+        title="Create"
+        description="Make related tasks, notes, captures, or events."
+      >
+        <QuickCreateActions entityType={entityType} entityId={entityId} />
+      </QuickActionSection>
+
+      <QuickActionSection
+        title="Project"
+        description="Add this item to an existing project or start a new one."
+      >
+        <QuickProjectActions
+          entityType={entityType}
+          entityId={entityId}
+          projects={projects}
+        />
+      </QuickActionSection>
+
+      <QuickActionSection
+        title="Tags"
+        description="Attach existing tags or create a new one."
+        count={attachedTagIds.length + inlineTagIds.length}
+      >
+        <QuickTagActions
+          entityType={entityType}
+          entityId={entityId}
+          userId={userId}
+          tags={tags}
+          attachedTagIds={attachedTagIds}
+          inlineTagIds={inlineTagIds}
+          onAttachedTagIdsChange={onAttachedTagIdsChange}
+        />
+      </QuickActionSection>
+
+      <QuickActionSection
+        title="Links"
+        description="Connect this item to notes or references."
+        count={linkedNoteIds.length + linkedReferenceIds.length}
+      >
+        <QuickLinkActions
+          entityType={entityType}
+          entityId={entityId}
+          notes={notes}
+          references={references}
+          linkedNoteIds={linkedNoteIds}
+          linkedReferenceIds={linkedReferenceIds}
+          onLinkedNoteIdsChange={onLinkedNoteIdsChange}
+          onLinkedReferenceIdsChange={onLinkedReferenceIdsChange}
+        />
+      </QuickActionSection>
+    </div>
+  </aside>
+);
 }

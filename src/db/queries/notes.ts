@@ -347,11 +347,14 @@ export async function getNoteDetailsById(id: string) {
 
   const userId = note.ownerId;
 
-  const noteTags = await getTagsForNote(userId, id);
-  const sharedTags = await getNotesSharingTagsWithNote(userId, id);
-  const outgoingLinks = await getOutgoingLinks(id, userId);
-  const backlinks = await getBacklinks(id, userId);
-  const references = await getReferencesForNote(userId, id);
+  const [noteTags, sharedTags, outgoingLinks, backlinks, references] =
+    await Promise.all([
+      getTagsForNote(userId, id),
+      getNotesSharingTagsWithNote(userId, id),
+      getOutgoingLinks(id, userId),
+      getBacklinks(id, userId),
+      getReferencesForNote(userId, id),
+    ]);
 
   const tagStats = await Promise.all(
     noteTags.map(async (tag) => ({

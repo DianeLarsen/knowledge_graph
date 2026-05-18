@@ -3,13 +3,15 @@
 import { useState } from "react";
 import NewNoteComposer from "@/components/notes/NewNoteComposer";
 import NoteCard, { NoteDetails } from "@/components/notes/NoteCard";
-import { Reference } from "@/db/schema";
 import TagPanel from "@/components/notes/TagPanel";
 import NotesList from "@/components/notes/NotesList";
+import { Reference, Project } from "@/db/schema";
+import { saveWorkspaceToProjectAction } from "@/app/actions/workspace";
 
 type WorkspaceProps = {
   dataList: NoteDetails[];
   references: Reference[];
+  projects: Project[];
   userId: string;
 };
 
@@ -17,8 +19,8 @@ export default function NotesWorkspace({
   dataList,
   userId,
   references,
+  projects,
 }: WorkspaceProps) {
-
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
 
   const notes = dataList.map((data) => data.note);
@@ -33,21 +35,23 @@ export default function NotesWorkspace({
     ).values(),
   );
 
-const tagStats = tags.map((tag) => ({
-  tag,
-  stats: {
-    tagId: tag.id,
-    tagName: tag.name,
-    noteCount: dataList.filter((data) =>
-      data.tags.some((item) => item.id === tag.id),
-    ).length,
-  },
-}));
+  const tagStats = tags.map((tag) => ({
+    tag,
+    stats: {
+      tagId: tag.id,
+      tagName: tag.name,
+      noteCount: dataList.filter((data) =>
+        data.tags.some((item) => item.id === tag.id),
+      ).length,
+    },
+  }));
 
   const openNotes = dataList.filter((data) =>
     openNoteIds.includes(data.note.id),
   );
-
+async function handleSaveWorkspaceToProject(formData: FormData) {
+  await saveWorkspaceToProjectAction(formData);
+}
   function toggleNote(noteId: string) {
     setOpenNoteIds((current) =>
       current.includes(noteId)
@@ -77,84 +81,127 @@ const tagStats = tags.map((tag) => ({
     );
   }
 
- 
-
   function getPlainTextLength(data: NoteDetails) {
     return data.note.content?.length ?? 0;
   }
   const compactShouldScroll = openNotes.length > 3;
   const compactTagLimit =
     openNotes.length <= 1 ? 8 : openNotes.length === 2 ? 3 : 2;
-  
-return (
-  <main className="min-h-screen bg-[rgb(var(--bg))] p-4 text-[rgb(var(--text))]">
-    <div className="grid gap-4 lg:grid-cols-[260px_1fr_320px]">
-      <aside className="space-y-5 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 text-[rgb(var(--text))]">
-        <TagPanel
-          tags={tags}
-          tagStats={tagStats}
-          onOpenCardsByTag={openCardsByTag}
-        />
 
-        <div className="border-t border-[rgb(var(--border))] pt-5">
-          <NotesList
-            notes={notes}
-            openNoteIds={openNoteIds}
-            onToggleNote={toggleNote}
+  return (
+    <main className="min-h-screen bg-[rgb(var(--bg))] p-4 text-[rgb(var(--text))]">
+      <div className="grid gap-4 lg:grid-cols-[260px_1fr_320px]">
+        <aside className="space-y-5 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 text-[rgb(var(--text))]">
+          <TagPanel
+            tags={tags}
+            tagStats={tagStats}
+            onOpenCardsByTag={openCardsByTag}
           />
-        </div>
-      </aside>
 
-      <section className="overflow-x-auto rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3 text-[rgb(var(--text))]">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-[rgb(var(--text))]">
-            Open Cards
-          </h2>
+          <div className="border-t border-[rgb(var(--border))] pt-5">
+            <NotesList
+              notes={notes}
+              openNoteIds={openNoteIds}
+              onToggleNote={toggleNote}
+            />
+          </div>
+        </aside>
 
-          <button
-            type="button"
-            onClick={closeAllCards}
-            disabled={openNoteIds.length === 0}
-            className="
+        <section className="overflow-x-auto rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3 text-[rgb(var(--text))]">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-[rgb(var(--text))]">
+              Open Cards
+            </h2>
+            <form
+              action={handleSaveWorkspaceToProject}
+              className="flex flex-wrap items-center gap-2"
+            >
+              {openNoteIds.map((noteId) => (
+                <input
+                  key={noteId}
+                  type="hidden"
+                  name="noteId"
+                  value={noteId}
+                />
+              ))}
+
+              <select
+                name="projectId"
+                disabled={openNoteIds.length === 0}
+                className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-1 text-sm text-[rgb(var(--text))]"
+              >
+                <option value="">New project...</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.title}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                name="newProjectTitle"
+                placeholder="New project name"
+                disabled={openNoteIds.length === 0}
+                className="w-40 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-1 text-sm text-[rgb(var(--text))]"
+              />
+
+              <input type="hidden" name="projectRole" value="working" />
+
+              <button
+                type="submit"
+                disabled={openNoteIds.length === 0}
+                className="
+      rounded-xl bg-blue-600 px-3 py-1 text-sm font-semibold text-white
+      hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50
+    "
+              >
+                Save open cards
+              </button>
+            </form>
+            <button
+              type="button"
+              onClick={closeAllCards}
+              disabled={openNoteIds.length === 0}
+              className="
               rounded-xl border border-[rgb(var(--border))]
               bg-[rgb(var(--bg))] px-3 py-1 text-sm
               text-[rgb(var(--text))] hover:bg-slate-200
               disabled:cursor-not-allowed disabled:opacity-50
               dark:hover:bg-slate-800
             "
-          >
-            Close all
-          </button>
-        </div>
+            >
+              Close all
+            </button>
+          </div>
 
-        <div
-          className="
+          <div
+            className="
             grid gap-4
             [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]
           "
-        >
-          {openNotes.map((data) => (
-            <NoteCard
-              key={data.note.id}
-              data={data}
-              compact
-              compactTagLimit={compactTagLimit}
-              compactShouldScroll={
-                compactShouldScroll && getPlainTextLength(data) > 180
-              }
-              allNotes={noteOptions}
-              userTags={tags}
-              userReferences={references}
-              userId={userId}
-              onOpenNote={openNote}
-              onClose={() => closeNote(data.note.id)}
-            />
-          ))}
-        </div>
-      </section>
+          >
+            {openNotes.map((data) => (
+              <NoteCard
+                key={data.note.id}
+                data={data}
+                compact
+                compactTagLimit={compactTagLimit}
+                compactShouldScroll={
+                  compactShouldScroll && getPlainTextLength(data) > 180
+                }
+                allNotes={noteOptions}
+                userTags={tags}
+                userReferences={references}
+                userId={userId}
+                onOpenNote={openNote}
+                onClose={() => closeNote(data.note.id)}
+              />
+            ))}
+          </div>
+        </section>
 
-      <NewNoteComposer notes={notes} tags={tags} references={references} />
-    </div>
-  </main>
-);
+        <NewNoteComposer notes={notes} tags={tags} references={references} />
+      </div>
+    </main>
+  );
 }

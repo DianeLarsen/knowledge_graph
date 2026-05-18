@@ -1,13 +1,23 @@
 import { and, eq, inArray, isNull, ne, or } from "drizzle-orm";
 import { db } from "../index";
-import { entityTags, notes, tags } from "../schema";
+import { entityTags, notes, tags, type EntityType } from "../schema";
 
-export async function addTagToNote(
-  userId: string,
-  noteId: string,
-  tagId: string,
-) {
-  const tag = await db
+type AttachTagToEntityInput = {
+  userId: string;
+  entityType: EntityType;
+  entityId: string;
+  tagId: string;
+};
+
+type RemoveTagFromEntityInput = {
+  userId: string;
+  entityType: EntityType;
+  entityId: string;
+  tagId: string;
+};
+
+async function assertTagAvailableToUser(userId: string, tagId: string) {
+  const [tag] = await db
     .select({ id: tags.id })
     .from(tags)
     .where(
@@ -21,16 +31,31 @@ export async function addTagToNote(
       ),
     );
 
-  if (!tag[0]) {
+  if (!tag) {
     throw new Error("Tag not found.");
   }
+
+  return tag;
+}
+
+export async function attachTagToEntity({
+  userId,
+  entityType,
+  entityId,
+  tagId,
+}: AttachTagToEntityInput) {
+  if (!entityId || !tagId) {
+    return null;
+  }
+
+  await assertTagAvailableToUser(userId, tagId);
 
   const [result] = await db
     .insert(entityTags)
     .values({
       appliedByUserId: userId,
-      entityType: "note",
-      entityId: noteId,
+      entityType,
+      entityId,
       tagId,
     })
     .onConflictDoNothing()
@@ -39,18 +64,19 @@ export async function addTagToNote(
   return result ?? null;
 }
 
-export async function removeTagFromNote(
-  userId: string,
-  noteId: string,
-  tagId: string,
-) {
+export async function detachTagFromEntity({
+  userId,
+  entityType,
+  entityId,
+  tagId,
+}: RemoveTagFromEntityInput) {
   const [result] = await db
     .delete(entityTags)
     .where(
       and(
         eq(entityTags.appliedByUserId, userId),
-        eq(entityTags.entityType, "note"),
-        eq(entityTags.entityId, noteId),
+        eq(entityTags.entityType, entityType),
+        eq(entityTags.entityId, entityId),
         eq(entityTags.tagId, tagId),
       ),
     )
@@ -59,7 +85,11 @@ export async function removeTagFromNote(
   return result ?? null;
 }
 
-export async function getTagsForNote(userId: string, noteId: string) {
+export async function getTagsForEntity(
+  userId: string,
+  entityType: EntityType,
+  entityId: string,
+) {
   return db
     .select({
       id: tags.id,
@@ -78,8 +108,8 @@ export async function getTagsForNote(userId: string, noteId: string) {
     .innerJoin(tags, eq(entityTags.tagId, tags.id))
     .where(
       and(
-        eq(entityTags.entityType, "note"),
-        eq(entityTags.entityId, noteId),
+        eq(entityTags.entityType, entityType),
+        eq(entityTags.entityId, entityId),
         or(
           and(eq(tags.scopeType, "user"), eq(tags.scopeId, userId)),
           eq(tags.scopeType, "public"),
@@ -87,6 +117,36 @@ export async function getTagsForNote(userId: string, noteId: string) {
         isNull(tags.deletedAt),
       ),
     );
+}
+
+export async function addTagToNote(
+  userId: string,
+  noteId: string,
+  tagId: string,
+) {
+  return attachTagToEntity({
+    userId,
+    entityType: "note",
+    entityId: noteId,
+    tagId,
+  });
+}
+
+export async function removeTagFromNote(
+  userId: string,
+  noteId: string,
+  tagId: string,
+) {
+  return detachTagFromEntity({
+    userId,
+    entityType: "note",
+    entityId: noteId,
+    tagId,
+  });
+}
+
+export async function getTagsForNote(userId: string, noteId: string) {
+  return getTagsForEntity(userId, "note", noteId);
 }
 
 export async function getNotesSharingTagsWithNote(
