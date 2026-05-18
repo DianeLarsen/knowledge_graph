@@ -8,24 +8,9 @@ import RichNoteEditor from "@/components/notes/RichNoteEditor";
 import { updateNoteAction } from "@/app/actions/notes";
 import ReferenceComposer from "@/components/references/ReferenceComposer";
 import { extractReferenceIdsFromContentJson } from "@/lib/notes/extractReferenceIdsFromContentJson";
+import type { NoteLinkedReference } from "@/lib/references/referenceTypes";
 
-type NoteReferenceSummary = {
-  id: string;
-  type: Reference["type"];
-  title: string;
-  author: string | null;
-  url: string | null;
-  publisher: string | null;
-  publishedDate: string | null;
-  citation: string | null;
-  notes: string | null;
 
-  noteReferenceId: string;
-  pageNumber: string | null;
-  location: string | null;
-  quote: string | null;
-  summary: string | null;
-};
 type LinkedNoteSummary = {
   id: string;
   title: string;
@@ -36,7 +21,7 @@ type EditNoteFormProps = {
   tags: Tag[];
   noteTags: Tag[];
   references: Reference[];
-  noteReferences: NoteReferenceSummary[];
+  noteReferences: NoteLinkedReference[];
   availableNotes: LinkedNoteSummary[];
   linkedNoteIds: string[];
   onCancel?: () => void;

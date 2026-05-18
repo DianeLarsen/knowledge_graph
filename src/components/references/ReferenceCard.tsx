@@ -2,21 +2,18 @@
 
 import { useState } from "react";
 import {
-  ChevronDown,
-  ChevronRight,
   Pencil,
   Trash2,
-  Copy,
-  Check,
 } from "lucide-react";
 import {
   deleteReferenceAction,
 } from "@/app/actions/references";
-import { getApaCitation, getApaReference } from "@/lib/apa";
 import Link from "next/link";
 import EditReferenceForm from "@/components/references/EditReferenceForm";
+import ApaCitationPanel from "@/components/references/ApaCitationPanel";
+import type { ReferenceCardItem } from "@/lib/references/referenceTypes";
 
-type Reference = {
+export type Reference = {
   id: string;
   type: string;
   title: string;
@@ -47,13 +44,13 @@ type Reference = {
   }[];
 };
 
-export default function ReferenceCard({ reference }: { reference: Reference }) {
+export default function ReferenceCard({
+  reference,
+}: {
+  reference: ReferenceCardItem;
+}) {
   const [isEditing, setIsEditing] = useState(false);
-  const [showApa, setShowApa] = useState(false);
   const [showLinkedNotes, setShowLinkedNotes] = useState(false);
-  const [copiedApaReference, setCopiedApaReference] = useState(false);
-  const [copiedApaCitation, setCopiedApaCitation] = useState(false);
-
 
   const noteCount = reference.linkedNotes?.length ?? 0;
   const taskCount = reference.linkedTasks?.length ?? 0;
@@ -66,18 +63,6 @@ export default function ReferenceCard({ reference }: { reference: Reference }) {
 
   const isLinked = totalLinkCount > 0;
 
-  const apaReference = getApaReference(reference);
-  const apaCitation = getApaCitation(reference);
-
-  async function copyText(text: string, setCopied: (value: boolean) => void) {
-    await navigator.clipboard.writeText(text);
-
-    setCopied(true);
-
-    setTimeout(() => {
-      setCopied(false);
-    }, 2000);
-  }
   return (
     <article className="relative rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
       {!isEditing ? (
@@ -288,76 +273,7 @@ export default function ReferenceCard({ reference }: { reference: Reference }) {
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => setShowApa((current) => !current)}
-            className="mt-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            {showApa ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-            APA Reference & Citation
-          </button>
-
-          {showApa && (
-            <div className="mt-2 space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-950">
-              <div>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                    APA Reference
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      copyText(apaReference, setCopiedApaReference)
-                    }
-                    title={copiedApaReference ? "Copied" : "Copy APA reference"}
-                    className="rounded-lg border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-                  >
-                    {copiedApaReference ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-
-                <p className="mt-1 text-gray-800 dark:text-gray-200">
-                  {apaReference}
-                </p>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                    In-text Citation
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() => copyText(apaCitation, setCopiedApaCitation)}
-                    title={
-                      copiedApaCitation ? "Copied" : "Copy in-text citation"
-                    }
-                    className="rounded-lg border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-                  >
-                    {copiedApaCitation ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-
-                <p className="mt-1 text-gray-800 dark:text-gray-200">
-                  {apaCitation}
-                </p>
-              </div>
-            </div>
-          )}
+          <ApaCitationPanel reference={reference} />
         </>
       ) : (
         <EditReferenceForm

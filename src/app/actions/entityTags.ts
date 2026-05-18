@@ -10,6 +10,24 @@ function isEntityType(value: string): value is EntityType {
   return entityTypes.includes(value as EntityType);
 }
 
+function revalidateEntityPages(entityType: EntityType, entityId: string) {
+  revalidatePath("/");
+  revalidatePath("/notes");
+  revalidatePath("/tasks");
+  revalidatePath("/calendar");
+  revalidatePath("/capture");
+  revalidatePath("/workspace");
+  revalidatePath("/notes/references");
+
+  if (entityType === "note") {
+    revalidatePath(`/notes/${entityId}`);
+  }
+
+  if (entityType === "reference") {
+    revalidatePath(`/notes/references/${entityId}`);
+  }
+}
+
 export async function attachTagToEntityAction(formData: FormData) {
   const userId = await getCurrentUserId();
 
@@ -22,9 +40,7 @@ export async function attachTagToEntityAction(formData: FormData) {
   }
 
   await attachTagToEntity(userId, entityTypeValue, entityId, tagId);
-
-  revalidatePath("/");
-  revalidatePath(`/${entityTypeValue}s`);
+  revalidateEntityPages(entityTypeValue, entityId);
 }
 
 export async function removeTagFromEntityAction(formData: FormData) {
@@ -42,8 +58,5 @@ export async function removeTagFromEntityAction(formData: FormData) {
     tagId,
   });
 
-  revalidatePath("/tasks");
-  revalidatePath("/notes");
-  revalidatePath("/references");
-  revalidatePath("/workspace");
+  revalidateEntityPages(entityTypeValue, entityId);
 }

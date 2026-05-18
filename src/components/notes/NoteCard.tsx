@@ -7,12 +7,10 @@ import EditNoteForm from "@/components/notes/EditNoteForm";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TagColor } from "@/lib/tags/tagColors";
-import {
-  attachReferenceToNoteAction,
-  removeReferenceFromNoteAction,
-} from "@/app/actions/references";
 import { getRelationshipLabel } from "@/lib/entityRelationships";
-
+import LinkedReferenceCard from "@/components/references/LinkedReferenceCard";
+import { removeReferenceFromNoteAction } from "@/app/actions/references";
+import type { NoteLinkedReference } from "@/lib/references/referenceTypes";
 type LinkedNoteSummary = {
   id: string;
   title: string;
@@ -36,26 +34,10 @@ export type NoteDetails = {
   outgoingLinks: OutgoingLink[];
   backlinks: Backlink[];
   sharedTags: SharedTagNote[];
-  references?: NoteReferenceCardItem[];
+  references?: NoteLinkedReference[];
 };
 
-type NoteReferenceCardItem = {
-  id: string;
-  type: Reference["type"];
-  title: string;
-  author: string | null;
-  url: string | null;
-  publisher: string | null;
-  publishedDate: string | null;
-  citation: string | null;
-  notes: string | null;
 
-  noteReferenceId: string;
-  pageNumber: string | null;
-  location: string | null;
-  quote: string | null;
-  summary: string | null;
-};
 type OutgoingLink = {
   id: string;
   relationshipType: RelationshipType;
@@ -210,15 +192,8 @@ export default function NoteCard({
 
   const visibleTags = sortedTags.slice(0, maxVisibleTags);
   const hiddenTags = shouldCollapseTags ? sortedTags.slice(maxVisibleTags) : [];
-  const attachedReferenceIds = new Set(
-    references.map((reference) => reference.id),
-  );
 
   const referenceOptions = userReferences;
-
-  const availableReferences = referenceOptions.filter(
-    (reference) => !attachedReferenceIds.has(reference.id),
-  );
 
   return (
     <div className={compact ? "w-full" : "mx-auto w-full max-w-3xl"}>
@@ -557,150 +532,23 @@ export default function NoteCard({
                   </div>
                 </section>
               )}
-              {userId && availableReferences.length > 0 && (
-                <section>
-                  <h2 className="mb-2 font-semibold text-gray-800 dark:text-gray-200">
-                    Add Reference
-                  </h2>
 
-                  <form
-                    action={async (formData) => {
-                      await attachReferenceToNoteAction(formData);
-                    }}
-                    className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900"
-                  >
-                    <input type="hidden" name="noteId" value={note.id} />
-
-                    <select
-                      name="referenceId"
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-800 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                      defaultValue=""
-                    >
-                      <option value="" disabled>
-                        Select a reference
-                      </option>
-
-                      {availableReferences.map((reference) => (
-                        <option key={reference.id} value={reference.id}>
-                          {reference.title}
-                        </option>
-                      ))}
-                    </select>
-
-                    <input
-                      name="pageNumber"
-                      placeholder="Page number, optional"
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                    />
-
-                    <textarea
-                      name="summary"
-                      placeholder="Why this reference matters for this note, optional"
-                      rows={2}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                    />
-
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
-                    >
-                      Attach Reference
-                    </button>
-                  </form>
-                </section>
-              )}
               {references.length > 0 && (
                 <section>
-                  <h2 className="mb-2 font-semibold text-gray-800 dark:text-gray-200">
+                  <h2 className="mb-2 font-semibold text-[rgb(var(--text))]">
                     References
                   </h2>
 
                   <div className="space-y-2">
-                    {references.map((reference) => {
-                      const isAnchored =
-                        !!reference.quote || !!reference.summary;
-                      return (
-                        <div
-                          key={reference.noteReferenceId}
-                          className="
-                  rounded-lg border border-amber-200 bg-amber-50 px-3 py-2
-                  text-xs text-amber-900
-                  dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200
-                "
-                        >
-                          <p className="font-semibold">{reference.title}</p>
-                          <p
-                            className={`text-xs ${
-                              isAnchored
-                                ? "text-green-600 dark:text-green-400"
-                                : "text-gray-500 dark:text-gray-400"
-                            }`}
-                          >
-                            {isAnchored
-                              ? "Linked to text"
-                              : "General reference"}
-                          </p>
-                          {reference.author && (
-                            <p className="opacity-80">
-                              Author: {reference.author}
-                            </p>
-                          )}
-
-                          {reference.pageNumber && (
-                            <p className="opacity-80">
-                              Page: {reference.pageNumber}
-                            </p>
-                          )}
-
-                          {reference.quote && (
-                            <p className="mt-1 italic">“{reference.quote}”</p>
-                          )}
-
-                          {reference.summary && (
-                            <p className="mt-1 font-medium text-gray-800 dark:text-gray-200">
-                              Why it matters: {reference.summary}
-                            </p>
-                          )}
-
-                          {reference.url && (
-                            <a
-                              href={reference.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="mt-1 inline-block underline"
-                            >
-                              Open reference
-                            </a>
-                          )}
-                          {userId && (
-                            <form
-                              action={async (formData) => {
-                                await removeReferenceFromNoteAction(formData);
-                              }}
-                              className="mt-2"
-                            >
-                              <input
-                                type="hidden"
-                                name="noteId"
-                                value={note.id}
-                              />
-                              <input
-                                type="hidden"
-                                name="referenceId"
-                                value={reference.id}
-                              />
-
-                              <button
-                                type="submit"
-                                className="rounded-md border border-red-300 px-2 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950"
-                              >
-                                Remove from note
-                              </button>
-                            </form>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {references.map((reference) => (
+                      <LinkedReferenceCard
+                        key={reference.noteReferenceId}
+                        reference={reference}
+                        noteId={note.id}
+                        canRemove={!!userId}
+                        onRemoveAction={removeReferenceFromNoteAction}
+                      />
+                    ))}
                   </div>
                 </section>
               )}

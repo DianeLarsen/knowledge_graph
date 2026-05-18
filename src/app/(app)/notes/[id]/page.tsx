@@ -65,6 +65,17 @@ const noteOptions = notes.map((note) => ({
           references={userReferences}
           notes={noteOptions}
           projects={projects}
+          attachedTagIds={data.tags.map((tag) => tag.id)}
+          inlineTagIds={[]}
+          linkedNoteIds={[
+            ...data.outgoingLinks
+              .filter((link) => link.targetType === "note")
+              .map((link) => link.targetId),
+            ...data.backlinks
+              .filter((link) => link.sourceType === "note")
+              .map((link) => link.sourceId),
+          ]}
+          linkedReferenceIds={data.references.map((reference) => reference.id)}
         />
 
         <NoteCard
