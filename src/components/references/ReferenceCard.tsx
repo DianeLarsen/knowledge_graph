@@ -1,17 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Pencil,
-  Trash2,
-} from "lucide-react";
-import {
-  deleteReferenceAction,
-} from "@/app/actions/references";
+import { Pencil, Trash2 } from "lucide-react";
+import { deleteReferenceAction } from "@/app/actions/references";
 import Link from "next/link";
 import EditReferenceForm from "@/components/references/EditReferenceForm";
 import ApaCitationPanel from "@/components/references/ApaCitationPanel";
-import type { ReferenceCardItem } from "@/lib/references/referenceTypes";
+import type { ReferenceCardItem } from "@/lib/types/references/referenceTypes";
 
 export type Reference = {
   id: string;

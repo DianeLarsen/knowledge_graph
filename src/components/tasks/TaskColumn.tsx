@@ -4,7 +4,7 @@ import { useState } from "react";
 import NewTaskForm from "@/components/tasks/NewTaskForm";
 import { TaskStatus } from "./Taskboard";
 import TaskCard from "@/components/tasks/TaskCard";
-import { QuickTag, QuickReference, QuickNote } from "@/lib/tags/tagTypes";
+import { QuickTag, QuickReference, QuickNote } from "@/lib/types/quickTypes";
 import type { Project, Task } from "@/db/schema";
 
 type TaskWithQuickActionState = Task & {

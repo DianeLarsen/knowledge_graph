@@ -2,8 +2,15 @@
 
 import { useState } from "react";
 import type { EntityType } from "@/db/schema";
-import type { QuickReference, QuickNote } from "@/lib/tags/tagTypes";
+import type {
+  QuickReference,
+  QuickNote,
+  QuickTask,
+  QuickEvent,
+} from "@/lib/types/quickTypes";
 import { createEntityLinkAction } from "@/app/actions/entityLinks";
+
+type LinkTargetType = "note" | "reference" | "task" | "event";
 
 type QuickLinkActionsProps = {
   entityType: EntityType;
@@ -12,6 +19,12 @@ type QuickLinkActionsProps = {
   references: QuickReference[];
   linkedNoteIds: string[];
   linkedReferenceIds: string[];
+  tasks: QuickTask[];
+  events: QuickEvent[];
+  linkedTaskIds: string[];
+  linkedEventIds: string[];
+  onLinkedTaskIdsChange?: (taskIds: string[]) => void;
+  onLinkedEventIdsChange?: (eventIds: string[]) => void;
   onLinkedNoteIdsChange?: (noteIds: string[]) => void;
   onLinkedReferenceIdsChange?: (referenceIds: string[]) => void;
 };
@@ -23,11 +36,34 @@ export default function QuickLinkActions({
   references,
   linkedNoteIds,
   linkedReferenceIds,
+  tasks = [],
+  events = [],
+  linkedTaskIds = [],
+  linkedEventIds = [],
+  onLinkedTaskIdsChange,
+  onLinkedEventIdsChange,
   onLinkedNoteIdsChange,
   onLinkedReferenceIdsChange,
 }: QuickLinkActionsProps) {
-  const [selectedNoteId, setSelectedNoteId] = useState("");
-  const [selectedReferenceId, setSelectedReferenceId] = useState("");
+  const [activePicker, setActivePicker] = useState<LinkTargetType | null>(null);
+  const [selectedTargetId, setSelectedTargetId] = useState("");
+  const [relationshipType, setRelationshipType] = useState("related");
+
+  const availableTasks = tasks.filter((task) => {
+    if (entityType === "task" && task.id === entityId) return false;
+    return !linkedTaskIds.includes(task.id);
+  });
+
+  const linkedTasks = tasks.filter((task) => linkedTaskIds.includes(task.id));
+
+  const availableEvents = events.filter((event) => {
+    if (entityType === "event" && event.id === entityId) return false;
+    return !linkedEventIds.includes(event.id);
+  });
+
+  const linkedEvents = events.filter((event) =>
+    linkedEventIds.includes(event.id),
+  );
 
   const availableNotes = notes.filter((note) => {
     if (entityType === "note" && note.id === entityId) return false;
@@ -45,42 +81,118 @@ export default function QuickLinkActions({
     linkedReferenceIds.includes(reference.id),
   );
 
-  async function handleLinkNote(formData: FormData) {
-    await createEntityLinkAction(formData);
+  const pickerConfig = {
+    note: {
+      title: "Link note",
+      label: "Choose note...",
+      items: availableNotes,
+      defaultRelationship: "related",
+      relationships: [
+        "related",
+        "supports",
+        "references",
+        "follow_up",
+        "depends_on",
+        "extends",
+      ],
+    },
+    reference: {
+      title: "Link reference",
+      label: "Choose reference...",
+      items: availableReferences,
+      defaultRelationship: "references",
+      relationships: ["references", "uses", "supports", "related"],
+    },
+    task: {
+      title: "Link task",
+      label: "Choose task...",
+      items: availableTasks,
+      defaultRelationship: "related",
+      relationships: [
+        "related",
+        "supports",
+        "blocks",
+        "follow_up",
+        "depends_on",
+      ],
+    },
+    event: {
+      title: "Link event",
+      label: "Choose event...",
+      items: availableEvents,
+      defaultRelationship: "related",
+      relationships: ["related", "supports", "follow_up", "depends_on"],
+    },
+  } satisfies Record<
+    LinkTargetType,
+    {
+      title: string;
+      label: string;
+      items: { id: string; title: string }[];
+      defaultRelationship: string;
+      relationships: string[];
+    }
+  >;
 
-    if (!selectedNoteId) return;
-
-    const next = linkedNoteIds.includes(selectedNoteId)
-      ? linkedNoteIds
-      : [...linkedNoteIds, selectedNoteId];
-
-    onLinkedNoteIdsChange?.(next);
-    setSelectedNoteId("");
+  function openPicker(type: LinkTargetType) {
+    setActivePicker(type);
+    setSelectedTargetId("");
+    setRelationshipType(pickerConfig[type].defaultRelationship);
   }
 
-  async function handleLinkReference(formData: FormData) {
+  async function handleLinkTarget(formData: FormData) {
     await createEntityLinkAction(formData);
 
-    if (!selectedReferenceId) return;
+    if (!activePicker || !selectedTargetId) return;
 
-    const next = linkedReferenceIds.includes(selectedReferenceId)
-      ? linkedReferenceIds
-      : [...linkedReferenceIds, selectedReferenceId];
+    if (activePicker === "note") {
+      onLinkedNoteIdsChange?.(
+        linkedNoteIds.includes(selectedTargetId)
+          ? linkedNoteIds
+          : [...linkedNoteIds, selectedTargetId],
+      );
+    }
 
-    onLinkedReferenceIdsChange?.(next);
-    setSelectedReferenceId("");
+    if (activePicker === "reference") {
+      onLinkedReferenceIdsChange?.(
+        linkedReferenceIds.includes(selectedTargetId)
+          ? linkedReferenceIds
+          : [...linkedReferenceIds, selectedTargetId],
+      );
+    }
+
+    if (activePicker === "task") {
+      onLinkedTaskIdsChange?.(
+        linkedTaskIds.includes(selectedTargetId)
+          ? linkedTaskIds
+          : [...linkedTaskIds, selectedTargetId],
+      );
+    }
+
+    if (activePicker === "event") {
+      onLinkedEventIdsChange?.(
+        linkedEventIds.includes(selectedTargetId)
+          ? linkedEventIds
+          : [...linkedEventIds, selectedTargetId],
+      );
+    }
+
+    setActivePicker(null);
+    setSelectedTargetId("");
   }
-const selectClass =
-  "w-full rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm text-[rgb(var(--text))] shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:bg-slate-950 dark:focus:ring-purple-900";
 
-const linkButtonClass =
-  "flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600";
+  const selectClass =
+    "w-full rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm text-[rgb(var(--text))] shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:bg-slate-950 dark:focus:ring-purple-900";
 
-const linkedItemClass =
-  "rounded-lg border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-medium text-purple-900 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-200";
+  const linkButtonClass =
+    "flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600";
 
-const groupLabelClass =
-  "mb-1 text-xs font-bold uppercase tracking-wide text-[rgb(var(--muted))]";
+  const linkedItemClass =
+    "rounded-lg border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-medium text-purple-900 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-200";
+
+  const groupLabelClass =
+    "mb-1 text-xs font-bold uppercase tracking-wide text-[rgb(var(--muted))]";
+
   return (
     <div className="space-y-3">
       {linkedNotes.length > 0 && (
@@ -91,6 +203,34 @@ const groupLabelClass =
             {linkedNotes.map((note) => (
               <p key={note.id} className={linkedItemClass}>
                 {note.title}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {linkedTasks.length > 0 && (
+        <div className="mb-3">
+          <p className={groupLabelClass}>Linked tasks</p>
+
+          <div className="space-y-1">
+            {linkedTasks.map((task) => (
+              <p key={task.id} className={linkedItemClass}>
+                {task.title}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {linkedEvents.length > 0 && (
+        <div className="mb-3">
+          <p className={groupLabelClass}>Linked events</p>
+
+          <div className="space-y-1">
+            {linkedEvents.map((event) => (
+              <p key={event.id} className={linkedItemClass}>
+                {event.title}
               </p>
             ))}
           </div>
@@ -112,92 +252,124 @@ const groupLabelClass =
       )}
 
       <div className="space-y-3">
-        {availableNotes.length > 0 && (
-          <form action={handleLinkNote} className="space-y-2">
-            <input type="hidden" name="sourceType" value={entityType} />
-            <input type="hidden" name="sourceId" value={entityId} />
-            <input type="hidden" name="targetType" value="note" />
-
-            <select
-              name="targetId"
-              required
-              value={selectedNoteId}
-              onChange={(event) => setSelectedNoteId(event.target.value)}
-              className={selectClass}
+        <div className="grid gap-2 grid-cols-4 md:grid-cols-2">
+          {availableNotes.length > 0 && (
+            <button
+              type="button"
+              onClick={() => openPicker("note")}
+              className={linkButtonClass}
             >
-              <option value="" disabled>
-                Choose note...
-              </option>
+              Link note
+            </button>
+          )}
 
-              {availableNotes.map((note) => (
-                <option key={note.id} value={note.id}>
-                  {note.title}
-                </option>
-              ))}
-            </select>
-
-            <select
-              name="relationshipType"
-              defaultValue="related"
-              className={selectClass}
+          {availableReferences.length > 0 && (
+            <button
+              type="button"
+              onClick={() => openPicker("reference")}
+              className={linkButtonClass}
             >
-              <option value="related">Related</option>
-              <option value="supports">Supports</option>
-              <option value="references">References</option>
-              <option value="follow_up">Follow up</option>
-              <option value="depends_on">Depends on</option>
-              <option value="extends">Extends</option>
-            </select>
+              Link reference
+            </button>
+          )}
 
-            <button className={linkButtonClass}>Link note</button>
-          </form>
-        )}
-
-        {availableReferences.length > 0 && (
-          <form action={handleLinkReference} className="space-y-2">
-            <input type="hidden" name="sourceType" value={entityType} />
-            <input type="hidden" name="sourceId" value={entityId} />
-            <input type="hidden" name="targetType" value="reference" />
-
-            <select
-              name="targetId"
-              required
-              value={selectedReferenceId}
-              onChange={(event) => setSelectedReferenceId(event.target.value)}
-              className={selectClass}
+          {availableTasks.length > 0 && (
+            <button
+              type="button"
+              onClick={() => openPicker("task")}
+              className={linkButtonClass}
             >
-              <option value="" disabled>
-                Choose reference...
-              </option>
+              Link task
+            </button>
+          )}
 
-              {availableReferences.map((reference) => (
-                <option key={reference.id} value={reference.id}>
-                  {reference.title}
-                </option>
-              ))}
-            </select>
-
-            <select
-              name="relationshipType"
-              defaultValue="references"
-              className={selectClass}
+          {availableEvents.length > 0 && (
+            <button
+              type="button"
+              onClick={() => openPicker("event")}
+              className={linkButtonClass}
             >
-              <option value="references">References</option>
-              <option value="uses">Uses</option>
-              <option value="supports">Supports</option>
-              <option value="related">Related</option>
-            </select>
+              Link event
+            </button>
+          )}
+        </div>
 
-            <button className={linkButtonClass}>Link reference</button>
-          </form>
-        )}
-
-        {availableNotes.length === 0 && availableReferences.length === 0 && (
-          <p className="text-xs text-[rgb(var(--muted))]">
-            Everything available is already linked.
-          </p>
-        )}
+        {availableNotes.length === 0 &&
+          availableReferences.length === 0 &&
+          availableTasks.length === 0 &&
+          availableEvents.length === 0 && (
+            <p className="text-xs text-[rgb(var(--muted))]">
+              Everything available is already linked.
+            </p>
+          )}
       </div>
+      {activePicker && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 px-4">
+          <div className="relative z-[10000] w-full max-w-md rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-xl">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-[rgb(var(--text))]">
+                  {pickerConfig[activePicker].title}
+                </h3>
+                <p className="text-xs text-[rgb(var(--muted))]">
+                  Choose an item and relationship.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActivePicker(null)}
+                className="rounded-lg px-2 py-1 text-md font-bold hover:bg-slate-200 dark:hover:bg-slate-800"
+              >
+                ×
+              </button>
+            </div>
+
+            <form action={handleLinkTarget} className="space-y-3">
+              <input type="hidden" name="sourceType" value={entityType} />
+              <input type="hidden" name="sourceId" value={entityId} />
+              <input type="hidden" name="targetType" value={activePicker} />
+
+              <select
+                name="targetId"
+                required
+                value={selectedTargetId}
+                onChange={(event) => setSelectedTargetId(event.target.value)}
+                className={selectClass}
+              >
+                <option value="" disabled>
+                  {pickerConfig[activePicker].label}
+                </option>
+
+                {pickerConfig[activePicker].items.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                name="relationshipType"
+                value={relationshipType}
+                onChange={(event) => setRelationshipType(event.target.value)}
+                className={selectClass}
+              >
+                {pickerConfig[activePicker].relationships.map(
+                  (relationship) => (
+                    <option key={relationship} value={relationship}>
+                      {relationship.replace("_", " ")}
+                    </option>
+                  ),
+                )}
+              </select>
+
+              <button className={linkButtonClass}>
+                {pickerConfig[activePicker].title}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

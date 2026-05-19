@@ -6,11 +6,11 @@ import ReadOnlyNoteContent from "@/components/notes/ReadOnlyNoteContent";
 import EditNoteForm from "@/components/notes/EditNoteForm";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { TagColor } from "@/lib/tags/tagColors";
+import { TagColor } from "@/lib/types/tags/tagColors";
 import { getRelationshipLabel } from "@/lib/entityRelationships";
 import LinkedReferenceCard from "@/components/references/LinkedReferenceCard";
 import { removeReferenceFromNoteAction } from "@/app/actions/references";
-import type { NoteLinkedReference } from "@/lib/references/referenceTypes";
+import type { NoteLinkedReference } from "@/lib/types/references/referenceTypes";
 
 type LinkedNoteSummary = {
   id: string;

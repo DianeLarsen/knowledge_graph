@@ -8,7 +8,7 @@ import Mention from "@tiptap/extension-mention";
 import { TagMark } from "@/lib/tiptap/extensions/TagMark";
 import { ReferenceMark } from "@/lib/tiptap/extensions/ReferenceMark";
 import { useState, useEffect, useRef } from "react";
-import { TagColor } from "@/lib/tags/tagColors";
+import { TagColor } from "@/lib/types/tags/tagColors";
 
 type ReadOnlyReference = {
   id: string;
@@ -122,7 +122,6 @@ export default function ReadOnlyNoteContent({
   tags = [],
   tagColorMap = {},
 }: ReadOnlyNoteContentProps) {
-
   const [preview, setPreview] = useState<
     | {
         type: "reference";
@@ -137,14 +136,13 @@ export default function ReadOnlyNoteContent({
         tag: ReadOnlyTag;
       }
     | null
-    >(null);
+  >(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-
-function getTagColorClasses(tagId?: string | null) {
-  if (!tagId) return colorClassMap.blue.join(" ");
-  return colorClassMap[tagColorMap[tagId] ?? "blue"].join(" ");
-}
+  function getTagColorClasses(tagId?: string | null) {
+    if (!tagId) return colorClassMap.blue.join(" ");
+    return colorClassMap[tagColorMap[tagId] ?? "blue"].join(" ");
+  }
 
   const editor = useEditor({
     editable: false,
@@ -208,27 +206,25 @@ function getTagColorClasses(tagId?: string | null) {
     immediatelyRender: false,
   });
 
+  useEffect(() => {
+    if (!editor) return;
 
+    const allColorClasses = Object.values(colorClassMap).flat();
 
-useEffect(() => {
-  if (!editor) return;
+    const elements =
+      contentRef.current?.querySelectorAll("[data-inline-tag-id]") ?? [];
 
-  const allColorClasses = Object.values(colorClassMap).flat();
+    elements.forEach((element) => {
+      const tagId = element.getAttribute("data-inline-tag-id");
+      const color = tagColorMap[tagId ?? ""] ?? "blue";
 
-  const elements =
-    contentRef.current?.querySelectorAll("[data-inline-tag-id]") ?? [];
-
-  elements.forEach((element) => {
-    const tagId = element.getAttribute("data-inline-tag-id");
-    const color = tagColorMap[tagId ?? ""] ?? "blue";
-
-    element.classList.remove(...allColorClasses);
-    element.classList.add(...colorClassMap[color]);
-  });
-}, [editor, tagColorMap]);
+      element.classList.remove(...allColorClasses);
+      element.classList.add(...colorClassMap[color]);
+    });
+  }, [editor, tagColorMap]);
 
   if (!editor) return null;
-  
+
   return (
     <div ref={contentRef} className="relative" onClick={() => setPreview(null)}>
       <EditorContent

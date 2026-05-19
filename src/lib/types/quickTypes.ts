@@ -20,3 +20,13 @@ export type QuickNote = {
   title: string;
   content: string | null;
 };
+
+export type QuickTask = {
+  id: string;
+  title: string;
+};
+
+export type QuickEvent = {
+  id: string;
+  title: string;
+};

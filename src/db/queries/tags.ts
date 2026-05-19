@@ -1,7 +1,7 @@
 import { asc, and, count, eq, isNull, or } from "drizzle-orm";
 import { db } from "../index";
 import { type EntityType, entityTags, notes, tags } from "@/db/schema";
-import { getRandomTagColor } from "@/lib/tags/tagColors";
+import { getRandomTagColor } from "@/lib/types/tags/tagColors";
 
 function slugifyTag(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, "-");

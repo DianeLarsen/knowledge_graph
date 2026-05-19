@@ -1,6 +1,6 @@
 import { ExternalLink, Trash2 } from "lucide-react";
 import ApaCitationPanel from "./ApaCitationPanel";
-import type { NoteLinkedReference } from "@/lib/references/referenceTypes";
+import type { NoteLinkedReference } from "@/lib/types/references/referenceTypes";
 
 type LinkedReferenceCardProps = {
   reference: NoteLinkedReference;

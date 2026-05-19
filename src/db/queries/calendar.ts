@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, isNotNull, lte, ne, or } from "drizzle-orm";
+import { and, asc, eq, gte, isNotNull, lte, ne, or, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { events, tasks, type NewEvent } from "@/db/schema";
 
@@ -129,4 +129,18 @@ export async function getEventById(eventId: string, userId: string) {
     );
 
   return event ?? null;
+}
+
+export async function getEventsByUserId(userId: string) {
+  return db
+    .select()
+    .from(events)
+    .where(
+      and(
+        eq(events.ownerType, "user"),
+        eq(events.ownerId, userId),
+        isNull(events.deletedAt),
+      ),
+    )
+    .orderBy(asc(events.startDate));
 }

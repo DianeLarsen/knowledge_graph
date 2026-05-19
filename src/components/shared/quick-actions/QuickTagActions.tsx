@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Tags, Plus } from "lucide-react";
 import type { EntityType } from "@/db/schema";
-import type { QuickTag } from "@/lib/tags/tagTypes";
+import type { QuickTag } from "@/lib/types/quickTypes";
 
 import { attachTagToEntityAction } from "@/app/actions/entityTags";
 

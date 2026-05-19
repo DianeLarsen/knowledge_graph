@@ -9,7 +9,13 @@ import QuickTagActions from "@/components/shared/quick-actions/QuickTagActions";
 import QuickLinkActions from "@/components/shared/quick-actions/QuickLinkActions";
 
 import type { EntityType, Project } from "@/db/schema";
-import type { QuickTag, QuickReference, QuickNote } from "@/lib/tags/tagTypes";
+import type {
+  QuickTag,
+  QuickReference,
+  QuickNote,
+  QuickTask,
+  QuickEvent,
+} from "@/lib/types/quickTypes";
 
 type PageQuickActionsProps = {
   entityType: EntityType;
@@ -23,6 +29,12 @@ type PageQuickActionsProps = {
   linkedNoteIds?: string[];
   linkedReferenceIds?: string[];
   inlineTagIds?: string[];
+  tasks?: QuickTask[];
+  events?: QuickEvent[];
+  linkedTaskIds?: string[];
+  linkedEventIds?: string[];
+  onLinkedTaskIdsChange?: (taskIds: string[]) => void;
+  onLinkedEventIdsChange?: (eventIds: string[]) => void;
   onAttachedTagIdsChange?: (tagIds: string[]) => void;
   onLinkedNoteIdsChange?: (noteIds: string[]) => void;
   onLinkedReferenceIdsChange?: (referenceIds: string[]) => void;
@@ -43,7 +55,6 @@ function QuickActionSection({
   count,
   defaultOpen = false,
   children,
- 
 }: QuickActionSectionProps) {
   const [sectionOpen, setSectionOpen] = useState(defaultOpen);
 
@@ -97,6 +108,12 @@ export default function PageQuickActions({
   linkedNoteIds = [],
   linkedReferenceIds = [],
   inlineTagIds = [],
+  tasks = [],
+  events = [],
+  linkedTaskIds = [],
+  linkedEventIds = [],
+  onLinkedTaskIdsChange,
+  onLinkedEventIdsChange,
   onAttachedTagIdsChange,
   onLinkedNoteIdsChange,
   onLinkedReferenceIdsChange,
@@ -105,7 +122,7 @@ export default function PageQuickActions({
   const [open, setOpen] = useState(false);
 
   return (
-    <aside className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-2 text-[rgb(var(--text))] shadow-sm lg:sticky lg:top-6 lg:h-fit">
+    <aside className="relative z-30 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-2 text-[rgb(var(--text))] shadow-sm lg:sticky lg:top-6 lg:h-fit">
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
@@ -176,10 +193,16 @@ export default function PageQuickActions({
             entityId={entityId}
             notes={notes}
             references={references}
+            tasks={tasks}
+            events={events}
             linkedNoteIds={linkedNoteIds}
             linkedReferenceIds={linkedReferenceIds}
+            linkedTaskIds={linkedTaskIds}
+            linkedEventIds={linkedEventIds}
             onLinkedNoteIdsChange={onLinkedNoteIdsChange}
             onLinkedReferenceIdsChange={onLinkedReferenceIdsChange}
+            onLinkedTaskIdsChange={onLinkedTaskIdsChange}
+            onLinkedEventIdsChange={onLinkedEventIdsChange}
           />
         </QuickActionSection>
       </div>

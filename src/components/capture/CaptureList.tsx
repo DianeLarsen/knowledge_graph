@@ -9,7 +9,11 @@ import {
   archiveCaptureAction,
   deleteCaptureAction,
 } from "@/app/actions/capture";
-import type { QuickTag, QuickReference, QuickNote } from "@/lib/tags/tagTypes";
+import type {
+  QuickTag,
+  QuickReference,
+  QuickNote,
+} from "@/lib/types/quickTypes";
 import type { Project } from "@/db/schema";
 import PageQuickActions from "../shared/PageQuickActions";
 import { getCapturesByUserId } from "@/db/queries/captures";

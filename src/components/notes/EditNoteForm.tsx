@@ -2,14 +2,12 @@
 
 import { useState } from "react";
 
-
 import { Note, Tag, Reference } from "@/db/schema";
 import RichNoteEditor from "@/components/notes/RichNoteEditor";
 import { updateNoteAction } from "@/app/actions/notes";
 import ReferenceComposer from "@/components/references/ReferenceComposer";
 import { extractReferenceIdsFromContentJson } from "@/lib/notes/extractReferenceIdsFromContentJson";
-import type { NoteLinkedReference } from "@/lib/references/referenceTypes";
-
+import type { NoteLinkedReference } from "@/lib/types/references/referenceTypes";
 
 type LinkedNoteSummary = {
   id: string;
@@ -57,7 +55,6 @@ export default function EditNoteForm({
   );
   const [selectedLinkedNoteIds, setSelectedLinkedNoteIds] =
     useState<string[]>(linkedNoteIds);
-  
 
   function toggleLinkedNote(noteId: string) {
     setSelectedLinkedNoteIds((current) =>

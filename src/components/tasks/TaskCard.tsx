@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import EditTaskModal from "@/components/tasks/EditTaskModal";
 import TaskDetailsModal from "@/components/tasks/TaskDetailsModal";
-import { QuickTag, QuickReference, QuickNote } from "@/lib/tags/tagTypes";
+import { QuickTag, QuickReference, QuickNote } from "@/lib/types/quickTypes";
 import type { Project, Task } from "@/db/schema";
 
 export type EditTaskInput = {

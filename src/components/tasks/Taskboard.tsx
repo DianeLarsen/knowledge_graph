@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Task } from "@/db/schema";
 import { createTaskAction, updateTaskAction } from "@/app/actions/tasks";
 import type { Project } from "@/db/schema";
-import { QuickTag, QuickReference, QuickNote } from "@/lib/tags/tagTypes";
+import { QuickTag, QuickReference, QuickNote } from "@/lib/types/quickTypes";
 
 import TaskColumn from "@/components/tasks/TaskColumn";
 
@@ -96,7 +96,7 @@ export default function TaskBoard({
   const columns = showArchived
     ? [...baseColumns, { status: "archived" as const, title: "Archived" }]
     : baseColumns;
-  
+
   async function moveTask(taskId: string, newStatus: TaskStatus) {
     const previousTasks = tasks;
 

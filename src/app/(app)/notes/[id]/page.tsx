@@ -7,6 +7,9 @@ import { getReferencesForUser } from "@/db/queries/references";
 import { getTagsForUser } from "@/db/queries/tags";
 import { getUserProjectsAction } from "@/app/actions/projects";
 import Link from "next/link";
+import { getTasksByUserId } from "@/db/queries/tasks";
+import { getEventsByUserId } from "@/db/queries/calendar";
+
 
 type NoteDetailsPageProps = {
   params: Promise<{
@@ -38,6 +41,18 @@ export default async function NoteDetailsPage({
   const notes = await getNotesForUser(userId);
   const userTags = await getTagsForUser(userId);
   const userReferences = await getReferencesForUser(userId);
+  const userTasks = await getTasksByUserId(userId);
+  const userEvents = await getEventsByUserId(userId);
+
+  const taskOptions = userTasks.map((task) => ({
+    id: task.id,
+    title: task.title,
+  }));
+
+  const eventOptions = userEvents.map((event) => ({
+    id: event.id,
+    title: event.title,
+  }));
 
 const noteOptions = notes.map((note) => ({
   id: note.id,
@@ -65,6 +80,24 @@ const noteOptions = notes.map((note) => ({
           references={userReferences}
           notes={noteOptions}
           projects={projects}
+          tasks={taskOptions}
+          events={eventOptions}
+          linkedTaskIds={[
+            ...data.outgoingLinks
+              .filter((link) => link.targetType === "task")
+              .map((link) => link.targetId),
+            ...data.backlinks
+              .filter((link) => link.sourceType === "task")
+              .map((link) => link.sourceId),
+          ]}
+          linkedEventIds={[
+            ...data.outgoingLinks
+              .filter((link) => link.targetType === "event")
+              .map((link) => link.targetId),
+            ...data.backlinks
+              .filter((link) => link.sourceType === "event")
+              .map((link) => link.sourceId),
+          ]}
           attachedTagIds={data.tags.map((tag) => tag.id)}
           inlineTagIds={[]}
           linkedNoteIds={[

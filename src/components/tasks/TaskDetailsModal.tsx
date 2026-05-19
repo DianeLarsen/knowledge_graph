@@ -6,7 +6,7 @@ import { X, ExternalLink, Check } from "lucide-react";
 import type { Project, Task } from "@/db/schema";
 import PageQuickActions from "@/components/shared/PageQuickActions";
 import type { EditTaskInput } from "@/components/tasks/TaskCard";
-import { QuickTag, QuickReference, QuickNote } from "@/lib/tags/tagTypes";
+import { QuickTag, QuickReference, QuickNote } from "@/lib/types/quickTypes";
 import { useState } from "react";
 
 type TaskDetailsModalProps = {
@@ -35,13 +35,13 @@ export default function TaskDetailsModal({
   linkedNoteIds = [],
   linkedReferenceIds = [],
 }: TaskDetailsModalProps) {
-const [selectedItem, setSelectedItem] = useState<
-  | { type: "tag"; item: QuickTag }
-  | { type: "note"; item: QuickNote }
-  | { type: "reference"; item: QuickReference }
-  | null
+  const [selectedItem, setSelectedItem] = useState<
+    | { type: "tag"; item: QuickTag }
+    | { type: "note"; item: QuickNote }
+    | { type: "reference"; item: QuickReference }
+    | null
   >(null);
-const [copiedCitation, setCopiedCitation] = useState(false);
+  const [copiedCitation, setCopiedCitation] = useState(false);
 
   const [currentAttachedTagIds, setCurrentAttachedTagIds] =
     useState(attachedTagIds);
@@ -51,31 +51,31 @@ const [copiedCitation, setCopiedCitation] = useState(false);
 
   const [currentLinkedReferenceIds, setCurrentLinkedReferenceIds] =
     useState(linkedReferenceIds);
-const attachedTags = tags.filter((tag) =>
-  currentAttachedTagIds.includes(tag.id),
-);
-
-const linkedNotes = notes.filter((note) =>
-  currentLinkedNoteIds.includes(note.id),
-);
-
-const linkedReferences = references.filter((reference) =>
-  currentLinkedReferenceIds.includes(reference.id),
-);
-function getApaReference(reference: QuickReference) {
-  return (
-    reference.citation ??
-    [
-      reference.author,
-      reference.publishedDate ? `(${reference.publishedDate}).` : "(n.d.).",
-      reference.title,
-      reference.publisher,
-      reference.url,
-    ]
-      .filter(Boolean)
-      .join(" ")
+  const attachedTags = tags.filter((tag) =>
+    currentAttachedTagIds.includes(tag.id),
   );
-}
+
+  const linkedNotes = notes.filter((note) =>
+    currentLinkedNoteIds.includes(note.id),
+  );
+
+  const linkedReferences = references.filter((reference) =>
+    currentLinkedReferenceIds.includes(reference.id),
+  );
+  function getApaReference(reference: QuickReference) {
+    return (
+      reference.citation ??
+      [
+        reference.author,
+        reference.publishedDate ? `(${reference.publishedDate}).` : "(n.d.).",
+        reference.title,
+        reference.publisher,
+        reference.url,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    );
+  }
   return (
     <div className="fixed inset-0 z-50 bg-black/40 p-4">
       <div className="mx-auto grid max-h-[90vh] max-w-6xl gap-6 overflow-y-auto rounded-2xl bg-gray-50 p-4 shadow-xl dark:bg-gray-950 lg:grid-cols-[260px_1fr]">
