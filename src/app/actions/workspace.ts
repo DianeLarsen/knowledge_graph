@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/db/queries/users";
 import { addEntityToProject, createProject } from "@/db/queries/projects";
 import type { NewProjectItem } from "@/db/schema";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -76,4 +81,32 @@ export async function saveWorkspaceToProjectAction(formData: FormData) {
 
   revalidatePath("/workspace");
   revalidatePath("/projects");
+}
+
+export async function suggestWorkspaceProjectTitleAction(formData: FormData) {
+  const notes = formData
+    .getAll("note")
+    .map((value) => String(value))
+    .filter(Boolean);
+
+  if (notes.length === 0) {
+    return "Workspace Project";
+  }
+
+  const response = await openai.responses.create({
+    model: "gpt-4.1-mini",
+    input: [
+      {
+        role: "system",
+        content:
+          "Create a concise project title based on a group of notes. Return only the title. No quotes. No explanation. Keep it under 7 words.",
+      },
+      {
+        role: "user",
+        content: notes.join("\n\n---\n\n"),
+      },
+    ],
+  });
+
+  return response.output_text.trim() || "Workspace Project";
 }

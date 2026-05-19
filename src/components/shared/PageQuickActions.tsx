@@ -26,6 +26,7 @@ type PageQuickActionsProps = {
   onAttachedTagIdsChange?: (tagIds: string[]) => void;
   onLinkedNoteIdsChange?: (noteIds: string[]) => void;
   onLinkedReferenceIdsChange?: (referenceIds: string[]) => void;
+  tagSuggestionText?: string;
 };
 
 type QuickActionSectionProps = {
@@ -42,6 +43,7 @@ function QuickActionSection({
   count,
   defaultOpen = false,
   children,
+ 
 }: QuickActionSectionProps) {
   const [sectionOpen, setSectionOpen] = useState(defaultOpen);
 
@@ -98,87 +100,89 @@ export default function PageQuickActions({
   onAttachedTagIdsChange,
   onLinkedNoteIdsChange,
   onLinkedReferenceIdsChange,
+  tagSuggestionText = "",
 }: PageQuickActionsProps) {
   const [open, setOpen] = useState(false);
 
-return (
-  <aside className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-2 text-[rgb(var(--text))] shadow-sm lg:sticky lg:top-6 lg:h-fit">
-    <button
-      type="button"
-      onClick={() => setOpen((current) => !current)}
-      className="flex w-full items-center justify-between rounded-xl bg-slate-100 px-3 py-2 text-left text-[rgb(var(--text))] dark:bg-slate-900 lg:hidden"
-    >
-      <span>
-        <span className="block text-sm font-bold">Quick actions</span>
-        <span className="block text-xs text-[rgb(var(--muted))]">
-          Create, tag, link, and organize this {entityType}
+  return (
+    <aside className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-2 text-[rgb(var(--text))] shadow-sm lg:sticky lg:top-6 lg:h-fit">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-full items-center justify-between rounded-xl bg-slate-100 px-3 py-2 text-left text-[rgb(var(--text))] dark:bg-slate-900 lg:hidden"
+      >
+        <span>
+          <span className="block text-sm font-bold">Quick actions</span>
+          <span className="block text-xs text-[rgb(var(--muted))]">
+            Create, tag, link, and organize this {entityType}
+          </span>
         </span>
-      </span>
 
-      {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-    </button>
+        {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+      </button>
 
-    <div className={`${open ? "mt-4 block" : "hidden"} space-y-3 lg:block`}>
-      <div className="mb-3 hidden lg:block">
-        <h2 className="text-sm font-bold text-[rgb(var(--text))]">
-          Quick actions
-        </h2>
-        <p className="text-xs text-[rgb(var(--muted))]">
-          Create, tag, link, and organize this {entityType}.
-        </p>
+      <div className={`${open ? "mt-4 block" : "hidden"} space-y-3 lg:block`}>
+        <div className="mb-3 hidden lg:block">
+          <h2 className="text-sm font-bold text-[rgb(var(--text))]">
+            Quick actions
+          </h2>
+          <p className="text-xs text-[rgb(var(--muted))]">
+            Create, tag, link, and organize this {entityType}.
+          </p>
+        </div>
+
+        <QuickActionSection
+          title="Create"
+          description="Make related tasks, notes, captures, or events."
+        >
+          <QuickCreateActions entityType={entityType} entityId={entityId} />
+        </QuickActionSection>
+
+        <QuickActionSection
+          title="Project"
+          description="Add this item to an existing project or start a new one."
+        >
+          <QuickProjectActions
+            entityType={entityType}
+            entityId={entityId}
+            projects={projects}
+          />
+        </QuickActionSection>
+
+        <QuickActionSection
+          title="Tags"
+          description="Attach existing tags or create a new one."
+          count={attachedTagIds.length + inlineTagIds.length}
+        >
+          <QuickTagActions
+            entityType={entityType}
+            entityId={entityId}
+            userId={userId}
+            tags={tags}
+            tagSuggestionText={tagSuggestionText}
+            attachedTagIds={attachedTagIds}
+            inlineTagIds={inlineTagIds}
+            onAttachedTagIdsChange={onAttachedTagIdsChange}
+          />
+        </QuickActionSection>
+
+        <QuickActionSection
+          title="Links"
+          description="Connect this item to notes or references."
+          count={linkedNoteIds.length + linkedReferenceIds.length}
+        >
+          <QuickLinkActions
+            entityType={entityType}
+            entityId={entityId}
+            notes={notes}
+            references={references}
+            linkedNoteIds={linkedNoteIds}
+            linkedReferenceIds={linkedReferenceIds}
+            onLinkedNoteIdsChange={onLinkedNoteIdsChange}
+            onLinkedReferenceIdsChange={onLinkedReferenceIdsChange}
+          />
+        </QuickActionSection>
       </div>
-
-      <QuickActionSection
-        title="Create"
-        description="Make related tasks, notes, captures, or events."
-      >
-        <QuickCreateActions entityType={entityType} entityId={entityId} />
-      </QuickActionSection>
-
-      <QuickActionSection
-        title="Project"
-        description="Add this item to an existing project or start a new one."
-      >
-        <QuickProjectActions
-          entityType={entityType}
-          entityId={entityId}
-          projects={projects}
-        />
-      </QuickActionSection>
-
-      <QuickActionSection
-        title="Tags"
-        description="Attach existing tags or create a new one."
-        count={attachedTagIds.length + inlineTagIds.length}
-      >
-        <QuickTagActions
-          entityType={entityType}
-          entityId={entityId}
-          userId={userId}
-          tags={tags}
-          attachedTagIds={attachedTagIds}
-          inlineTagIds={inlineTagIds}
-          onAttachedTagIdsChange={onAttachedTagIdsChange}
-        />
-      </QuickActionSection>
-
-      <QuickActionSection
-        title="Links"
-        description="Connect this item to notes or references."
-        count={linkedNoteIds.length + linkedReferenceIds.length}
-      >
-        <QuickLinkActions
-          entityType={entityType}
-          entityId={entityId}
-          notes={notes}
-          references={references}
-          linkedNoteIds={linkedNoteIds}
-          linkedReferenceIds={linkedReferenceIds}
-          onLinkedNoteIdsChange={onLinkedNoteIdsChange}
-          onLinkedReferenceIdsChange={onLinkedReferenceIdsChange}
-        />
-      </QuickActionSection>
-    </div>
-  </aside>
-);
+    </aside>
+  );
 }

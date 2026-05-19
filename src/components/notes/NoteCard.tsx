@@ -11,6 +11,7 @@ import { getRelationshipLabel } from "@/lib/entityRelationships";
 import LinkedReferenceCard from "@/components/references/LinkedReferenceCard";
 import { removeReferenceFromNoteAction } from "@/app/actions/references";
 import type { NoteLinkedReference } from "@/lib/references/referenceTypes";
+
 type LinkedNoteSummary = {
   id: string;
   title: string;

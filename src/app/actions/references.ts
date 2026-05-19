@@ -44,7 +44,7 @@ function parseReferenceType(value: FormDataEntryValue | null): ReferenceType {
 function revalidateReferenceWorkflows(noteId?: string) {
   revalidatePath("/workspace");
   revalidatePath("/notes");
-  revalidatePath("/notes/references");
+  revalidatePath("/references");
 
   if (noteId) {
     revalidatePath(`/notes/${noteId}`);

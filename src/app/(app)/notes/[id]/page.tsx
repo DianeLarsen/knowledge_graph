@@ -76,6 +76,7 @@ const noteOptions = notes.map((note) => ({
               .map((link) => link.sourceId),
           ]}
           linkedReferenceIds={data.references.map((reference) => reference.id)}
+          tagSuggestionText={`${data.note.title} ${data.note.content ?? ""}`}
         />
 
         <NoteCard

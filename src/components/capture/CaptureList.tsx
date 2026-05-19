@@ -9,23 +9,30 @@ import {
   archiveCaptureAction,
   deleteCaptureAction,
 } from "@/app/actions/capture";
+import type { QuickTag, QuickReference, QuickNote } from "@/lib/tags/tagTypes";
+import type { Project } from "@/db/schema";
+import PageQuickActions from "../shared/PageQuickActions";
+import { getCapturesByUserId } from "@/db/queries/captures";
 
+type CaptureWithQuickActions = Awaited<
+  ReturnType<typeof getCapturesByUserId>
+>[number];
 type CaptureStatus = "all" | "new" | "analyzed" | "processed";
-type StoredCaptureStatus = "new" | "analyzed" | "processed" | "archived";
-
-type Capture = {
-  id: string;
-  rawText: string;
-  status: StoredCaptureStatus;
-  analysisJson: string | null;
-  createdAt: Date;
-};
 
 type CaptureProgress = {
   createdTasks: number;
   createdNotes: number;
   createdReferences: number;
   readyToProcess: boolean;
+};
+
+type CaptureProps = {
+  captures: CaptureWithQuickActions[];
+  userId: string;
+  tags: QuickTag[];
+  references?: QuickReference[];
+  notes?: QuickNote[];
+  projects: Project[];
 };
 
 function getCaptureProgress(analysisJson: string | null): CaptureProgress {
@@ -73,13 +80,41 @@ function getCaptureProgress(analysisJson: string | null): CaptureProgress {
   }
 }
 
-export default function CaptureList({ captures }: { captures: Capture[] }) {
+function getCaptureSummary(capture: CaptureWithQuickActions) {
+  if (capture.analysisJson) {
+    try {
+      const analysis = JSON.parse(capture.analysisJson) as {
+        summary?: string;
+      };
+
+      if (analysis.summary) {
+        return analysis.summary;
+      }
+    } catch {
+      // Fall back to raw text below.
+    }
+  }
+
+  return capture.rawText.length > 160
+    ? `${capture.rawText.slice(0, 160)}...`
+    : capture.rawText;
+}
+
+export default function CaptureList({
+  captures,
+  userId,
+  tags,
+  references = [],
+  notes = [],
+  projects,
+}: CaptureProps) {
   const router = useRouter();
 
   const [filter, setFilter] = useState<CaptureStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [pendingCaptureId, setPendingCaptureId] = useState<string | null>(null);
+  const [openCaptureIds, setOpenCaptureIds] = useState<string[]>([]);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
@@ -109,6 +144,14 @@ export default function CaptureList({ captures }: { captures: Capture[] }) {
     } finally {
       setPendingCaptureId(null);
     }
+  }
+
+  function toggleCapture(captureId: string) {
+    setOpenCaptureIds((current) =>
+      current.includes(captureId)
+        ? current.filter((id) => id !== captureId)
+        : [...current, captureId],
+    );
   }
 
   return (
@@ -168,20 +211,47 @@ export default function CaptureList({ captures }: { captures: Capture[] }) {
           {filteredCaptures.map((capture) => {
             const progress = getCaptureProgress(capture.analysisJson);
             const isPending = pendingCaptureId === capture.id;
+            const isOpen = openCaptureIds.includes(capture.id);
+            const isAnalyzed = Boolean(capture.analysisJson);
+            const summary = getCaptureSummary(capture);
 
             return (
               <article
                 key={capture.id}
                 className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900"
               >
-                <div className="mb-2 flex items-center justify-between gap-4">
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                    {capture.status}
-                  </span>
+                <div className="mb-3 flex items-start justify-between gap-4">
+                  <button
+                    type="button"
+                    onClick={() => toggleCapture(capture.id)}
+                    className="flex-1 text-left"
+                  >
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                        {capture.status}
+                      </span>
 
-                  <time className="text-xs text-gray-400">
-                    {new Date(capture.createdAt).toLocaleString()}
-                  </time>
+                      <time className="text-xs text-gray-400">
+                        {new Date(capture.createdAt).toLocaleString()}
+                      </time>
+                    </div>
+
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {isAnalyzed ? "Analyzed Capture" : "New Capture"}
+                    </p>
+
+                    <p className="mt-1 line-clamp-2 text-sm text-gray-600 dark:text-gray-300">
+                      {summary}
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleCapture(capture.id)}
+                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                  >
+                    {isOpen ? "Close" : "Open"}
+                  </button>
                 </div>
 
                 {progress.readyToProcess && capture.status !== "processed" && (
@@ -195,11 +265,38 @@ export default function CaptureList({ captures }: { captures: Capture[] }) {
                     Ready to process
                   </div>
                 )}
-
-                <p className="whitespace-pre-wrap text-sm leading-6 text-gray-800 dark:text-gray-200">
-                  {capture.rawText}
-                </p>
-
+                {isOpen && (
+                  <div className="mt-4">
+                    {isAnalyzed && (
+                      <div className="mb-5">
+                        <PageQuickActions
+                          entityType="capture"
+                          entityId={capture.id}
+                          userId={userId}
+                          tags={tags}
+                          notes={notes}
+                          references={references}
+                          projects={projects}
+                          attachedTagIds={capture.attachedTagIds}
+                          linkedNoteIds={capture.linkedNoteIds}
+                          linkedReferenceIds={capture.linkedReferenceIds}
+                          tagSuggestionText={[capture.rawText, summary]
+                            .filter(Boolean)
+                            .join(" ")}
+                        />
+                      </div>
+                    )}
+                    <p className="whitespace-pre-wrap text-sm leading-6 text-gray-800 dark:text-gray-200">
+                      {capture.rawText}
+                    </p>
+                    {capture.analysisJson && (
+                      <CaptureAnalysis
+                        analysisJson={capture.analysisJson}
+                        captureId={capture.id}
+                      />
+                    )}
+                  </div>
+                )}
                 <div className="mt-4 flex flex-wrap gap-2">
                   {!capture.analysisJson && capture.status === "new" ? (
                     <button
@@ -270,13 +367,6 @@ export default function CaptureList({ captures }: { captures: Capture[] }) {
                     </button>
                   )}
                 </div>
-
-                {capture.analysisJson && (
-                  <CaptureAnalysis
-                    analysisJson={capture.analysisJson}
-                    captureId={capture.id}
-                  />
-                )}
               </article>
             );
           })}

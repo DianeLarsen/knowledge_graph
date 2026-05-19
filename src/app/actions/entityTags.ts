@@ -17,14 +17,14 @@ function revalidateEntityPages(entityType: EntityType, entityId: string) {
   revalidatePath("/calendar");
   revalidatePath("/capture");
   revalidatePath("/workspace");
-  revalidatePath("/notes/references");
+  revalidatePath("/references");
 
   if (entityType === "note") {
     revalidatePath(`/notes/${entityId}`);
   }
 
   if (entityType === "reference") {
-    revalidatePath(`/notes/references/${entityId}`);
+    revalidatePath(`/references/${entityId}`);
   }
 }
 

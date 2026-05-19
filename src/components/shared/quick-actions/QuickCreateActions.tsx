@@ -75,15 +75,17 @@ export default function QuickCreateActions({
         </button>
       </form>
 
-      <form action={handleCreateCapture}>
-        <input type="hidden" name="sourceType" value={entityType} />
-        <input type="hidden" name="sourceId" value={entityId} />
+      {entityType !== "capture" && (
+        <form action={handleCreateCapture}>
+          <input type="hidden" name="sourceType" value={entityType} />
+          <input type="hidden" name="sourceId" value={entityId} />
 
-        <button className={captureButtonClass}>
-          <Zap size={16} />
-          Capture from this {entityType}
-        </button>
-      </form>
+          <button className={captureButtonClass}>
+            <Zap size={16} />
+            Capture from this {entityType}
+          </button>
+        </form>
+      )}
 
       <form action={handleCreateLinkedNote} className="space-y-2">
         <input type="hidden" name="sourceType" value={entityType} />

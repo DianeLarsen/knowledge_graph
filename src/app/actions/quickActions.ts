@@ -84,7 +84,7 @@ function revalidateQuickActionPages() {
   revalidatePath("/calendar");
   revalidatePath("/capture");
   revalidatePath("/projects");
-  revalidatePath("/notes/references");
+  revalidatePath("/references");
 }
 
 export async function createTaskFromEntityAction(formData: FormData) {

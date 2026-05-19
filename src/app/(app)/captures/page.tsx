@@ -4,10 +4,23 @@ import {
 } from "@/app/actions/capture";
 import { Zap } from "lucide-react";
 import CaptureList from "@/components/capture/CaptureList";
+import { getCurrentUserId } from "@/db/queries/users";
+import {
+  getReferencesForUser,
+} from "@/db/queries/references";
+import { getUserProjectsAction } from "@/app/actions/projects";
+import { getTagsForUser } from "@/db/queries/tags";
+import { getNotesForUser } from "@/db/queries/notes";
 
 export default async function CapturePage() {
-  const captures = await getCapturesAction();
 
+const captures = await getCapturesAction();
+const userId = await getCurrentUserId();
+const tags = await getTagsForUser(userId);
+const notes = await getNotesForUser(userId);
+const references = await getReferencesForUser(userId);
+  const projects = await getUserProjectsAction();
+  
   return (
     <main className="mx-auto min-h-screen max-w-5xl bg-[rgb(var(--bg))] px-6 py-8 text-[rgb(var(--text))]">
       <div className="mb-8">
@@ -52,7 +65,14 @@ export default async function CapturePage() {
         </button>
       </form>
 
-      <CaptureList captures={captures} />
+      <CaptureList
+        captures={captures}
+        userId={userId}
+        tags={tags}
+        notes={notes}
+        references={references}
+        projects={projects}
+      />
     </main>
   );
 }

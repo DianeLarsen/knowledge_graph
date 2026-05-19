@@ -93,6 +93,7 @@ function getApaReference(reference: QuickReference) {
           onAttachedTagIdsChange={setCurrentAttachedTagIds}
           onLinkedNoteIdsChange={setCurrentLinkedNoteIds}
           onLinkedReferenceIdsChange={setCurrentLinkedReferenceIds}
+          tagSuggestionText={`${task.title} ${task.description ?? ""}`}
         />
 
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -356,7 +357,7 @@ function getApaReference(reference: QuickReference) {
                   </button>
 
                   <a
-                    href={`/notes/references/${selectedItem.item.id}?from=${encodeURIComponent("/tasks")}`}
+                    href={`/references/${selectedItem.item.id}?from=${encodeURIComponent("/tasks")}`}
                     className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800"
                   >
                     Go to reference

@@ -17,8 +17,7 @@ export async function seedNotes(
   seedTags: SeedTags,
   seedReferences: SeedReferences,
 ) {
-  const { database, typescript, noteTag, querying, capture, project } =
-    seedTags;
+const { database, typescript, notes, querying, capture, project } = seedTags;
   const {
     sqlReference,
     drizzleReference,
@@ -103,7 +102,7 @@ export async function seedNotes(
         paragraph([
           textNode("Knowledge graphs connect ideas using "),
           textNode("nodes and relationships", [
-            tagMark(noteTag.id, noteTag.name),
+            tagMark(notes.id, notes.name),
             referenceMark(graphReference.id, "Knowledge graph concepts"),
           ]),
           textNode("."),
@@ -166,7 +165,7 @@ export async function seedNotes(
           textNode("This should connect to "),
           textNode("search", [tagMark(querying.id, querying.name)]),
           textNode(", "),
-          textNode("notes", [tagMark(noteTag.id, noteTag.name)]),
+          textNode("notes", [tagMark(notes.id, notes.name)]),
           textNode(", and "),
           textNode("Capture planning", [
             referenceMark(captureReference.id, "Capture planning"),
@@ -243,11 +242,11 @@ export async function seedNotes(
     noteTag3: await addTagToNote(userId, drizzleorm.id, typescript.id),
     noteTag4: await addTagToNote(userId, drizzleorm.id, database.id),
     noteTag5: await addTagToNote(userId, sqlite.id, database.id),
-    noteTag6: await addTagToNote(userId, knowledgegraphs.id, noteTag.id),
-    noteTag7: await addTagToNote(userId, backlinks.id, noteTag.id),
+    noteTag6: await addTagToNote(userId, knowledgegraphs.id, notes.id),
+    noteTag7: await addTagToNote(userId, backlinks.id, notes.id),
     noteTag8: await addTagToNote(userId, searchqueries.id, querying.id),
     noteTag9: await addTagToNote(userId, captureworkflow.id, capture.id),
-    noteTag10: await addTagToNote(userId, captureworkflow.id, noteTag.id),
+    noteTag10: await addTagToNote(userId, captureworkflow.id, notes.id),
     noteTag11: await addTagToNote(userId, giantRendererTest.id, database.id),
     noteTag12: await addTagToNote(userId, giantRendererTest.id, typescript.id),
     noteTag13: await addTagToNote(userId, giantRendererTest.id, capture.id),

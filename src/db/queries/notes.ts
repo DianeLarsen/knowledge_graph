@@ -4,9 +4,12 @@ import {
   entityLinks,
   tags,
   referencesTable,
+  projects,
+  projectItems,
   type RelationshipType,
   type NewEntityLink,
   type NewEntityTag,
+  type Note,
 } from "../schema";
 import { db } from "../index";
 import {
@@ -28,6 +31,11 @@ const RELATED: RelationshipType = "related";
 function slugifyTag(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, "-");
 }
+
+export type NoteListItem = Note & {
+  tags: { id: string; name: string }[];
+  projects: { id: string; title: string }[];
+};
 
 type CreateNoteInput = {
   title: string;
@@ -164,28 +172,28 @@ export async function createNote(input: CreateNoteInput) {
       tx.insert(entityLinks).values(linkValues).onConflictDoNothing().run();
     }
 
-const selectedReferenceIds = [
-  ...new Set((input.selectedReferenceIds ?? []).filter(Boolean)),
-];
+    const selectedReferenceIds = [
+      ...new Set((input.selectedReferenceIds ?? []).filter(Boolean)),
+    ];
 
-if (selectedReferenceIds.length > 0) {
-  const referenceLinkValues: NewEntityLink[] = selectedReferenceIds.map(
-    (referenceId) => ({
-      createdByUserId: input.userId,
-      sourceType: "note",
-      sourceId: newNote.id,
-      targetType: "reference",
-      targetId: referenceId,
-      relationshipType: "uses",
-      metadata: null,
-    }),
-  );
+    if (selectedReferenceIds.length > 0) {
+      const referenceLinkValues: NewEntityLink[] = selectedReferenceIds.map(
+        (referenceId) => ({
+          createdByUserId: input.userId,
+          sourceType: "note",
+          sourceId: newNote.id,
+          targetType: "reference",
+          targetId: referenceId,
+          relationshipType: "uses",
+          metadata: null,
+        }),
+      );
 
-  tx.insert(entityLinks)
-    .values(referenceLinkValues)
-    .onConflictDoNothing()
-    .run();
-}
+      tx.insert(entityLinks)
+        .values(referenceLinkValues)
+        .onConflictDoNothing()
+        .run();
+    }
 
     return newNote;
   });
@@ -458,37 +466,39 @@ export async function updateNote(
         .run();
     }
 
-tx.delete(entityLinks)
-  .where(
-    and(
-      eq(entityLinks.createdByUserId, userId),
-      eq(entityLinks.sourceType, "note"),
-      eq(entityLinks.sourceId, id),
-      eq(entityLinks.targetType, "reference"),
-    ),
-  )
-  .run();
+    tx.delete(entityLinks)
+      .where(
+        and(
+          eq(entityLinks.createdByUserId, userId),
+          eq(entityLinks.sourceType, "note"),
+          eq(entityLinks.sourceId, id),
+          eq(entityLinks.targetType, "reference"),
+        ),
+      )
+      .run();
 
-const cleanedReferenceIds = [...new Set(selectedReferenceIds.filter(Boolean))];
+    const cleanedReferenceIds = [
+      ...new Set(selectedReferenceIds.filter(Boolean)),
+    ];
 
-if (cleanedReferenceIds.length > 0) {
-  const referenceLinkValues: NewEntityLink[] = cleanedReferenceIds.map(
-    (referenceId) => ({
-      createdByUserId: userId,
-      sourceType: "note",
-      sourceId: id,
-      targetType: "reference",
-      targetId: referenceId,
-      relationshipType: "uses",
-      metadata: null,
-    }),
-  );
+    if (cleanedReferenceIds.length > 0) {
+      const referenceLinkValues: NewEntityLink[] = cleanedReferenceIds.map(
+        (referenceId) => ({
+          createdByUserId: userId,
+          sourceType: "note",
+          sourceId: id,
+          targetType: "reference",
+          targetId: referenceId,
+          relationshipType: "uses",
+          metadata: null,
+        }),
+      );
 
-  tx.insert(entityLinks)
-    .values(referenceLinkValues)
-    .onConflictDoNothing()
-    .run();
-}
+      tx.insert(entityLinks)
+        .values(referenceLinkValues)
+        .onConflictDoNothing()
+        .run();
+    }
 
     tx.delete(entityLinks)
       .where(
@@ -634,4 +644,68 @@ export async function getNoteDetailsByUserId(userId: string) {
       };
     }),
   );
+}
+
+
+
+export async function getNotesByUserWithListMeta(
+  userId: string,
+): Promise<NoteListItem[]> {
+  const userNotes = await getNotesByUser(userId);
+
+  if (userNotes.length === 0) {
+    return [];
+  }
+
+  const noteIds = userNotes.map((note) => note.id);
+
+  const noteTags = await db
+    .select({
+      noteId: entityTags.entityId,
+      tagId: tags.id,
+      tagName: tags.name,
+    })
+    .from(entityTags)
+    .innerJoin(tags, eq(entityTags.tagId, tags.id))
+    .where(
+      and(
+        eq(entityTags.entityType, "note"),
+        inArray(entityTags.entityId, noteIds),
+        isNull(tags.deletedAt),
+      ),
+    );
+
+  const noteProjects = await db
+    .select({
+      noteId: projectItems.entityId,
+      projectId: projects.id,
+      projectTitle: projects.title,
+    })
+    .from(projectItems)
+    .innerJoin(projects, eq(projectItems.projectId, projects.id))
+    .where(
+      and(
+        eq(projectItems.entityType, "note"),
+        inArray(projectItems.entityId, noteIds),
+        eq(projects.ownerId, userId),
+        isNull(projects.deletedAt),
+      ),
+    );
+
+  return userNotes.map((note) => ({
+    ...note,
+    tags: noteTags
+      .filter((tag) => tag.noteId === note.id)
+      .map((tag) => ({
+        id: tag.tagId,
+        name: tag.tagName,
+      })),
+
+    projects: noteProjects
+      .filter((project) => project.noteId === note.id)
+      .map((project) => ({
+        id: project.projectId,
+        title: project.projectTitle,
+      })),
+  }));
 }

@@ -227,7 +227,7 @@ export default function ReferenceCard({
                               (linkedReference) => (
                                 <a
                                   key={linkedReference.id}
-                                  href={`/notes/references/${linkedReference.id}?from=/notes/references/${reference.id}`}
+                                  href={`/references/${linkedReference.id}?from=/references/${reference.id}`}
                                   className="block rounded-lg px-2 py-1.5 text-sm font-semibold text-blue-700 hover:bg-gray-100 dark:text-blue-300 dark:hover:bg-gray-800"
                                 >
                                   {linkedReference.title}
@@ -243,7 +243,7 @@ export default function ReferenceCard({
           </div>
 
           <Link
-            href={`/notes/references/${reference.id}?from=/notes/references`}
+            href={`/references/${reference.id}?from=/references`}
             className="block pr-24 text-lg font-semibold text-gray-900 hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-300"
           >
             {reference.title}

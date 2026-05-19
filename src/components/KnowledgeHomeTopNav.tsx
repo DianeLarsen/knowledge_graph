@@ -2,6 +2,7 @@
 
 import {
   BookOpen,
+  BookMarked,
   CheckSquare,
   CalendarDays,
   Zap,
@@ -17,6 +18,12 @@ import { useState } from "react";
 
 const navItems = [
   { label: "Notes", description: "Think", icon: BookOpen, href: "/notes" },
+  {
+    label: "References",
+    description: "Sources",
+    icon: BookMarked,
+    href: "/references",
+  },
   { label: "Tasks", description: "Do", icon: CheckSquare, href: "/tasks" },
   {
     label: "Calendar",
@@ -24,9 +31,9 @@ const navItems = [
     icon: CalendarDays,
     href: "/calendar",
   },
-  { label: "Capture", description: "Dump ideas", icon: Zap, href: "/captures" },
+  { label: "Capture", description: "Ideas", icon: Zap, href: "/captures" },
   {
-    label: "Current Work",
+    label: "Projects",
     description: "Focus",
     icon: Play,
     href: "/projects",
@@ -74,7 +81,7 @@ export default function KnowledgeHomeTopNav() {
             </button>
           </div>
 
-          <ul className="hidden w-full grid-cols-6 gap-2 py-2 md:grid">
+          <ul className="hidden w-full grid-cols-7 gap-2 py-2 md:grid">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname.startsWith(item.href);

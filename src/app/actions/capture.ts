@@ -18,7 +18,9 @@ import {
   updateCaptureAnalysis,
   updateCaptureStatus,
   deleteCapture,
+  updateCaptureAnalysisJson,
 } from "@/db/queries/captures";
+import { createProject, addEntityToProject } from "@/db/queries/projects";
 
 type TaskPriority = "low" | "medium" | "high";
 
@@ -66,7 +68,7 @@ function revalidateCaptureWorkflows() {
   revalidatePath("/tasks");
   revalidatePath("/notes");
   revalidatePath("/workspace");
-  revalidatePath("/notes/references");
+  revalidatePath("/references");
   revalidatePath("/calendar");
 }
 
@@ -289,22 +291,7 @@ export async function createNoteFromCaptureAction(formData: FormData) {
   const note = await createNote({
     title,
     content,
-    contentJson: JSON.stringify({
-      type: "doc",
-      content: [
-        {
-          type: "paragraph",
-          content: content
-            ? [
-                {
-                  type: "text",
-                  text: content,
-                },
-              ]
-            : [],
-        },
-      ],
-    }),
+    contentJson: makePlainTextContentJson(content),
     userId,
   });
 
@@ -451,4 +438,208 @@ export async function createReferenceFromCaptureAction(formData: FormData) {
     duplicate: false,
     reference,
   };
+}
+
+export async function createProjectFromCaptureAction(formData: FormData) {
+  const userId = await getCurrentUserId();
+
+  const captureId = String(formData.get("captureId") ?? "");
+  const projectTitle = String(formData.get("projectTitle") ?? "").trim();
+  const includeCapture = String(formData.get("includeCapture")) === "true";
+
+  const selectedTaskIndexes = String(formData.get("selectedTaskIndexes") ?? "")
+    .split(",")
+    .filter(Boolean)
+    .map(Number);
+
+  const selectedNoteIndexes = String(formData.get("selectedNoteIndexes") ?? "")
+    .split(",")
+    .filter(Boolean)
+    .map(Number);
+
+  const selectedReferenceIndexes = String(
+    formData.get("selectedReferenceIndexes") ?? "",
+  )
+    .split(",")
+    .filter(Boolean)
+    .map(Number);
+
+  if (!captureId || !projectTitle) {
+    throw new Error("Missing capture ID or project title.");
+  }
+
+  const capture = await getCaptureById(captureId, userId);
+
+  if (!capture || capture.ownerId !== userId) {
+    throw new Error("Capture not found.");
+  }
+
+  if (!capture.analysisJson) {
+    throw new Error("Capture has not been analyzed.");
+  }
+
+  const analysis = JSON.parse(capture.analysisJson);
+
+  const project = await createProject({
+    userId,
+    title: projectTitle,
+    description: analysis.summary ?? null,
+    visibility: "private",
+    status: "active",
+  });
+
+  if (!project) {
+    throw new Error("Could not create project.");
+  }
+
+  if (includeCapture) {
+    await addEntityToProject({
+      userId,
+      projectId: project.id,
+      entityType: "capture",
+      entityId: capture.id,
+      projectRole: "source",
+    });
+  }
+
+  for (const index of selectedTaskIndexes) {
+    const task = analysis.possibleTasks?.[index];
+    if (!task) continue;
+
+    let taskId = task.taskId;
+
+    if (!task.created || !taskId) {
+      const createdTask = await createUserTask({
+        userId,
+        title: task.title,
+        description: task.description,
+        priority: task.priority ?? "medium",
+        status: "todo",
+      });
+
+      taskId = createdTask.id;
+
+      analysis.possibleTasks[index] = {
+        ...task,
+        created: true,
+        taskId,
+      };
+    }
+
+    await addEntityToProject({
+      userId,
+      projectId: project.id,
+      entityType: "capture",
+      entityId: capture.id,
+      projectRole: "source",
+    });
+  }
+
+  for (const index of selectedNoteIndexes) {
+    const note = analysis.possibleNotes?.[index];
+    if (!note) continue;
+
+    let noteId = note.noteId;
+
+    if (!note.created || !noteId) {
+      const createdNote = await createNote({
+        userId,
+        title: note.title,
+        content: note.content,
+        contentJson: makePlainTextContentJson(note.content),
+      });
+
+      noteId = createdNote.id;
+
+      analysis.possibleNotes[index] = {
+        ...note,
+        created: true,
+        noteId,
+      };
+    }
+
+    await addEntityToProject({
+      userId,
+      projectId: project.id,
+      entityType: "capture",
+      entityId: capture.id,
+      projectRole: "source",
+    });
+  }
+
+  for (const index of selectedReferenceIndexes) {
+    const reference = analysis.possibleReferences?.[index];
+    if (!reference) continue;
+
+    let referenceId = reference.referenceId;
+
+    if (!reference.created || !referenceId) {
+      const createdReference = await createUserReference(userId, {
+        type: reference.type ?? "other",
+        title: reference.title ?? "Untitled reference",
+        author: reference.author || null,
+        url: reference.url || null,
+        publisher: null,
+        publishedDate: null,
+        notes: reference.notes || null,
+      });
+
+      referenceId = createdReference.id;
+
+      analysis.possibleReferences[index] = {
+        ...reference,
+        created: true,
+        referenceId,
+      };
+    }
+
+    await addEntityToProject({
+      userId,
+      projectId: project.id,
+      entityType: "capture",
+      entityId: capture.id,
+      projectRole: "source",
+    });
+  }
+analysis.projectCreated = true;
+analysis.projectId = project.id;
+analysis.projectTitle = project.title;
+  await updateCaptureAnalysisJson({
+    id: captureId,
+    userId,
+    analysisJson: JSON.stringify(analysis),
+  });
+
+  revalidatePath("/capture");
+  revalidatePath("/projects");
+
+  return project;
+}
+
+function makePlainTextContentJson(content: string) {
+  const paragraphs = content
+    .split(/\n+/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((paragraph) => ({
+      type: "paragraph",
+      content: [
+        {
+          type: "text",
+          text: paragraph,
+        },
+      ],
+    }));
+
+  return JSON.stringify({
+    type: "doc",
+    content:
+      paragraphs.length > 0
+        ? paragraphs
+        : [
+            {
+              type: "paragraph",
+            },
+          ],
+  });
 }
