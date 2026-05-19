@@ -17,6 +17,10 @@ type NoteDetailsPageProps = {
   }>;
 };
 
+function uniqueIds(ids: string[]) {
+  return [...new Set(ids)];
+}
+
 export default async function NoteDetailsPage({
   params,
 }: NoteDetailsPageProps) {
@@ -71,7 +75,7 @@ const noteOptions = notes.map((note) => ({
         </Link>
       </div>
 
-      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[240px_1fr]">
+      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[clamp(260px,22vw,360px)_minmax(0,1fr)]">
         <PageQuickActions
           entityType="note"
           entityId={data.note.id}
@@ -82,33 +86,35 @@ const noteOptions = notes.map((note) => ({
           projects={projects}
           tasks={taskOptions}
           events={eventOptions}
-          linkedTaskIds={[
+          linkedTaskIds={uniqueIds([
             ...data.outgoingLinks
               .filter((link) => link.targetType === "task")
               .map((link) => link.targetId),
             ...data.backlinks
               .filter((link) => link.sourceType === "task")
               .map((link) => link.sourceId),
-          ]}
-          linkedEventIds={[
+          ])}
+          linkedEventIds={uniqueIds([
             ...data.outgoingLinks
               .filter((link) => link.targetType === "event")
               .map((link) => link.targetId),
             ...data.backlinks
               .filter((link) => link.sourceType === "event")
               .map((link) => link.sourceId),
-          ]}
+          ])}
           attachedTagIds={data.tags.map((tag) => tag.id)}
           inlineTagIds={[]}
-          linkedNoteIds={[
+          linkedNoteIds={uniqueIds([
             ...data.outgoingLinks
               .filter((link) => link.targetType === "note")
               .map((link) => link.targetId),
             ...data.backlinks
               .filter((link) => link.sourceType === "note")
               .map((link) => link.sourceId),
-          ]}
-          linkedReferenceIds={data.references.map((reference) => reference.id)}
+          ])}
+          linkedReferenceIds={uniqueIds(
+            data.references.map((reference) => reference.id),
+          )}
           tagSuggestionText={`${data.note.title} ${data.note.content ?? ""}`}
         />
 

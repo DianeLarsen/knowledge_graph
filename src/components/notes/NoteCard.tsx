@@ -235,13 +235,16 @@ export default function NoteCard({
     tagColorMap.set(tag.id, tag.color ?? "blue");
   });
 
-  const shouldCollapseTags = compact && sortedTags.length > compactTagLimit;
-  const maxVisibleTags = shouldCollapseTags
-    ? Math.max(compactTagLimit, inlineTagIds.size)
-    : sortedTags.length;
+ const tagLimit = compact ? compactTagLimit : 8;
 
-  const visibleTags = sortedTags.slice(0, maxVisibleTags);
-  const hiddenTags = shouldCollapseTags ? sortedTags.slice(maxVisibleTags) : [];
+ const shouldCollapseTags = sortedTags.length > tagLimit;
+
+ const maxVisibleTags = shouldCollapseTags
+   ? Math.max(tagLimit, inlineTagIds.size)
+   : sortedTags.length;
+
+ const visibleTags = sortedTags.slice(0, maxVisibleTags);
+ const hiddenTags = shouldCollapseTags ? sortedTags.slice(maxVisibleTags) : [];
 
   const referenceOptions = userReferences;
 
@@ -249,14 +252,14 @@ export default function NoteCard({
     <div className={compact ? "w-full" : "mx-auto w-full max-w-3xl"}>
       <article
         className={`
-    relative isolate w-full border bg-white
-    ${
-      compact
-        ? "border-gray-300 shadow-[4px_4px_0_rgba(0,0,0,0.05)]"
-        : "border-gray-200 shadow-[8px_8px_0_rgba(0,0,0,0.06),16px_16px_0_rgba(0,0,0,0.04),24px_24px_0_rgba(0,0,0,0.03)]"
-    }
-    dark:border-gray-800 dark:bg-gray-950
-  `}
+          relative isolate w-full border bg-white
+          ${
+            compact
+              ? "border-gray-300 shadow-[4px_4px_0_rgba(0,0,0,0.05)]"
+              : "border-gray-200 shadow-[8px_8px_0_rgba(0,0,0,0.06),16px_16px_0_rgba(0,0,0,0.04),24px_24px_0_rgba(0,0,0,0.03)]"
+          }
+          dark:border-gray-800 dark:bg-gray-950
+        `}
       >
         <div className="absolute right-2 top-2 z-50 flex items-center gap-1">
           {userId && (
@@ -264,13 +267,13 @@ export default function NoteCard({
               type="button"
               onClick={() => setIsEditing(true)}
               className="
-      flex h-6 w-6 items-center justify-center
-      rounded-full border border-gray-300 bg-white
-      text-xs font-bold text-gray-600 shadow-sm transition
-      hover:border-blue-400 hover:bg-blue-100 hover:text-blue-700
-      dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300
-      dark:hover:border-blue-400 dark:hover:bg-blue-900/40 dark:hover:text-blue-200
-    "
+                flex h-6 w-6 items-center justify-center
+                rounded-full border border-gray-300 bg-white
+                text-xs font-bold text-gray-600 shadow-sm transition
+                hover:border-blue-400 hover:bg-blue-100 hover:text-blue-700
+                dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300
+                dark:hover:border-blue-400 dark:hover:bg-blue-900/40 dark:hover:text-blue-200
+              "
               title="Edit note"
             >
               ✎
@@ -283,14 +286,14 @@ export default function NoteCard({
               onClick={onClose}
               aria-label={`Close ${note.title}`}
               className="
-        flex h-6 w-6 items-center justify-center
-        rounded-full border border-gray-300 bg-white
-        text-sm font-bold text-gray-600
-        shadow-sm transition
-        hover:border-red-400 hover:bg-red-500 hover:text-white
-        dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300
-        dark:hover:border-red-400 dark:hover:bg-red-500 dark:hover:text-white
-      "
+                flex h-6 w-6 items-center justify-center
+                rounded-full border border-gray-300 bg-white
+                text-sm font-bold text-gray-600
+                shadow-sm transition
+                hover:border-red-400 hover:bg-red-500 hover:text-white
+                dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300
+                dark:hover:border-red-400 dark:hover:bg-red-500 dark:hover:text-white
+              "
             >
               ×
             </button>
@@ -329,13 +332,13 @@ export default function NoteCard({
                   <button
                     type="button"
                     className="
-        rounded-full border border-gray-300 bg-gray-50 px-2.5 py-0.5
-        text-[13px] font-medium text-gray-700 shadow-sm transition
-        hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700
-        dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200
-        dark:hover:border-blue-400 dark:hover:bg-blue-900/40
-        dark:hover:text-blue-200
-      "
+                      rounded-full border border-gray-300 bg-gray-50 px-2.5 py-0.5
+                      text-[13px] font-medium text-gray-700 shadow-sm transition
+                      hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700
+                      dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200
+                      dark:hover:border-blue-400 dark:hover:bg-blue-900/40
+                      dark:hover:text-blue-200
+                    "
                     aria-label={`Show ${hiddenTags.length} more tags`}
                   >
                     +{hiddenTags.length}
@@ -343,12 +346,12 @@ export default function NoteCard({
 
                   <div
                     className="
-        pointer-events-none absolute left-0 top-full z-50 mt-2
-        min-w-max rounded-xl border border-gray-200 bg-white p-2
-        text-left opacity-0 shadow-lg transition
-        group-hover:pointer-events-auto group-hover:opacity-100
-        dark:border-gray-700 dark:bg-gray-900
-      "
+                      pointer-events-none absolute left-0 top-full z-50 mt-2
+                      min-w-max rounded-xl border border-gray-200 bg-white p-2
+                      text-left opacity-0 shadow-lg transition
+                      group-hover:pointer-events-auto group-hover:opacity-100
+                      dark:border-gray-700 dark:bg-gray-900
+                    "
                   >
                     <div className="space-y-1">
                       {hiddenTags.map((tag) => {
@@ -360,10 +363,10 @@ export default function NoteCard({
                           <div
                             key={tag.id}
                             className="
-                flex items-center justify-between gap-3 rounded-lg px-2 py-1
-                text-sm text-gray-700
-                dark:text-gray-200
-              "
+                              flex items-center justify-between gap-3 rounded-lg px-2 py-1
+                              text-sm text-gray-700
+                              dark:text-gray-200
+                            "
                           >
                             <span className="whitespace-nowrap">
                               <button
@@ -401,10 +404,10 @@ export default function NoteCard({
         <IndexLine isRed compact={compact} className="relative z-10">
           <h1
             className={`
-    font-['Comic_Sans_MS','Bradley_Hand',cursive] font-semibold
-  text-gray-900 dark:text-slate-100
-    ${compact ? "text-xl leading-7" : "text-2xl leading-8"}
-  `}
+              font-['Comic_Sans_MS','Bradley_Hand',cursive] font-semibold
+            text-gray-900 dark:text-slate-100
+              ${compact ? "text-xl leading-7" : "text-2xl leading-8"}
+            `}
           >
             {note.title}
           </h1>
@@ -412,50 +415,50 @@ export default function NoteCard({
 
         <div
           className={`
-    ${compact ? "h-[180px] pb-2 pt-0" : "min-h-40 pb-2 pt-0"}
-    ${
-      compact && compactShouldScroll
-        ? "overflow-y-auto scrollbar-gutter-stable custom-scrollbar"
-        : compact
-          ? "overflow-hidden"
-          : ""
-    }
-  `}
+            ${compact ? "h-[180px] pb-2 pt-0" : "min-h-[150px] pb-2 pt-0"}
+            ${
+              compact && compactShouldScroll
+                ? "overflow-y-auto scrollbar-gutter-stable custom-scrollbar"
+                : compact
+                  ? "overflow-hidden"
+                  : ""
+            }
+          `}
         >
           <div
             className={`
-      min-h-full
-      bg-[linear-gradient(to_bottom,transparent_27px,#93c5fd_28px,transparent_29px)]
-      bg-[length:100%_30px]
-      bg-[position:0_0px]
-      dark:bg-[linear-gradient(to_bottom,transparent_27px,#60a5fa_28px,transparent_29px)]
-    `}
+    ${compact ? "min-h-full" : "min-h-[150px]"}
+    bg-[linear-gradient(to_bottom,transparent_27px,#93c5fd_28px,transparent_29px)]
+    bg-[length:100%_30px]
+    bg-[position:0_0px]
+    dark:bg-[linear-gradient(to_bottom,transparent_27px,#60a5fa_28px,transparent_29px)]
+  `}
           >
             <div
               className="
-    pt-[5.75px]
-    text-sm leading-[30px]
+                pt-[5.75px]
+                text-sm leading-[30px]
 
-    [&_p]:m-0
-    [&_p]:min-h-[30px]
-    [&_p]:leading-[30px]
+                [&_p]:m-0
+                [&_p]:min-h-[30px]
+                [&_p]:leading-[30px]
 
-    [&_span]:leading-[inherit]
-    [&_a]:leading-[inherit]
-    [&_mark]:leading-[inherit]
+                [&_span]:leading-[inherit]
+                [&_a]:leading-[inherit]
+                [&_mark]:leading-[inherit]
 
-    [&_.tag-mark]:inline
-    [&_.tag-mark]:align-baseline
-    [&_.tag-mark]:leading-[inherit]
+                [&_.tag-mark]:inline
+                [&_.tag-mark]:align-baseline
+                [&_.tag-mark]:leading-[inherit]
 
-    [&_.reference-mark]:inline
-    [&_.reference-mark]:align-baseline
-    [&_.reference-mark]:leading-[inherit]
+                [&_.reference-mark]:inline
+                [&_.reference-mark]:align-baseline
+                [&_.reference-mark]:leading-[inherit]
 
-    [&_[data-tag-name]]:inline
-    [&_[data-tag-name]]:align-baseline
-    [&_[data-tag-name]]:leading-[inherit]
-  "
+                [&_[data-tag-name]]:inline
+                [&_[data-tag-name]]:align-baseline
+                [&_[data-tag-name]]:leading-[inherit]
+              "
             >
               <ReadOnlyNoteContent
                 key={
@@ -484,12 +487,12 @@ export default function NoteCard({
             type="button"
             onClick={() => setShowDetails((current) => !current)}
             className="
-      rounded-full border border-gray-300 bg-gray-50 px-3 py-1
-      text-xs font-medium text-gray-700 transition
-      hover:bg-gray-100
-      dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200
-      dark:hover:bg-gray-800
-    "
+              rounded-full border border-gray-300 bg-gray-50 px-3 py-1
+              text-xs font-medium text-gray-700 transition
+              hover:bg-gray-100
+              dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200
+              dark:hover:bg-gray-800
+            "
           >
             {showDetails ? "Hide additional info" : "Show additional info"}
           </button>
@@ -529,19 +532,19 @@ export default function NoteCard({
                             }
                           }}
                           className={`
-              rounded-full border px-3 py-1 text-xs transition
-              ${
-                isTask
-                  ? isDoneTask
-                    ? "border-green-300 bg-green-50 text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
-                    : "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
-                  : isEvent
-                    ? isPastEvent
-                      ? "border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                      : "border-cyan-300 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-200"
-                    : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"
-              }
-            `}
+                            rounded-full border px-3 py-1 text-xs transition
+                            ${
+                              isTask
+                                ? isDoneTask
+                                  ? "border-green-300 bg-green-50 text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
+                                  : "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+                                : isEvent
+                                  ? isPastEvent
+                                    ? "border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                                    : "border-cyan-300 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-200"
+                                  : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                            }
+                          `}
                         >
                           {link.targetTitle ?? `Untitled ${link.targetType}`}
 
@@ -594,19 +597,19 @@ export default function NoteCard({
                       }
                     }}
                     className={`
-        rounded-full border px-3 py-1 text-xs transition
-        ${
-          isTask
-            ? isDoneTask
-              ? "border-green-300 bg-green-50 text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
-              : "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
-            : isEvent
-              ? isPastEvent
-                ? "border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                : "border-cyan-300 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-200"
-              : "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-300"
-        }
-      `}
+                      rounded-full border px-3 py-1 text-xs transition
+                      ${
+                        isTask
+                          ? isDoneTask
+                            ? "border-green-300 bg-green-50 text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
+                            : "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+                          : isEvent
+                            ? isPastEvent
+                              ? "border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                              : "border-cyan-300 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-200"
+                            : "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                      }
+                    `}
                   >
                     {link.sourceTitle ?? `Untitled ${link.sourceType}`}
 
@@ -643,11 +646,11 @@ export default function NoteCard({
                         key={`${related.id}-${related.sharedTagId}`}
                         onClick={() => onOpenNote?.(related.id)}
                         className="
-                  rounded-full border border-gray-200 bg-gray-50 px-3 py-1
-                  text-xs text-gray-700 hover:bg-gray-100
-                  dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300
-                  dark:hover:bg-gray-800
-                "
+                          rounded-full border border-gray-200 bg-gray-50 px-3 py-1
+                          text-xs text-gray-700 hover:bg-gray-100
+                          dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300
+                          dark:hover:bg-gray-800
+                        "
                       >
                         {related.title}
                         <span className="ml-1 text-[10px] text-gray-500">

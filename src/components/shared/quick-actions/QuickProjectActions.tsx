@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FolderKanban, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import AddToProjectForm from "@/components/projects/AddToProjectForm";
 import type { EntityType, Project } from "@/db/schema";
 import { createProjectAndAddEntityAction } from "@/app/actions/quickActions";

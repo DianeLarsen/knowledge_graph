@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, LinkIcon, CheckSquare, StickyNote, Tags } from "lucide-react";
+import { LinkIcon, CheckSquare, StickyNote, Tags } from "lucide-react";
 import type { Note, Tag, Reference } from "@/db/schema";
 
 import AddExistingProjectItemForm from "@/components/projects/AddExistingProjectItemForm";

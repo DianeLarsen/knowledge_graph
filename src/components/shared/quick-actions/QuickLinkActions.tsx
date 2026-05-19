@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { EntityType } from "@/db/schema";
+import type { EntityType, RelationshipType } from "@/db/schema";
 import type {
   QuickReference,
   QuickNote,
@@ -9,6 +9,8 @@ import type {
   QuickEvent,
 } from "@/lib/types/quickTypes";
 import { createEntityLinkAction } from "@/app/actions/entityLinks";
+import { getRelationshipLabel } from "@/lib/entityRelationships";
+import { CalendarDays, CheckSquare, FileText, Library } from "lucide-react";
 
 type LinkTargetType = "note" | "reference" | "task" | "event";
 
@@ -29,6 +31,19 @@ type QuickLinkActionsProps = {
   onLinkedReferenceIdsChange?: (referenceIds: string[]) => void;
 };
 
+function sortByTitle<T extends { title: string }>(items: T[]) {
+  return [...items].sort((a, b) => a.title.localeCompare(b.title));
+}
+
+function LinkTargetIcon({ type }: { type: LinkTargetType }) {
+  const className = "h-4 w-4 shrink-0";
+
+  if (type === "note") return <FileText className={className} />;
+  if (type === "task") return <CheckSquare className={className} />;
+  if (type === "event") return <CalendarDays className={className} />;
+  return <Library className={className} />;
+}
+
 export default function QuickLinkActions({
   entityType,
   entityId,
@@ -47,35 +62,45 @@ export default function QuickLinkActions({
 }: QuickLinkActionsProps) {
   const [activePicker, setActivePicker] = useState<LinkTargetType | null>(null);
   const [selectedTargetId, setSelectedTargetId] = useState("");
-  const [relationshipType, setRelationshipType] = useState("related");
+  const [relationshipType, setRelationshipType] =
+    useState<RelationshipType>("related");
+  const [pickerSearch, setPickerSearch] = useState("");
 
-  const availableTasks = tasks.filter((task) => {
-    if (entityType === "task" && task.id === entityId) return false;
-    return !linkedTaskIds.includes(task.id);
-  });
+  const availableTasks = sortByTitle(
+    tasks.filter((task) => {
+      if (entityType === "task" && task.id === entityId) return false;
+      return !linkedTaskIds.includes(task.id);
+    }),
+  );
 
   const linkedTasks = tasks.filter((task) => linkedTaskIds.includes(task.id));
 
-  const availableEvents = events.filter((event) => {
-    if (entityType === "event" && event.id === entityId) return false;
-    return !linkedEventIds.includes(event.id);
-  });
+  const availableEvents = sortByTitle(
+    events.filter((event) => {
+      if (entityType === "event" && event.id === entityId) return false;
+      return !linkedEventIds.includes(event.id);
+    }),
+  );
 
   const linkedEvents = events.filter((event) =>
     linkedEventIds.includes(event.id),
   );
 
-  const availableNotes = notes.filter((note) => {
-    if (entityType === "note" && note.id === entityId) return false;
-    return !linkedNoteIds.includes(note.id);
-  });
+  const availableNotes = sortByTitle(
+    notes.filter((note) => {
+      if (entityType === "note" && note.id === entityId) return false;
+      return !linkedNoteIds.includes(note.id);
+    }),
+  );
 
   const linkedNotes = notes.filter((note) => linkedNoteIds.includes(note.id));
 
-  const availableReferences = references.filter((reference) => {
-    if (entityType === "reference" && reference.id === entityId) return false;
-    return !linkedReferenceIds.includes(reference.id);
-  });
+  const availableReferences = sortByTitle(
+    references.filter((reference) => {
+      if (entityType === "reference" && reference.id === entityId) return false;
+      return !linkedReferenceIds.includes(reference.id);
+    }),
+  );
 
   const linkedReferences = references.filter((reference) =>
     linkedReferenceIds.includes(reference.id),
@@ -129,14 +154,21 @@ export default function QuickLinkActions({
       title: string;
       label: string;
       items: { id: string; title: string }[];
-      defaultRelationship: string;
-      relationships: string[];
+      defaultRelationship: RelationshipType;
+      relationships: RelationshipType[];
     }
   >;
+
+  const activePickerItems = activePicker
+    ? pickerConfig[activePicker].items.filter((item) =>
+        item.title.toLowerCase().includes(pickerSearch.trim().toLowerCase()),
+      )
+    : [];
 
   function openPicker(type: LinkTargetType) {
     setActivePicker(type);
     setSelectedTargetId("");
+    setPickerSearch("");
     setRelationshipType(pickerConfig[type].defaultRelationship);
   }
 
@@ -193,6 +225,15 @@ export default function QuickLinkActions({
   const groupLabelClass =
     "mb-1 text-xs font-bold uppercase tracking-wide text-[rgb(var(--muted))]";
 
+  const pickerItemClass =
+    "flex w-full items-start gap-2 rounded-xl border px-3 py-2 text-left text-sm transition";
+
+  const selectedPickerItemClass =
+    "border-purple-400 bg-purple-100 text-purple-900 dark:border-purple-700 dark:bg-purple-950 dark:text-purple-100";
+
+  const unselectedPickerItemClass =
+    "border-[rgb(var(--border))] bg-[rgb(var(--bg))] text-[rgb(var(--text))] hover:bg-slate-100 dark:hover:bg-slate-900";
+
   return (
     <div className="space-y-3">
       {linkedNotes.length > 0 && (
@@ -201,7 +242,11 @@ export default function QuickLinkActions({
 
           <div className="space-y-1">
             {linkedNotes.map((note) => (
-              <p key={note.id} className={linkedItemClass}>
+              <p
+                key={note.id}
+                className={`${linkedItemClass} flex items-center gap-2`}
+              >
+                <LinkTargetIcon type="note" />
                 {note.title}
               </p>
             ))}
@@ -215,7 +260,11 @@ export default function QuickLinkActions({
 
           <div className="space-y-1">
             {linkedTasks.map((task) => (
-              <p key={task.id} className={linkedItemClass}>
+              <p
+                key={task.id}
+                className={`${linkedItemClass} flex items-center gap-2`}
+              >
+                <LinkTargetIcon type="task" />
                 {task.title}
               </p>
             ))}
@@ -229,7 +278,11 @@ export default function QuickLinkActions({
 
           <div className="space-y-1">
             {linkedEvents.map((event) => (
-              <p key={event.id} className={linkedItemClass}>
+              <p
+                key={event.id}
+                className={`${linkedItemClass} flex items-center gap-2`}
+              >
+                <LinkTargetIcon type="event" />
                 {event.title}
               </p>
             ))}
@@ -243,7 +296,11 @@ export default function QuickLinkActions({
 
           <div className="space-y-1">
             {linkedReferences.map((reference) => (
-              <p key={reference.id} className={linkedItemClass}>
+              <p
+                key={reference.id}
+                className={`${linkedItemClass} flex items-center gap-2`}
+              >
+                <LinkTargetIcon type="reference" />
                 {reference.title}
               </p>
             ))}
@@ -252,13 +309,14 @@ export default function QuickLinkActions({
       )}
 
       <div className="space-y-3">
-        <div className="grid gap-2 grid-cols-4 md:grid-cols-2">
+        <div className="grid gap-2 grid-cols-4 md:grid-cols-4 lg:grid-cols-1 xl:grid-cols-2">
           {availableNotes.length > 0 && (
             <button
               type="button"
               onClick={() => openPicker("note")}
               className={linkButtonClass}
             >
+              <LinkTargetIcon type="note" />
               Link note
             </button>
           )}
@@ -269,6 +327,7 @@ export default function QuickLinkActions({
               onClick={() => openPicker("reference")}
               className={linkButtonClass}
             >
+              <LinkTargetIcon type="reference" />
               Link reference
             </button>
           )}
@@ -279,6 +338,7 @@ export default function QuickLinkActions({
               onClick={() => openPicker("task")}
               className={linkButtonClass}
             >
+              <LinkTargetIcon type="task" />
               Link task
             </button>
           )}
@@ -289,6 +349,7 @@ export default function QuickLinkActions({
               onClick={() => openPicker("event")}
               className={linkButtonClass}
             >
+              <LinkTargetIcon type="event" />
               Link event
             </button>
           )}
@@ -329,41 +390,79 @@ export default function QuickLinkActions({
               <input type="hidden" name="sourceType" value={entityType} />
               <input type="hidden" name="sourceId" value={entityId} />
               <input type="hidden" name="targetType" value={activePicker} />
+              <input type="hidden" name="targetId" value={selectedTargetId} />
 
-              <select
-                name="targetId"
-                required
-                value={selectedTargetId}
-                onChange={(event) => setSelectedTargetId(event.target.value)}
-                className={selectClass}
-              >
-                <option value="" disabled>
-                  {pickerConfig[activePicker].label}
-                </option>
+              <div className="space-y-2">
+                <input
+                  type="search"
+                  value={pickerSearch}
+                  onChange={(event) => setPickerSearch(event.target.value)}
+                  placeholder={`Search ${activePicker}s...`}
+                  className={selectClass}
+                />
 
-                {pickerConfig[activePicker].items.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title}
-                  </option>
-                ))}
-              </select>
+                <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] p-2">
+                  {activePickerItems.length > 0 ? (
+                    activePickerItems.map((item) => {
+                      const selected = selectedTargetId === item.id;
+
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSelectedTargetId(item.id)}
+                          className={`${pickerItemClass} ${
+                            selected
+                              ? selectedPickerItemClass
+                              : unselectedPickerItemClass
+                          }`}
+                        >
+                          <span className="mt-0.5 text-purple-600 dark:text-purple-300">
+                            <LinkTargetIcon type={activePicker} />
+                          </span>
+
+                          <span className="min-w-0">
+                            <span className="block truncate font-semibold">
+                              {item.title}
+                            </span>
+
+                            <span className="block text-xs opacity-70">
+                              {activePicker}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <p className="px-2 py-3 text-xs text-[rgb(var(--muted))]">
+                      No matching {activePicker}s found.
+                    </p>
+                  )}
+                </div>
+              </div>
 
               <select
                 name="relationshipType"
                 value={relationshipType}
-                onChange={(event) => setRelationshipType(event.target.value)}
+                onChange={(event) =>
+                  setRelationshipType(event.target.value as RelationshipType)
+                }
                 className={selectClass}
               >
                 {pickerConfig[activePicker].relationships.map(
                   (relationship) => (
                     <option key={relationship} value={relationship}>
-                      {relationship.replace("_", " ")}
+                      {getRelationshipLabel(relationship)}
                     </option>
                   ),
                 )}
               </select>
 
-              <button className={linkButtonClass}>
+              <button
+                type="submit"
+                disabled={!selectedTargetId}
+                className={`${linkButtonClass} disabled:cursor-not-allowed disabled:opacity-60`}
+              >
                 {pickerConfig[activePicker].title}
               </button>
             </form>

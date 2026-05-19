@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Tags, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { EntityType } from "@/db/schema";
 import type { QuickTag } from "@/lib/types/quickTypes";
 
