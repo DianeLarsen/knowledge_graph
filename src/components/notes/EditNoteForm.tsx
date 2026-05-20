@@ -3,11 +3,13 @@
 import { useState } from "react";
 
 import { Note, Tag, Reference } from "@/db/schema";
-import RichNoteEditor from "@/components/notes/RichNoteEditor";
+import RichNoteEditor from "@/components/notes/editor/RichNoteEditor";
 import { updateNoteAction } from "@/app/actions/notes";
 import ReferenceComposer from "@/components/references/ReferenceComposer";
 import { extractReferenceIdsFromContentJson } from "@/lib/notes/extractReferenceIdsFromContentJson";
 import type { NoteLinkedReference } from "@/lib/types/references/referenceTypes";
+import { colorClassMap } from "@/lib/tagColorClasses";
+import { TagColor } from "@/lib/types/tags/tagColors";
 
 type LinkedNoteSummary = {
   id: string;
@@ -42,7 +44,9 @@ export default function EditNoteForm({
   const [contentJson, setContentJson] = useState(note.contentJson ?? "");
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [inlineTagNames, setInlineTagNames] = useState<string[]>([]);
+  const [inlineTagNames, setInlineTagNames] = useState<string[]>(
+    extractTagNamesFromContentJson(note.contentJson),
+  );
   const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>(
     noteReferences.map((reference) => reference.id),
   );
@@ -72,6 +76,44 @@ export default function EditNoteForm({
     );
   }
   const inlineReferenceIds = extractReferenceIdsFromContentJson(contentJson);
+
+  function extractTagNamesFromContentJson(contentJson: string | null) {
+    if (!contentJson) return [];
+
+    try {
+      const parsed = JSON.parse(contentJson);
+      const tagNames = new Set<string>();
+
+      function walk(node: any) {
+        if (node.marks) {
+          node.marks.forEach((mark: any) => {
+            if (mark.type === "tagMark" && mark.attrs?.tagName) {
+              tagNames.add(mark.attrs.tagName);
+            }
+          });
+        }
+
+        if (node.content) {
+          node.content.forEach(walk);
+        }
+      }
+
+      walk(parsed);
+
+      return Array.from(tagNames);
+    } catch {
+      return [];
+    }
+  }
+
+  function getInlineTagNameSet(contentJson: string | null) {
+    return new Set(
+      extractTagNamesFromContentJson(contentJson).map((name) =>
+        name.toLowerCase(),
+      ),
+    );
+  }
+
   async function handleSave() {
     if (isSaving) return;
 
@@ -87,14 +129,19 @@ export default function EditNoteForm({
       setIsSaving(true);
       setMessage("");
 
+      const inlineTagNamesFromContent =
+        extractTagNamesFromContentJson(contentJson);
+
+      const finalTagNames = Array.from(
+        new Set([...selectedTagNames, ...inlineTagNamesFromContent]),
+      );
+
       const updatedNote = await updateNoteAction({
         id: note.id,
         title,
         content,
         contentJson,
-        inlineTagNames: Array.from(
-          new Set([...selectedTagNames, ...inlineTagNames]),
-        ),
+        inlineTagNames: finalTagNames,
         selectedReferenceIds: finalReferenceIds,
         linkedNoteIds: selectedLinkedNoteIds,
       });
@@ -138,12 +185,22 @@ export default function EditNoteForm({
       current.includes(tagName) ? current : [...current, tagName],
     );
 
-    setInlineTagNames((current) =>
-      current.includes(tagName) ? current : [...current, tagName],
-    );
-
     setNewTagName("");
   }
+
+const tagColorMap: Record<string, TagColor> = Object.fromEntries(
+  tags.flatMap((tag) => {
+    const color = (tag.color ?? "blue") as TagColor;
+
+    return [
+      [tag.id, color],
+      [tag.name.toLowerCase(), color],
+    ];
+  }),
+);
+  
+  const inlineTagNameSet = getInlineTagNameSet(contentJson);
+  
   return (
     <section className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="relative">
@@ -184,17 +241,34 @@ export default function EditNoteForm({
         <div className="flex flex-wrap gap-2">
           {tags.map((tag) => {
             const selected = selectedTagNames.includes(tag.name);
+            const isInlineLinked = inlineTagNameSet.has(tag.name.toLowerCase());
+
+            const color = (tag.color ?? "blue") as TagColor;
+            const inlineColorClasses = colorClassMap[color].join(" ");
+
+            const selectedCardOnlyClasses =
+              "border-blue-400 bg-blue-100 text-blue-800 dark:border-blue-500 dark:bg-blue-900/40 dark:text-blue-200";
+
+            const unselectedClasses =
+              "border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700";
 
             return (
               <button
                 key={tag.id}
                 type="button"
                 onClick={() => toggleTag(tag.name)}
-                className={`rounded-full border px-3 py-1 text-sm ${
+                className={`rounded-full border px-3 py-1 text-sm transition ${
                   selected
-                    ? "border-blue-400 bg-blue-100 text-blue-800 dark:border-blue-500 dark:bg-blue-900/40 dark:text-blue-200"
-                    : "border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                    ? isInlineLinked
+                      ? `border-current ${inlineColorClasses}`
+                      : selectedCardOnlyClasses
+                    : unselectedClasses
                 }`}
+                title={
+                  isInlineLinked
+                    ? "This tag is linked to inline text"
+                    : "Card-level tag"
+                }
               >
                 #{tag.name}
               </button>
@@ -249,12 +323,19 @@ export default function EditNoteForm({
         getReferenceLabel={getReferenceLabel}
         onReferenceRemoved={() => {}}
         onTagRemoved={(tagName) => {
+          if (!tagName) return;
+
           setInlineTagNames((current) =>
+            current.filter((name) => name !== tagName),
+          );
+
+          setSelectedTagNames((current) =>
             current.filter((name) => name !== tagName),
           );
         }}
         inlineReferenceIds={inlineReferenceIds}
         selectedReferenceIds={selectedReferenceIds}
+        tagColorMap={tagColorMap}
       />
       <section className="mb-4">
         <h3 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">

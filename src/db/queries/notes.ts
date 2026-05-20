@@ -423,7 +423,15 @@ export async function updateNote(
     const cleanedTagNames = [
       ...new Set(inlineTagNames.map((name) => name.trim()).filter(Boolean)),
     ];
-
+    tx.delete(entityTags)
+      .where(
+        and(
+          eq(entityTags.appliedByUserId, userId),
+          eq(entityTags.entityType, "note"),
+          eq(entityTags.entityId, id),
+        ),
+      )
+      .run();
     for (const tagName of cleanedTagNames) {
       const cleanName = tagName.toLowerCase();
       const slug = slugifyTag(cleanName);
@@ -645,8 +653,6 @@ export async function getNoteDetailsByUserId(userId: string) {
     }),
   );
 }
-
-
 
 export async function getNotesByUserWithListMeta(
   userId: string,

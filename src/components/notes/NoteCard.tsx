@@ -105,36 +105,54 @@ type RichTextNode = {
   attrs?: {
     tagId?: string;
     id?: string;
+    tagName?: string;
   };
   marks?: {
     type?: string;
     attrs?: {
       tagId?: string;
+      tagName?: string;
     };
   }[];
   content?: RichTextNode[];
 };
 
-function getInlineTagIds(contentJson: string | null) {
-  if (!contentJson) return new Set<string>();
+function getInlineTagInfo(contentJson: string | null) {
+  const ids = new Set<string>();
+  const names = new Set<string>();
+
+  if (!contentJson) {
+    return { ids, names };
+  }
 
   try {
     const doc: RichTextNode = JSON.parse(contentJson);
-    const ids = new Set<string>();
 
     function walk(node: RichTextNode) {
       if (!node) return;
 
       if (Array.isArray(node.marks)) {
         node.marks.forEach((mark) => {
-          if (mark.type === "tagMark" && mark.attrs?.tagId) {
-            ids.add(mark.attrs.tagId);
+          if (mark.type === "tagMark") {
+            if (mark.attrs?.tagId) {
+              ids.add(mark.attrs.tagId);
+            }
+
+            if (mark.attrs?.tagName) {
+              names.add(mark.attrs.tagName.toLowerCase());
+            }
           }
         });
       }
 
-      if (node.type === "mention" && node.attrs?.id) {
-        ids.add(node.attrs.id);
+      if (node.type === "mention") {
+        if (node.attrs?.id) {
+          ids.add(node.attrs.id);
+        }
+
+        if (node.attrs?.tagName) {
+          names.add(node.attrs.tagName.toLowerCase());
+        }
       }
 
       if (Array.isArray(node.content)) {
@@ -144,9 +162,9 @@ function getInlineTagIds(contentJson: string | null) {
 
     walk(doc);
 
-    return ids;
+    return { ids, names };
   } catch {
-    return new Set<string>();
+    return { ids, names };
   }
 }
 
@@ -217,11 +235,13 @@ export default function NoteCard({
     references = [],
   } = data;
 
-  const inlineTagIds = getInlineTagIds(note.contentJson);
+  const inlineTags = getInlineTagInfo(note.contentJson);
 
   const sortedTags = [...tags].sort((a, b) => {
-    const aLinked = inlineTagIds.has(a.id);
-    const bLinked = inlineTagIds.has(b.id);
+    const aLinked =
+      inlineTags.ids.has(a.id) || inlineTags.names.has(a.name.toLowerCase());
+    const bLinked =
+      inlineTags.ids.has(b.id) || inlineTags.names.has(b.name.toLowerCase());
 
     if (aLinked && !bLinked) return -1;
     if (!aLinked && bLinked) return 1;
@@ -235,16 +255,16 @@ export default function NoteCard({
     tagColorMap.set(tag.id, tag.color ?? "blue");
   });
 
- const tagLimit = compact ? compactTagLimit : 8;
+  const tagLimit = compact ? compactTagLimit : 8;
 
- const shouldCollapseTags = sortedTags.length > tagLimit;
+  const shouldCollapseTags = sortedTags.length > tagLimit;
 
- const maxVisibleTags = shouldCollapseTags
-   ? Math.max(tagLimit, inlineTagIds.size)
-   : sortedTags.length;
+  const maxVisibleTags = shouldCollapseTags
+    ? Math.max(tagLimit, inlineTags.ids.size + inlineTags.names.size)
+    : sortedTags.length;
 
- const visibleTags = sortedTags.slice(0, maxVisibleTags);
- const hiddenTags = shouldCollapseTags ? sortedTags.slice(maxVisibleTags) : [];
+  const visibleTags = sortedTags.slice(0, maxVisibleTags);
+  const hiddenTags = shouldCollapseTags ? sortedTags.slice(maxVisibleTags) : [];
 
   const referenceOptions = userReferences;
 
@@ -313,11 +333,16 @@ export default function NoteCard({
                     tag={tag}
                     stats={stats}
                     size="card"
-                    linked={inlineTagIds.has(tag.id)}
+                    linked={
+                      inlineTags.ids.has(tag.id) ||
+                      inlineTags.names.has(tag.name.toLowerCase())
+                    }
                     color={tag.color ?? "blue"}
                     onJumpToInlineTag={(tagId) => {
                       document
-                        .querySelector(`[data-inline-tag-id="${tagId}"]`)
+                        .querySelector(
+                          `[data-inline-tag-id="${tagId}"], [data-tag-id="${tagId}"]`,
+                        )
                         ?.scrollIntoView({
                           behavior: "smooth",
                           block: "center",

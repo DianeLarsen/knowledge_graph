@@ -227,6 +227,7 @@ export default function ReadOnlyNoteContent({
 
   return (
     <div ref={contentRef} className="relative" onClick={() => setPreview(null)}>
+      
       <EditorContent
         editor={editor}
         onClick={(event) => {
