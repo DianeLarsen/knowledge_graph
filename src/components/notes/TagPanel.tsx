@@ -5,6 +5,7 @@ import { createTagAction } from "@/app/actions/tags";
 import { Tag } from "@/db/schema";
 import { Plus } from "lucide-react";
 import TagPill from "@/components/notes/TagPill";
+import type { NoteDetails } from "@/components/notes/card/noteCardTypes";
 
 type TagStats = {
   tagId: string;
@@ -14,6 +15,8 @@ type TagStats = {
 
 type TagPanelProps = {
   tags: Tag[];
+  dataList: NoteDetails[];
+  openNoteIds: string[];
   tagStats?: {
     tag: Tag;
     stats: TagStats;
@@ -25,16 +28,30 @@ function normalizeTagName(value: string) {
   return value.trim().replace(/^#+/, "").trim();
 }
 
+
+
 export default function TagPanel({
   tags,
   tagStats = [],
   onOpenCardsByTag,
+  dataList = [],
+  openNoteIds = [],
 }: TagPanelProps) {
   const [tagName, setTagName] = useState("");
   const normalizedTagName = normalizeTagName(tagName);
 
   function getStatsForTag(tagId: string) {
     return tagStats.find((item) => item.tag.id === tagId)?.stats ?? null;
+  }
+
+  function areAllCardsForTagOpen(tagId: string) {
+    const noteIdsForTag = dataList
+      .filter((data) => data.tags.some((tag) => tag.id === tagId))
+      .map((data) => data.note.id);
+
+    if (noteIdsForTag.length === 0) return false;
+
+    return noteIdsForTag.every((noteId) => openNoteIds.includes(noteId));
   }
 
   return (
@@ -52,6 +69,7 @@ export default function TagPanel({
             tag={tag}
             stats={getStatsForTag(tag.id)}
             onOpenCardsByTag={onOpenCardsByTag}
+            active={areAllCardsForTagOpen(tag.id)}
           />
         ))}
 

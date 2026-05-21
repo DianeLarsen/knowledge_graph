@@ -104,6 +104,7 @@ export default function RichNoteEditor({
       window.removeEventListener("mousedown", handleClick);
     };
   }, []);
+  
   const tagsRef = useRef(tags);
   const referencesRef = useRef(references);
   const selectedReferenceIdsRef = useRef(selectedReferenceIds);

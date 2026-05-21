@@ -9,14 +9,21 @@ import { TagMark } from "@/lib/tiptap/extensions/TagMark";
 import { ReferenceMark } from "@/lib/tiptap/extensions/ReferenceMark";
 import { useState, useEffect, useRef } from "react";
 import { TagColor } from "@/lib/types/tags/tagColors";
+import ApaCitationPanel from "@/components/references/ApaCitationPanel";
+import { createPortal } from "react-dom";
 
 type ReadOnlyReference = {
   id: string;
-  title: string;
+  type: string;
+  title: string | null;
   author: string | null;
   url: string | null;
+  publisher: string | null;
+  publishedDate: string | null;
+  citation: string | null;
   notes: string | null;
 };
+
 type ReadOnlyTag = {
   id: string;
   name: string;
@@ -122,6 +129,7 @@ export default function ReadOnlyNoteContent({
   tags = [],
   tagColorMap = {},
 }: ReadOnlyNoteContentProps) {
+  const [mounted, setMounted] = useState(false);
   const [preview, setPreview] = useState<
     | {
         type: "reference";
@@ -136,8 +144,37 @@ export default function ReadOnlyNoteContent({
         tag: ReadOnlyTag;
       }
     | null
-  >(null);
+    >(null);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const contentRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (!preview) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+
+      if (popupRef.current?.contains(target)) return;
+
+      const clickedReferenceOrTag =
+        target instanceof Element &&
+        target.closest("[data-reference-mark], [data-tag-mark]");
+
+      if (clickedReferenceOrTag) return;
+
+      setPreview(null);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [preview]);
 
   function getTagColorClasses(tagId?: string | null) {
     if (!tagId) return colorClassMap.blue.join(" ");
@@ -227,7 +264,6 @@ export default function ReadOnlyNoteContent({
 
   return (
     <div ref={contentRef} className="relative" onClick={() => setPreview(null)}>
-      
       <EditorContent
         editor={editor}
         onClick={(event) => {
@@ -352,82 +388,88 @@ export default function ReadOnlyNoteContent({
       "
       />
 
-      {preview && (
-        <div
-          className={`fixed z-[9999] w-80 rounded-xl border bg-white p-3 text-sm shadow-lg dark:bg-gray-950 ${
-            preview.type === "reference"
-              ? "border-amber-200 dark:border-amber-800"
-              : "border-blue-200 dark:border-blue-800"
-          }`}
-          style={{
-            left: preview.x,
-            top: preview.y + 12,
-          }}
-          onClick={(event) => event.stopPropagation()}
-        >
-          <div className="mb-2 flex items-start justify-between gap-3">
-            <div>
-              {preview.type === "reference" ? (
-                <>
-                  <p className="font-semibold text-gray-900 dark:text-gray-100">
-                    {preview.reference.title}
-                  </p>
-
-                  {preview.reference.author && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {preview.reference.author}
+      {mounted &&
+        preview &&
+        createPortal(
+          <div
+            ref={popupRef}
+            className={`fixed z-[9999] w-80 rounded-xl border bg-white p-3 text-sm shadow-lg dark:bg-gray-950 ${
+              preview.type === "reference"
+                ? "border-amber-200 dark:border-amber-800"
+                : "border-blue-200 dark:border-blue-800"
+            }`}
+            style={{
+              left: preview.x,
+              top: preview.y + 12,
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <div>
+                {preview.type === "reference" ? (
+                  <>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">
+                      {preview.reference.title}
                     </p>
-                  )}
-                </>
-              ) : (
-                <>
-                  <p className="font-semibold text-gray-900 dark:text-gray-100">
-                    #{preview.tag.name}
-                  </p>
 
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Tagged text
-                  </p>
-                </>
-              )}
+                    {preview.reference.author && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {preview.reference.author}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">
+                      #{preview.tag.name}
+                    </p>
+
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Tagged text
+                    </p>
+                  </>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPreview(null)}
+                className="text-xs font-semibold text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              >
+                Close
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setPreview(null)}
-              className="text-xs font-semibold text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            >
-              Close
-            </button>
-          </div>
+            {preview.type === "reference" ? (
+              <>
+                {preview.reference.notes && (
+                  <p className="mt-2 text-xs text-gray-700 dark:text-gray-300">
+                    {preview.reference.notes}
+                  </p>
+                )}
 
-          {preview.type === "reference" ? (
-            <>
-              {preview.reference.notes && (
-                <p className="mt-2 text-xs text-gray-700 dark:text-gray-300">
-                  {preview.reference.notes}
-                </p>
-              )}
+                <ApaCitationPanel reference={preview.reference} />
 
-              {preview.reference.url && (
-                <a
-                  href={preview.reference.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-3 inline-block text-xs font-semibold text-blue-600 underline dark:text-blue-300"
-                >
-                  Open source
-                </a>
-              )}
-            </>
-          ) : (
-            <p className="mt-2 text-xs text-gray-700 dark:text-gray-300">
-              This text is connected to the tag{" "}
-              <span className="font-semibold">#{preview.tag.name}</span>.
-            </p>
-          )}
-        </div>
-      )}
+                {preview.reference.url && (
+                  <a
+                    href={preview.reference.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-block text-xs font-semibold text-blue-600 underline dark:text-blue-300"
+                  >
+                    Open source
+                  </a>
+                )}
+              </>
+            ) : (
+              <p className="mt-2 text-xs text-gray-700 dark:text-gray-300">
+                This text is connected to the tag{" "}
+                <span className="font-semibold">#{preview.tag.name}</span>.
+              </p>
+            )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

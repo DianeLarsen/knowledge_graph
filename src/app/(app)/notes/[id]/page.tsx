@@ -1,6 +1,6 @@
 // app/notes/[id]/page.tsx
 
-import NoteCard from "@/components/notes/NoteCard";
+import NoteCard from "@/components/notes/card/NoteCard";
 import PageQuickActions from "@/components/shared/PageQuickActions";
 import { getNoteDetailsById, getNotesForUser } from "@/db/queries/notes";
 import { getReferencesForUser } from "@/db/queries/references";
@@ -9,7 +9,6 @@ import { getUserProjectsAction } from "@/app/actions/projects";
 import Link from "next/link";
 import { getTasksByUserId } from "@/db/queries/tasks";
 import { getEventsByUserId } from "@/db/queries/calendar";
-
 
 type NoteDetailsPageProps = {
   params: Promise<{
@@ -27,8 +26,6 @@ export default async function NoteDetailsPage({
   const { id } = await params;
 
   const data = await getNoteDetailsById(id);
-
-
 
   if (!data) {
     return (
@@ -58,11 +55,11 @@ export default async function NoteDetailsPage({
     title: event.title,
   }));
 
-const noteOptions = notes.map((note) => ({
-  id: note.id,
-  title: note.title,
-  content: note.content ?? "",
-}));
+  const noteOptions = notes.map((note) => ({
+    id: note.id,
+    title: note.title,
+    content: note.content ?? "",
+  }));
 
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-8 dark:bg-gray-950">

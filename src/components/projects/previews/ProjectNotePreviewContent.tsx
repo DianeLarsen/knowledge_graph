@@ -1,5 +1,5 @@
 import Link from "next/link";
-import NoteCard from "@/components/notes/NoteCard";
+import NoteCard from "@/components/notes/card/NoteCard";
 import { getNoteDetailsById, getNotesForUser } from "@/db/queries/notes";
 import { getReferencesForUser } from "@/db/queries/references";
 import { getTagsForUser } from "@/db/queries/tags";

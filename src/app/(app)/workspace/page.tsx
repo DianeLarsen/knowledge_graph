@@ -1,5 +1,5 @@
 import { getNoteDetailsByUserId } from "@/db/queries/notes";
-import NotesWorkspace from "@/components/notes/NotesWorkspace";
+import NotesWorkspace from "@/components/notes/workspace/NotesWorkspace";
 import { getCurrentUserId } from "@/db/queries/users";
 import { getReferencesForUser } from "@/db/queries/references";
 import { getUserProjects } from "@/db/queries/projects";

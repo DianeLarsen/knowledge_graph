@@ -1,0 +1,127 @@
+import { type RelationshipType } from "@/db/schema";
+import { getRelationshipLabel } from "@/lib/entityRelationships";
+import type { LinkedEventSummary, LinkedTaskSummary } from "./noteCardTypes";
+
+type RichTextNode = {
+  type?: string;
+  attrs?: {
+    tagId?: string;
+    id?: string;
+    tagName?: string;
+  };
+  marks?: {
+    type?: string;
+    attrs?: {
+      tagId?: string;
+      tagName?: string;
+    };
+  }[];
+  content?: RichTextNode[];
+};
+
+export function getInlineTagInfo(contentJson: string | null) {
+  const ids = new Set<string>();
+  const names = new Set<string>();
+
+  if (!contentJson) {
+    return { ids, names };
+  }
+
+  try {
+    const doc: RichTextNode = JSON.parse(contentJson);
+
+    function walk(node: RichTextNode) {
+      if (!node) return;
+
+      node.marks?.forEach((mark) => {
+        if (mark.type === "tagMark") {
+          if (mark.attrs?.tagId) ids.add(mark.attrs.tagId);
+
+          if (mark.attrs?.tagName) {
+            names.add(mark.attrs.tagName.toLowerCase());
+          }
+        }
+      });
+
+      if (node.type === "mention") {
+        if (node.attrs?.id) ids.add(node.attrs.id);
+
+        if (node.attrs?.tagName) {
+          names.add(node.attrs.tagName.toLowerCase());
+        }
+      }
+
+      node.content?.forEach(walk);
+    }
+
+    walk(doc);
+  } catch {
+    return { ids, names };
+  }
+
+  return { ids, names };
+}
+
+export function getLinkedItemLabel(link: {
+  relationshipType: RelationshipType;
+}) {
+  return getRelationshipLabel(link.relationshipType);
+}
+
+export function getTaskStatusLabel(status: LinkedTaskSummary["status"]) {
+  if (status === "done") return "Complete";
+  if (status === "in_progress") return "In progress";
+  if (status === "awaiting") return "Awaiting";
+  if (status === "archived") return "Archived";
+
+  return "To do";
+}
+
+export function getEventStatusLabel(status: LinkedEventSummary["status"]) {
+  if (status === "done") return "Past";
+  if (status === "cancelled") return "Cancelled";
+
+  return "Planned";
+}
+
+export function getEventDateLabel(event: LinkedEventSummary) {
+  if (!event.endDate || event.endDate === event.startDate) {
+    return event.startDate;
+  }
+
+  return `${event.startDate} → ${event.endDate}`;
+}
+
+export function getLinkPillClass({
+  itemType,
+  taskStatus,
+  eventStatus,
+  direction,
+}: {
+  itemType: string;
+  taskStatus?: LinkedTaskSummary["status"];
+  eventStatus?: LinkedEventSummary["status"];
+  direction: "outgoing" | "backlink";
+}) {
+  if (itemType === "task") {
+    if (taskStatus === "done") {
+      return "border-green-300 bg-green-50 text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-green-950 dark:text-green-200";
+    }
+
+    return "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200";
+  }
+
+  if (itemType === "event") {
+    if (eventStatus === "done") {
+      return "border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300";
+    }
+
+    return "border-cyan-300 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-200";
+  }
+
+  if (direction === "backlink") {
+    return "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-300";
+  }
+
+  return "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300";
+}

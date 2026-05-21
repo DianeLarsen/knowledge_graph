@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import NewNoteComposer from "@/components/notes/NewNoteComposer";
-import NoteCard, { NoteDetails } from "@/components/notes/NoteCard";
+import WorkspaceNoteComposer from "@/components/notes/workspace/WorkspaceNoteComposer";
+import NoteCard from "@/components/notes/card/NoteCard";
+
+import type { NoteDetails } from "@/components/notes/card/noteCardTypes";
 import TagPanel from "@/components/notes/TagPanel";
 import NotesList from "@/components/notes/NotesList";
 import { Reference, Project } from "@/db/schema";
@@ -10,52 +12,43 @@ import {
   saveWorkspaceToProjectAction,
   suggestWorkspaceProjectTitleAction,
 } from "@/app/actions/workspace";
+import {
+  addUniqueIds,
+  getNoteIdsByTag,
+  getNoteOptions,
+  getOpenNotes,
+  getPlainTextLength,
+  getWorkspaceNotes,
+  getWorkspaceTags,
+  getWorkspaceTagStats,
+  removeIds,
+  areAllIdsIncluded,
+} from "@/components/notes/workspace/workspaceUtils";
 
-type WorkspaceProps = {
+type DesktopWorkspaceProps = {
   dataList: NoteDetails[];
   references: Reference[];
   projects: Project[];
   userId: string;
 };
 
-export default function NotesWorkspace({
+export default function DesktopNotesWorkspace({
   dataList,
   userId,
   references,
   projects,
-}: WorkspaceProps) {
+}: DesktopWorkspaceProps) {
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [suggestedProjectTitle, setSuggestedProjectTitle] = useState("");
   const [isSuggestingTitle, setIsSuggestingTitle] = useState(false);
 
-  const notes = dataList.map((data) => data.note);
-  const noteOptions = notes.map((note) => ({
-    id: note.id,
-    title: note.title,
-  }));
-
-  const tags = Array.from(
-    new Map(
-      dataList.flatMap((data) => data.tags).map((tag) => [tag.id, tag]),
-    ).values(),
-  );
-
-  const tagStats = tags.map((tag) => ({
-    tag,
-    stats: {
-      tagId: tag.id,
-      tagName: tag.name,
-      noteCount: dataList.filter((data) =>
-        data.tags.some((item) => item.id === tag.id),
-      ).length,
-    },
-  }));
-
-  const openNotes = dataList.filter((data) =>
-    openNoteIds.includes(data.note.id),
-  );
+  const notes = getWorkspaceNotes(dataList);
+  const noteOptions = getNoteOptions(dataList);
+  const tags = getWorkspaceTags(dataList);
+  const tagStats = getWorkspaceTagStats(dataList);
+  const openNotes = getOpenNotes(dataList, openNoteIds);
 
   async function handleSaveWorkspaceToProject(formData: FormData) {
     await saveWorkspaceToProjectAction(formData);
@@ -73,12 +66,17 @@ export default function NotesWorkspace({
   function closeNote(noteId: string) {
     setOpenNoteIds((current) => current.filter((id) => id !== noteId));
   }
-  function openCardsByTag(tagId: string) {
-    const matchingNoteIds = dataList
-      .filter((data) => data.tags.some((tag) => tag.id === tagId))
-      .map((data) => data.note.id);
 
-    setOpenNoteIds((current) => [...new Set([...current, ...matchingNoteIds])]);
+  function openCardsByTag(tagId: string) {
+    const matchingNoteIds = getNoteIdsByTag(dataList, tagId);
+
+    setOpenNoteIds((current) => {
+      const allOpen = areAllIdsIncluded(current, matchingNoteIds);
+
+      return allOpen
+        ? removeIds(current, matchingNoteIds)
+        : addUniqueIds(current, matchingNoteIds);
+    });
   }
 
   function closeAllCards() {
@@ -96,8 +94,6 @@ export default function NotesWorkspace({
   }
 
   const compactShouldScroll = openNotes.length > 3;
-  const compactTagLimit =
-    openNotes.length <= 1 ? 8 : openNotes.length === 2 ? 3 : 2;
 
   function handleOpenProjectModal() {
     setShowProjectModal(true);
@@ -129,11 +125,13 @@ export default function NotesWorkspace({
   }
 
   return (
-    <main className="min-h-screen bg-[rgb(var(--bg))] p-4 text-[rgb(var(--text))]">
-      <div className="grid gap-4 lg:grid-cols-[260px_1fr_320px]">
-        <aside className="space-y-5 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 text-[rgb(var(--text))]">
+    <main className="min-h-screen bg-[rgb(var(--bg))] p-2 text-[rgb(var(--text))] sm:p-3 lg:p-4">
+      <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)_280px] 2xl:grid-cols-[260px_minmax(0,1fr)_320px]">
+        <aside className="space-y-3 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3 text-[rgb(var(--text))] xl:sticky xl:top-3 xl:max-h-[calc(100vh-1.5rem)] xl:overflow-y-auto">
           <TagPanel
             tags={tags}
+            dataList={dataList}
+            openNoteIds={openNoteIds}
             tagStats={tagStats}
             onOpenCardsByTag={openCardsByTag}
           />
@@ -147,8 +145,8 @@ export default function NotesWorkspace({
           </div>
         </aside>
 
-        <section className="overflow-x-auto rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3 text-[rgb(var(--text))]">
-          <div className="mb-4 space-y-3">
+        <section className="min-w-0 overflow-x-auto rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-2 text-[rgb(var(--text))] sm:p-3">
+          <div className="mb-3 space-y-2">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-[rgb(var(--text))]">
@@ -176,12 +174,12 @@ export default function NotesWorkspace({
               </button>
             </div>
 
-            <div className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] p-3">
+            <div className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] p-2">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[rgb(var(--muted))]">
                 Save open cards
               </p>
 
-              <div className="grid gap-2 xl:grid-cols-[minmax(180px,1fr)_auto_auto]">
+              <div className="grid gap-2 lg:grid-cols-[minmax(180px,1fr)_auto_auto]">
                 <select
                   value={selectedProjectId}
                   onChange={(event) => setSelectedProjectId(event.target.value)}
@@ -255,7 +253,6 @@ export default function NotesWorkspace({
                 key={data.note.id}
                 data={data}
                 compact
-                compactTagLimit={compactTagLimit}
                 compactShouldScroll={
                   compactShouldScroll && getPlainTextLength(data) > 180
                 }
@@ -270,7 +267,11 @@ export default function NotesWorkspace({
           </div>
         </section>
 
-        <NewNoteComposer notes={notes} tags={tags} references={references} />
+        <WorkspaceNoteComposer
+          notes={notes}
+          tags={tags}
+          references={references}
+        />
       </div>
       {showProjectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">

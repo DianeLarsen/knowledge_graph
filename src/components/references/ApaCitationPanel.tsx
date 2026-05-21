@@ -3,18 +3,46 @@
 import { useState } from "react";
 import { Check, ChevronDown, ChevronRight, Copy } from "lucide-react";
 import { getApaCitation, getApaReference } from "@/lib/apa";
-import type { Reference } from "@/components/references/ReferenceCard";
+
+
+type ApaPanelReference = {
+  id: string;
+  type: string;
+  title: string | null;
+  author: string | null;
+  url: string | null;
+  publisher?: string | null;
+  publishedDate?: string | null;
+  citation?: string | null;
+  notes?: string | null;
+};
 
 type ApaCitationPanelProps = {
-  reference: Reference;
+  reference: ApaPanelReference;
 };
 
 export default function ApaCitationPanel({ reference }: ApaCitationPanelProps) {
   const [showApa, setShowApa] = useState(false);
   const [copiedApaReference, setCopiedApaReference] = useState(false);
   const [copiedApaCitation, setCopiedApaCitation] = useState(false);
-  const apaReference = getApaReference(reference);
-  const apaCitation = getApaCitation(reference);
+const normalizedReference: {
+  type?: string | null;
+  title: string;
+  author?: string | null;
+  url?: string | null;
+  publisher?: string | null;
+  publishedDate?: string | Date | null;
+} = {
+  type: reference.type,
+  title: reference.title?.trim() || "Untitled reference",
+  author: reference.author,
+  url: reference.url,
+  publisher: reference.publisher,
+  publishedDate: reference.publishedDate,
+};
+
+const apaReference = getApaReference(normalizedReference);
+const apaCitation = getApaCitation(normalizedReference);
   async function copyText(text: string, setCopied: (value: boolean) => void) {
     await navigator.clipboard.writeText(text);
     setCopied(true);
