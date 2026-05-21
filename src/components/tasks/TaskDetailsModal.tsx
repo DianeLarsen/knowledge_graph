@@ -82,6 +82,8 @@ export default function TaskDetailsModal({
         <PageQuickActions
           entityType="task"
           entityId={task.id}
+          sourceTitle={task.title}
+          sourceContent={task.description ?? ""}
           userId={userId}
           tags={tags}
           references={references}

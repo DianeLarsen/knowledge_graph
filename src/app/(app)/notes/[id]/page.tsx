@@ -76,6 +76,8 @@ export default async function NoteDetailsPage({
         <PageQuickActions
           entityType="note"
           entityId={data.note.id}
+          sourceTitle={data.note.title}
+          sourceContent={data.note.content ?? ""}
           userId={userId}
           tags={userTags}
           references={userReferences}

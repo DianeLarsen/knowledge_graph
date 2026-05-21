@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import CaptureAnalysis from "@/components/capture/CaptureAnalysis";
+import CaptureAnalysis from "@/components/capture/analysis/CaptureAnalysis";
 import {
   analyzeCaptureAction,
   markCaptureProcessedAction,
@@ -297,6 +297,8 @@ export default function CaptureList({
                       <CaptureAnalysis
                         analysisJson={capture.analysisJson}
                         captureId={capture.id}
+                        captureText={capture.rawText}
+                        notes={notes}
                       />
                     )}
                   </div>

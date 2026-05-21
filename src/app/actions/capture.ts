@@ -446,6 +446,11 @@ export async function createProjectFromCaptureAction(formData: FormData) {
   const captureId = String(formData.get("captureId") ?? "");
   const projectTitle = String(formData.get("projectTitle") ?? "").trim();
   const includeCapture = String(formData.get("includeCapture")) === "true";
+  const selectedExistingNoteIds = String(
+    formData.get("selectedExistingNoteIds") ?? "",
+  )
+    .split(",")
+    .filter(Boolean);
 
   const selectedTaskIndexes = String(formData.get("selectedTaskIndexes") ?? "")
     .split(",")
@@ -529,8 +534,8 @@ export async function createProjectFromCaptureAction(formData: FormData) {
     await addEntityToProject({
       userId,
       projectId: project.id,
-      entityType: "capture",
-      entityId: capture.id,
+      entityType: "task",
+      entityId: taskId,
       projectRole: "source",
     });
   }
@@ -561,8 +566,8 @@ export async function createProjectFromCaptureAction(formData: FormData) {
     await addEntityToProject({
       userId,
       projectId: project.id,
-      entityType: "capture",
-      entityId: capture.id,
+      entityType: "note",
+      entityId: noteId,
       projectRole: "source",
     });
   }
@@ -596,14 +601,25 @@ export async function createProjectFromCaptureAction(formData: FormData) {
     await addEntityToProject({
       userId,
       projectId: project.id,
-      entityType: "capture",
-      entityId: capture.id,
+      entityType: "reference",
+      entityId: referenceId,
       projectRole: "source",
     });
   }
-analysis.projectCreated = true;
-analysis.projectId = project.id;
-analysis.projectTitle = project.title;
+
+  for (const noteId of selectedExistingNoteIds) {
+    await addEntityToProject({
+      userId,
+      projectId: project.id,
+      entityType: "note",
+      entityId: noteId,
+      projectRole: "source",
+    });
+  }
+
+  analysis.projectCreated = true;
+  analysis.projectId = project.id;
+  analysis.projectTitle = project.title;
   await updateCaptureAnalysisJson({
     id: captureId,
     userId,

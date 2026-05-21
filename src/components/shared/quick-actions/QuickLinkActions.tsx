@@ -11,8 +11,10 @@ import type {
 import { createEntityLinkAction } from "@/app/actions/entityLinks";
 import { getRelationshipLabel } from "@/lib/entityRelationships";
 import { CalendarDays, CheckSquare, FileText, Library } from "lucide-react";
+import type { QuickLinkSuggestion } from "@/lib/types/quickSuggestions";
+import QuickSuggestionChips from "@/components/shared/quick-actions/QuickSuggestionChips";
 
-type LinkTargetType = "note" | "reference" | "task" | "event";
+export type LinkTargetType = "note" | "reference" | "task" | "event";
 
 type QuickLinkActionsProps = {
   entityType: EntityType;
@@ -29,6 +31,9 @@ type QuickLinkActionsProps = {
   onLinkedEventIdsChange?: (eventIds: string[]) => void;
   onLinkedNoteIdsChange?: (noteIds: string[]) => void;
   onLinkedReferenceIdsChange?: (referenceIds: string[]) => void;
+  linkSuggestions?: QuickLinkSuggestion[];
+  onSuggest?: () => void;
+  isSuggesting?: boolean;
 };
 
 function sortByTitle<T extends { title: string }>(items: T[]) {
@@ -59,6 +64,9 @@ export default function QuickLinkActions({
   onLinkedEventIdsChange,
   onLinkedNoteIdsChange,
   onLinkedReferenceIdsChange,
+  linkSuggestions = [],
+  onSuggest,
+  isSuggesting = false,
 }: QuickLinkActionsProps) {
   const [activePicker, setActivePicker] = useState<LinkTargetType | null>(null);
   const [selectedTargetId, setSelectedTargetId] = useState("");
@@ -236,6 +244,37 @@ export default function QuickLinkActions({
 
   return (
     <div className="space-y-3">
+      {onSuggest && (
+        <button
+          type="button"
+          onClick={onSuggest}
+          disabled={isSuggesting}
+          className="w-full rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 transition hover:bg-amber-100 disabled:opacity-60 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+        >
+          {isSuggesting ? "Thinking..." : "Suggest links"}
+        </button>
+      )}
+      <QuickSuggestionChips
+        title="Suggested links"
+        suggestions={linkSuggestions.filter((suggestion) => {
+          if (suggestion.type === "note")
+            return !linkedNoteIds.includes(suggestion.id);
+          if (suggestion.type === "reference")
+            return !linkedReferenceIds.includes(suggestion.id);
+          if (suggestion.type === "task")
+            return !linkedTaskIds.includes(suggestion.id);
+          if (suggestion.type === "event")
+            return !linkedEventIds.includes(suggestion.id);
+          return false;
+        })}
+        getKey={(suggestion) => `${suggestion.type}-${suggestion.id}`}
+        getLabel={(suggestion) => `${suggestion.type}: ${suggestion.title}`}
+        getDescription={(suggestion) => suggestion.reason}
+        onSelect={(suggestion) => {
+          openPicker(suggestion.type);
+          setSelectedTargetId(suggestion.id);
+        }}
+      />
       {linkedNotes.length > 0 && (
         <div className="mb-3">
           <p className={groupLabelClass}>Linked notes</p>

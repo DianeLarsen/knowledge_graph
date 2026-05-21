@@ -127,7 +127,7 @@ export default function DesktopNotesWorkspace({
   return (
     <main className="min-h-screen bg-[rgb(var(--bg))] p-2 text-[rgb(var(--text))] sm:p-3 lg:p-4">
       <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)_280px] 2xl:grid-cols-[260px_minmax(0,1fr)_320px]">
-        <aside className="space-y-3 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3 text-[rgb(var(--text))] xl:sticky xl:top-3 xl:max-h-[calc(100vh-1.5rem)] xl:overflow-y-auto">
+        <aside className="space-y-3 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] pl-3 pr-1 text-[rgb(var(--text))] xl:sticky xl:top-3 xl:max-h-[calc(100vh-1.5rem)] xl:overflow-y-auto">
           <TagPanel
             tags={tags}
             dataList={dataList}

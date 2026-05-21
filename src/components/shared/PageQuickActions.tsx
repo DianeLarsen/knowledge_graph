@@ -7,7 +7,10 @@ import QuickCreateActions from "@/components/shared/quick-actions/QuickCreateAct
 import QuickProjectActions from "@/components/shared/quick-actions/QuickProjectActions";
 import QuickTagActions from "@/components/shared/quick-actions/QuickTagActions";
 import QuickLinkActions from "@/components/shared/quick-actions/QuickLinkActions";
-
+import {
+  suggestQuickCreatesAction,
+  suggestQuickLinksAction,
+} from "@/app/actions/quickSuggestions";
 import type { EntityType, Project } from "@/db/schema";
 import type {
   QuickTag,
@@ -16,6 +19,11 @@ import type {
   QuickTask,
   QuickEvent,
 } from "@/lib/types/quickTypes";
+
+import type {
+  QuickCreateSuggestion,
+  QuickLinkSuggestion,
+} from "@/lib/types/quickSuggestions";
 
 type PageQuickActionsProps = {
   entityType: EntityType;
@@ -39,6 +47,8 @@ type PageQuickActionsProps = {
   onLinkedNoteIdsChange?: (noteIds: string[]) => void;
   onLinkedReferenceIdsChange?: (referenceIds: string[]) => void;
   tagSuggestionText?: string;
+  sourceTitle?: string;
+  sourceContent?: string;
 };
 
 type QuickActionSectionProps = {
@@ -118,9 +128,70 @@ export default function PageQuickActions({
   onLinkedNoteIdsChange,
   onLinkedReferenceIdsChange,
   tagSuggestionText = "",
+  sourceTitle = "",
+  sourceContent = "",
 }: PageQuickActionsProps) {
   const [open, setOpen] = useState(false);
+  const [isSuggestingCreates, setIsSuggestingCreates] = useState(false);
+  const [isSuggestingLinks, setIsSuggestingLinks] = useState(false);
+  const [createSuggestions, setCreateSuggestions] = useState<
+    QuickCreateSuggestion[]
+  >([]);
+  const [linkSuggestions, setLinkSuggestions] = useState<QuickLinkSuggestion[]>(
+    [],
+  );
 
+
+
+  async function handleSuggestCreates() {
+    if (isSuggestingCreates) return;
+
+    try {
+      setIsSuggestingCreates(true);
+
+      const suggestions = await suggestQuickCreatesAction({
+        entityType,
+        entityId,
+        sourceTitle,
+        sourceContent,
+      });
+
+      setCreateSuggestions(suggestions);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSuggestingCreates(false);
+    }
+  }
+
+  async function handleSuggestLinks() {
+    if (isSuggestingLinks) return;
+
+    try {
+      setIsSuggestingLinks(true);
+
+      const suggestions = await suggestQuickLinksAction({
+        entityType,
+        entityId,
+        sourceTitle,
+        sourceContent,
+        notes,
+        references,
+        tasks,
+        events,
+        linkedNoteIds,
+        linkedReferenceIds,
+        linkedTaskIds,
+        linkedEventIds,
+      });
+
+      setLinkSuggestions(suggestions);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSuggestingLinks(false);
+    }
+  }
   return (
     <aside className="relative z-30 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-2 text-[rgb(var(--text))] shadow-sm lg:sticky lg:top-6 lg:h-fit">
       <button
@@ -152,7 +223,13 @@ export default function PageQuickActions({
           title="Create"
           description="Make related tasks, notes, captures, or events."
         >
-          <QuickCreateActions entityType={entityType} entityId={entityId} />
+          <QuickCreateActions
+            entityType={entityType}
+            entityId={entityId}
+            suggestions={createSuggestions}
+            onSuggest={handleSuggestCreates}
+            isSuggesting={isSuggestingCreates}
+          />
         </QuickActionSection>
 
         <QuickActionSection
@@ -199,6 +276,9 @@ export default function PageQuickActions({
             linkedReferenceIds={linkedReferenceIds}
             linkedTaskIds={linkedTaskIds}
             linkedEventIds={linkedEventIds}
+            linkSuggestions={linkSuggestions}
+            onSuggest={handleSuggestLinks}
+            isSuggesting={isSuggestingLinks}
             onLinkedNoteIdsChange={onLinkedNoteIdsChange}
             onLinkedReferenceIdsChange={onLinkedReferenceIdsChange}
             onLinkedTaskIdsChange={onLinkedTaskIdsChange}

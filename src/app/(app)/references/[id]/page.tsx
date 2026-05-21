@@ -82,6 +82,14 @@ if (!userId) {
           <PageQuickActions
             entityType="reference"
             entityId={reference.id}
+            sourceTitle={reference.title ?? ""}
+            sourceContent={[
+              reference.author,
+              reference.citation,
+              reference.notes,
+            ]
+              .filter(Boolean)
+              .join("\n")}
             userId={userId}
             tags={tags}
             references={references}

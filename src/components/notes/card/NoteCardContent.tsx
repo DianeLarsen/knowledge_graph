@@ -23,13 +23,7 @@ export default function NoteCardContent({
     <div
       className={`
         ${compact ? "h-[180px] pb-2 pt-0" : "min-h-[150px] pb-2 pt-0"}
-        ${
-          compact && compactShouldScroll
-            ? "overflow-y-auto scrollbar-gutter-stable custom-scrollbar"
-            : compact
-              ? "overflow-hidden"
-              : ""
-        }
+       ${compact ? "overflow-y-auto scrollbar-gutter-stable custom-scrollbar" : ""}
       `}
     >
       <div
