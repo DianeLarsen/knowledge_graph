@@ -129,8 +129,7 @@ export default function ReadOnlyNoteContent({
   tags = [],
   tagColorMap = {},
 }: ReadOnlyNoteContentProps) {
-  const [mounted, setMounted] = useState(false);
-  const [preview, setPreview] = useState<
+   const [preview, setPreview] = useState<
     | {
         type: "reference";
         x: number;
@@ -146,9 +145,6 @@ export default function ReadOnlyNoteContent({
     | null
     >(null);
   
-  useEffect(() => {
-    setMounted(true);
-  }, []);
   const contentRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   
@@ -388,7 +384,7 @@ export default function ReadOnlyNoteContent({
       "
       />
 
-      {mounted &&
+      {typeof document !== "undefined" &&
         preview &&
         createPortal(
           <div

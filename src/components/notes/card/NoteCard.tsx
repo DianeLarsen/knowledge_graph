@@ -25,7 +25,6 @@ export default function NoteCard({
   userId,
   userTags = [],
   userReferences = [],
-  compactShouldScroll = false,
 }: NoteCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -103,8 +102,7 @@ export default function NoteCard({
           references={references}
           tagColorMap={tagColorMap}
           compact={compact}
-          compactShouldScroll={compactShouldScroll}
-        />
+          />
 
         <NoteCardDetails
           noteId={note.id}

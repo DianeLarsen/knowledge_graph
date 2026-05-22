@@ -33,7 +33,7 @@ export const TagMark = Mark.create({
     const tagName = HTMLAttributes.tagName ?? "";
     const color = (HTMLAttributes.color as TagColor | undefined) ?? "blue";
 
-    const { class: _className, ...safeAttributes } = HTMLAttributes;
+    const { class: safeAttributes } = HTMLAttributes;
 
     return [
       "span",

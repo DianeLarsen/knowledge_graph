@@ -19,12 +19,10 @@ const openai = new OpenAI({
 
 export async function suggestQuickCreatesAction({
   entityType,
-  entityId,
   sourceTitle,
   sourceContent,
 }: {
   entityType: EntityType;
-  entityId: string;
   sourceTitle?: string;
   sourceContent?: string;
 }): Promise<QuickCreateSuggestion[]> {
@@ -187,15 +185,24 @@ ${JSON.stringify(
     title: event.title,
     description: "description" in event ? event.description : undefined,
   })),
-)}`
+)}`,
   });
 
   return parseSuggestions<QuickLinkSuggestion>(response.output_text);
 }
 
-  function cleanSuggestionTitle(title: string) {
-    return title.trim().replace(/\s+/g, " ");
-  }
+function cleanSuggestionTitle(title: string) {
+  return title.trim().replace(/\s+/g, " ");
+}
+
+type SuggestionLike = {
+  title?: unknown;
+  [key: string]: unknown;
+};
+
+function isSuggestionLike(value: unknown): value is SuggestionLike {
+  return typeof value === "object" && value !== null;
+}
 
 function parseSuggestions<T>(text?: string): T[] {
   if (!text) return [];
@@ -204,16 +211,20 @@ function parseSuggestions<T>(text?: string): T[] {
   if (!jsonMatch) return [];
 
   try {
-    const parsed = JSON.parse(jsonMatch[0]);
-    return Array.isArray(parsed.suggestions)
-      ? parsed.suggestions
-          .filter((item: any) => item?.title && typeof item.title === "string")
-          .map((item: any) => ({
-            ...item,
-            title: cleanSuggestionTitle(item.title),
-          }))
-          .filter((item: any) => item.title.length >= 4)
-      : [];
+    const parsed = JSON.parse(jsonMatch[0]) as {
+      suggestions?: unknown;
+    };
+
+    if (!Array.isArray(parsed.suggestions)) return [];
+
+    return parsed.suggestions
+      .filter(isSuggestionLike)
+      .filter((item) => typeof item.title === "string")
+      .map((item) => ({
+        ...item,
+        title: cleanSuggestionTitle(item.title as string),
+      }))
+      .filter((item) => item.title.length >= 4) as T[];
   } catch {
     return [];
   }

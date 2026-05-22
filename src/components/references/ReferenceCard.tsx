@@ -73,8 +73,8 @@ export default function ReferenceCard({
             </button>
 
             <form
-              action={() => {
-                deleteReferenceAction.bind(null, reference.id);
+              action={async () => {
+                await deleteReferenceAction(reference.id);
               }}
             >
               <button

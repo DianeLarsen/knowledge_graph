@@ -16,7 +16,6 @@ import {
   getNoteIdsByTag,
   getNoteOptions,
   getOpenNotes,
-  getPlainTextLength,
   getWorkspaceNotes,
   getWorkspaceTags,
   getWorkspaceTagStats,
@@ -186,7 +185,6 @@ function openCardsByTag(tagId: string) {
                 data={data}
                 compact
                 compactTagLimit={3}
-                compactShouldScroll
                 allNotes={noteOptions}
                 userTags={tags}
                 userReferences={references}

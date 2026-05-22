@@ -95,6 +95,5 @@ export type NoteCardProps = {
   userTags?: NoteCardTag[];
   userReferences?: Reference[];
   userId: string;
-  compactShouldScroll?: boolean;
   compactTagLimit?: number;
 };

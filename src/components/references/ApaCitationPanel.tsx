@@ -12,7 +12,7 @@ type ApaPanelReference = {
   author: string | null;
   url: string | null;
   publisher?: string | null;
-  publishedDate?: string | null;
+  publishedDate?: string | Date | null;
   citation?: string | null;
   notes?: string | null;
 };

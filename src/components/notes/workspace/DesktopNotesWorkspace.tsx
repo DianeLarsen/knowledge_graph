@@ -17,7 +17,6 @@ import {
   getNoteIdsByTag,
   getNoteOptions,
   getOpenNotes,
-  getPlainTextLength,
   getWorkspaceNotes,
   getWorkspaceTags,
   getWorkspaceTagStats,
@@ -88,12 +87,6 @@ export default function DesktopNotesWorkspace({
       current.includes(noteId) ? current : [...current, noteId],
     );
   }
-
-  function getPlainTextLength(data: NoteDetails) {
-    return data.note.content?.length ?? 0;
-  }
-
-  const compactShouldScroll = openNotes.length > 3;
 
   function handleOpenProjectModal() {
     setShowProjectModal(true);
@@ -253,9 +246,6 @@ export default function DesktopNotesWorkspace({
                 key={data.note.id}
                 data={data}
                 compact
-                compactShouldScroll={
-                  compactShouldScroll && getPlainTextLength(data) > 180
-                }
                 allNotes={noteOptions}
                 userTags={tags}
                 userReferences={references}

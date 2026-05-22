@@ -354,10 +354,8 @@ export async function updateProjectItemRoleAction({
   projectItemId: string;
   projectRole: "item" | "source" | "working" | "completed" | "reference";
 }) {
-  const userId = await getCurrentUserId();
 
   await updateProjectItemRole({
-    userId,
     projectItemId,
     projectRole,
   });

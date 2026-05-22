@@ -10,14 +10,12 @@ export default function NoteCardContent({
   references,
   tagColorMap,
   compact,
-  compactShouldScroll,
 }: {
   note: Note;
   tags: NoteCardTag[];
   references: NoteLinkedReference[];
   tagColorMap: Map<string, TagColor>;
   compact: boolean;
-  compactShouldScroll: boolean;
 }) {
   return (
     <div

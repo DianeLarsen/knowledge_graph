@@ -19,17 +19,33 @@ import {
 } from "@/components/notes/editor/richNoteEditorStyles";
 import { TagColor } from "@/lib/types/tags/tagColors";
 
-function hydrateTagColors(node: any, tagMap: Record<string, TagColor>) {
-  if (!node) return node;
+type HydratableMark = {
+  type?: string;
+  attrs?: {
+    tagId?: string;
+    tagName?: string;
+    color?: TagColor;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
 
+type HydratableNode = {
+  content?: HydratableNode[];
+  marks?: HydratableMark[];
+  [key: string]: unknown;
+};
+
+function hydrateTagColors(
+  node: HydratableNode,
+  tagMap: Record<string, TagColor>,
+): HydratableNode {
   if (Array.isArray(node.content)) {
-    node.content = node.content.map((child: any) =>
-      hydrateTagColors(child, tagMap),
-    );
+    node.content = node.content.map((child) => hydrateTagColors(child, tagMap));
   }
 
   if (Array.isArray(node.marks)) {
-    node.marks = node.marks.map((mark: any) => {
+    node.marks = node.marks.map((mark) => {
       if (mark.type === "tagMark") {
         const tagId = mark.attrs?.tagId;
         const tagName = mark.attrs?.tagName?.toLowerCase();
@@ -39,7 +55,10 @@ function hydrateTagColors(node: any, tagMap: Record<string, TagColor>) {
           attrs: {
             ...mark.attrs,
             color:
-              mark.attrs?.color ?? tagMap[tagId] ?? tagMap[tagName] ?? "blue",
+              mark.attrs?.color ??
+              tagMap[tagId ?? ""] ??
+              tagMap[tagName ?? ""] ??
+              "blue",
           },
         };
       }
@@ -65,7 +84,6 @@ function hydrateInitialContent(
   }
 }
 
-
 export default function RichNoteEditor({
   initialContent,
   tags,
@@ -84,71 +102,6 @@ export default function RichNoteEditor({
   const [selectedText, setSelectedText] = useState("");
   const menuRef = useRef<HTMLDivElement | null>(null);
   const tagColorMapRef = useRef(tagColorMap);
-
-  useEffect(() => {
-    tagColorMapRef.current = tagColorMap;
-  }, [tagColorMap]);
-
-  useEffect(() => {
-    function handleClick(event: MouseEvent) {
-      if (!menuRef.current) return;
-
-      if (!menuRef.current.contains(event.target as Node)) {
-        setContextMenu(null);
-      }
-    }
-
-    window.addEventListener("mousedown", handleClick);
-
-    return () => {
-      window.removeEventListener("mousedown", handleClick);
-    };
-  }, []);
-
-  const tagsRef = useRef(tags);
-  const referencesRef = useRef(references);
-  const selectedReferenceIdsRef = useRef(selectedReferenceIds);
-  const inlineReferenceIdsRef = useRef(inlineReferenceIds);
-  const editorWrapperRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    tagsRef.current = tags;
-  }, [tags]);
-
-  useEffect(() => {
-    referencesRef.current = references;
-  }, [references]);
-
-  useEffect(() => {
-    selectedReferenceIdsRef.current = selectedReferenceIds;
-  }, [selectedReferenceIds]);
-
-  useEffect(() => {
-    inlineReferenceIdsRef.current = inlineReferenceIds;
-  }, [inlineReferenceIds]);
-
-const hydratedInitialContent = hydrateInitialContent(
-  initialContent,
-  tagColorMap,
-);
-  
-  
-  const editor = useRichNoteEditor({
-    initialContent: hydratedInitialContent,
-    tagsRef,
-    onChange,
-    onTagUsed,
-    applyInlineTagColors: scheduleInlineTagColors,
-  });
-
-  useEffect(() => {
-    scheduleInlineTagColors();
-  }, [editor, tagColorMap, tags]);
-
-  if (!editor) {
-    return null;
-  }
-
   function applyInlineTagColors() {
     const root = editorWrapperRef.current;
     if (!root) return;
@@ -166,7 +119,7 @@ const hydratedInitialContent = hydrateInitialContent(
 
       const tagName = element.getAttribute("data-tag-name");
 
-      const tag = tagsRef.current.find(
+      const tag = tags.find(
         (item) =>
           item.id === tagId ||
           item.name.toLowerCase() === tagName?.toLowerCase(),
@@ -189,6 +142,78 @@ const hydratedInitialContent = hydrateInitialContent(
 
       element.setAttribute("data-tag-color-applied", color);
     });
+  }
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      applyInlineTagColors();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tagColorMap]);
+
+  useEffect(() => {
+    function handleClick(event: MouseEvent) {
+      if (!menuRef.current) return;
+
+      if (!menuRef.current.contains(event.target as Node)) {
+        setContextMenu(null);
+      }
+    }
+
+    window.addEventListener("mousedown", handleClick);
+
+    return () => {
+      window.removeEventListener("mousedown", handleClick);
+    };
+  }, []);
+
+  const referencesRef = useRef(references);
+  const selectedReferenceIdsRef = useRef(selectedReferenceIds);
+  const inlineReferenceIdsRef = useRef(inlineReferenceIds);
+  const editorWrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    tagColorMapRef.current = tagColorMap;
+  }, [tagColorMap]);
+
+  useEffect(() => {
+    referencesRef.current = references;
+  }, [references]);
+
+  useEffect(() => {
+    selectedReferenceIdsRef.current = selectedReferenceIds;
+  }, [selectedReferenceIds]);
+
+  useEffect(() => {
+    inlineReferenceIdsRef.current = inlineReferenceIds;
+  }, [inlineReferenceIds]);
+
+  const hydratedInitialContent = hydrateInitialContent(
+    initialContent,
+    tagColorMap,
+  );
+
+  function scheduleInlineTagColors() {
+    requestAnimationFrame(() => {
+      applyInlineTagColors();
+    });
+  }
+
+  const editor = useRichNoteEditor({
+    initialContent: hydratedInitialContent,
+    tags,
+    onChange,
+    onTagUsed,
+    applyInlineTagColors: scheduleInlineTagColors,
+  });
+
+  useEffect(() => {
+    scheduleInlineTagColors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, tagColorMap, tags]);
+
+  if (!editor) {
+    return null;
   }
 
   function closeContextMenu() {
@@ -450,12 +475,6 @@ const hydratedInitialContent = hydrateInitialContent(
     };
   }
 
-  function scheduleInlineTagColors() {
-    requestAnimationFrame(() => {
-      applyInlineTagColors();
-    });
-  }
-
   return (
     <div className="rounded-xl border border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-950">
       <RichNoteEditorToolbar editor={editor} />
@@ -571,7 +590,7 @@ const hydratedInitialContent = hydrateInitialContent(
                   ))}
                 </div>
               )}
-              {tagsRef.current.length > 0 && (
+              {tags.length > 0 && (
                 <div className="mt-2 border-t border-gray-200 pt-2 dark:border-gray-700">
                   <p className="px-3 pb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                     {contextMenu.hasTagMark
@@ -580,7 +599,7 @@ const hydratedInitialContent = hydrateInitialContent(
                   </p>
 
                   <div className="max-h-32 overflow-y-auto">
-                    {tagsRef.current
+                    {tags
                       .filter(
                         (tag) =>
                           !contextMenu.tags.some(
@@ -615,7 +634,7 @@ const hydratedInitialContent = hydrateInitialContent(
                 </div>
               )}
 
-              {referencesRef.current.length > 0 && (
+              {references.length > 0 && (
                 <div className="mt-2 border-t border-gray-200 pt-2 dark:border-gray-700">
                   <p className="px-3 pb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                     {contextMenu.hasReferenceMark
@@ -624,7 +643,7 @@ const hydratedInitialContent = hydrateInitialContent(
                   </p>
 
                   <div className="max-h-40 overflow-y-auto">
-                    {referencesRef.current
+                    {references
                       .filter(
                         (reference) =>
                           !contextMenu.references.some(
@@ -633,11 +652,10 @@ const hydratedInitialContent = hydrateInitialContent(
                           ),
                       )
                       .map((reference) => {
-                        const selected =
-                          selectedReferenceIdsRef.current.includes(
-                            reference.id,
-                          );
-                        const isInline = inlineReferenceIdsRef.current.includes(
+                        const selected = selectedReferenceIds.includes(
+                          reference.id,
+                        );
+                        const isInline = inlineReferenceIds.includes(
                           reference.id,
                         );
                         return (

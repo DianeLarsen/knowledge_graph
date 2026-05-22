@@ -53,7 +53,6 @@ export default function WorkspaceNoteComposer({
 
   const router = useRouter();
   const titleMissing = savedMessage.includes("card title");
-  const composerText = `${title} ${content}`.toLowerCase();
 
   const suggestedTags = tags
     .map((tag) => {

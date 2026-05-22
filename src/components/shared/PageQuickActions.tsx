@@ -151,7 +151,6 @@ export default function PageQuickActions({
 
       const suggestions = await suggestQuickCreatesAction({
         entityType,
-        entityId,
         sourceTitle,
         sourceContent,
       });

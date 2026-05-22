@@ -639,11 +639,9 @@ export async function deleteProject(projectId: string, userId: string) {
 }
 
 export async function updateProjectItemRole({
-  userId,
   projectItemId,
   projectRole,
 }: {
-  userId: string;
   projectItemId: string;
   projectRole: "item" | "source" | "working" | "completed" | "reference";
 }) {

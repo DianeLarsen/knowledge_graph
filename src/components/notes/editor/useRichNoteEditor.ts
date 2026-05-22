@@ -5,8 +5,6 @@ import StarterKit from "@tiptap/starter-kit";
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import Mention from "@tiptap/extension-mention";
-import { RefObject } from "react";
-
 import { Tag } from "@/db/schema";
 import { TagMark } from "@/lib/tiptap/extensions/TagMark";
 import { ReferenceMark } from "@/lib/tiptap/extensions/ReferenceMark";
@@ -17,7 +15,7 @@ import type {
 
 type UseRichNoteEditorArgs = {
   initialContent: string | object;
-  tagsRef: RefObject<Tag[]>;
+  tags: Tag[];
   onChange: (data: { plainText: string; json: string }) => void;
   onTagUsed?: (tagName: string) => void;
   applyInlineTagColors: () => void;
@@ -25,7 +23,7 @@ type UseRichNoteEditorArgs = {
 
 export function useRichNoteEditor({
   initialContent,
-  tagsRef,
+  tags,
   onChange,
   onTagUsed,
   applyInlineTagColors,
@@ -82,7 +80,7 @@ export function useRichNoteEditor({
             items: ({ query }) => {
               const cleanQuery = query.trim();
 
-              const matches = tagsRef.current
+              const matches = tags
                 .filter((tag) =>
                   tag.name.toLowerCase().startsWith(cleanQuery.toLowerCase()),
                 )
@@ -210,7 +208,7 @@ export function useRichNoteEditor({
         queueMicrotask(applyInlineTagColors);
       },
     },
-    [],
+    [tags, initialContent],
   );
 }
 

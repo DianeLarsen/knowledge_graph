@@ -12,6 +12,18 @@ import { colorClassMap } from "@/lib/tagColorClasses";
 import { TagColor } from "@/lib/types/tags/tagColors";
 import { suggestTagsForNoteAction } from "@/app/actions/tagSuggestions";
 
+type EditorJsonMark = {
+  type?: string;
+  attrs?: {
+    tagName?: string;
+  };
+};
+
+type EditorJsonNode = {
+  marks?: EditorJsonMark[];
+  content?: EditorJsonNode[];
+};
+
 type AiSuggestedTag = {
   name: string;
   exists: boolean;
@@ -104,21 +116,17 @@ export default function EditNoteForm({
     if (!contentJson) return [];
 
     try {
-      const parsed = JSON.parse(contentJson);
+      const parsed = JSON.parse(contentJson) as EditorJsonNode;
       const tagNames = new Set<string>();
 
-      function walk(node: any) {
-        if (node.marks) {
-          node.marks.forEach((mark: any) => {
-            if (mark.type === "tagMark" && mark.attrs?.tagName) {
-              tagNames.add(mark.attrs.tagName);
-            }
-          });
-        }
+      function walk(node: EditorJsonNode) {
+        node.marks?.forEach((mark) => {
+          if (mark.type === "tagMark" && mark.attrs?.tagName) {
+            tagNames.add(mark.attrs.tagName);
+          }
+        });
 
-        if (node.content) {
-          node.content.forEach(walk);
-        }
+        node.content?.forEach(walk);
       }
 
       walk(parsed);
@@ -127,14 +135,6 @@ export default function EditNoteForm({
     } catch {
       return [];
     }
-  }
-
-  function getInlineTagNameSet(contentJson: string | null) {
-    return new Set(
-      extractTagNamesFromContentJson(contentJson).map((name) =>
-        name.toLowerCase(),
-      ),
-    );
   }
 
   function normalizeTagName(value: string) {
