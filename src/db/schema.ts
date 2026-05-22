@@ -384,7 +384,7 @@ export const projectItems = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
 
     projectRole: text("project_role", {
-      enum: ["source", "working", "completed", "reference"],
+      enum: ["item", "source", "working", "completed", "reference"],
     })
       .notNull()
       .default("working"),

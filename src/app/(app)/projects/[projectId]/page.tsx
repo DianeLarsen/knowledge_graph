@@ -4,8 +4,9 @@ import ProjectWorkspaceItemCard from "@/components/projects/ProjectWorkspaceItem
 import { getCurrentUserId } from "@/db/queries/users";
 import { getTagsForEntity } from "@/db/queries/tags";
 import {
+  unarchiveProjectAction,
   archiveProjectAction,
-  getProjectByIdAction,
+  getAllProjectByIdAction,
   getProjectItemsWithDetailsAction,
 } from "@/app/actions/projects";
 
@@ -40,8 +41,8 @@ const PROJECT_ROLE_LABELS = {
 export default async function ProjectDetailPage({ params }: ProjectPageProps) {
   const { projectId } = await params;
 
-  const project = await getProjectByIdAction(projectId);
-
+  const project = await getAllProjectByIdAction(projectId);
+console.log(project)
   if (!project) {
     notFound();
   }
@@ -81,7 +82,13 @@ export default async function ProjectDetailPage({ params }: ProjectPageProps) {
         </Link>
       </div>
 
-      <header className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950">
+      <header
+        className={`rounded-2xl border p-5 shadow-sm ${
+          project.status === "archived"
+            ? "border-amber-300 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/20"
+            : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
+        }`}
+      >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -119,14 +126,29 @@ export default async function ProjectDetailPage({ params }: ProjectPageProps) {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <Link
-              href={`/projects/${project.id}/workspace`}
-              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-            >
-              Open Workspace
-            </Link>
+            {project.status === "archived" ? (
+              <span className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-400 dark:border-gray-700 dark:text-gray-500">
+                Workspace archived
+              </span>
+            ) : (
+              <Link
+                href={`/projects/${project.id}/workspace`}
+                className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                Open Workspace
+              </Link>
+            )}
 
-            {project.status !== "archived" && (
+            {project.status === "archived" ? (
+              <form action={unarchiveProjectAction.bind(null, project.id)}>
+                <button
+                  type="submit"
+                  className="rounded-lg border border-green-300 px-3 py-2 text-sm font-semibold text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-950"
+                >
+                  Unarchive
+                </button>
+              </form>
+            ) : (
               <form action={archiveProjectAction.bind(null, project.id)}>
                 <button
                   type="submit"

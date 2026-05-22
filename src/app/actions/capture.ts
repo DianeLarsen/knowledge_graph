@@ -446,6 +446,7 @@ export async function createProjectFromCaptureAction(formData: FormData) {
   const captureId = String(formData.get("captureId") ?? "");
   const projectTitle = String(formData.get("projectTitle") ?? "").trim();
   const includeCapture = String(formData.get("includeCapture")) === "true";
+
   const selectedExistingNoteIds = String(
     formData.get("selectedExistingNoteIds") ?? "",
   )
@@ -455,19 +456,22 @@ export async function createProjectFromCaptureAction(formData: FormData) {
   const selectedTaskIndexes = String(formData.get("selectedTaskIndexes") ?? "")
     .split(",")
     .filter(Boolean)
-    .map(Number);
+    .map(Number)
+    .filter((index) => !Number.isNaN(index));
 
   const selectedNoteIndexes = String(formData.get("selectedNoteIndexes") ?? "")
     .split(",")
     .filter(Boolean)
-    .map(Number);
+    .map(Number)
+    .filter((index) => !Number.isNaN(index));
 
   const selectedReferenceIndexes = String(
     formData.get("selectedReferenceIndexes") ?? "",
   )
     .split(",")
     .filter(Boolean)
-    .map(Number);
+    .map(Number)
+    .filter((index) => !Number.isNaN(index));
 
   if (!captureId || !projectTitle) {
     throw new Error("Missing capture ID or project title.");
@@ -536,7 +540,7 @@ export async function createProjectFromCaptureAction(formData: FormData) {
       projectId: project.id,
       entityType: "task",
       entityId: taskId,
-      projectRole: "source",
+      projectRole: "item",
     });
   }
 
@@ -568,7 +572,7 @@ export async function createProjectFromCaptureAction(formData: FormData) {
       projectId: project.id,
       entityType: "note",
       entityId: noteId,
-      projectRole: "source",
+      projectRole: "item",
     });
   }
 
@@ -603,7 +607,7 @@ export async function createProjectFromCaptureAction(formData: FormData) {
       projectId: project.id,
       entityType: "reference",
       entityId: referenceId,
-      projectRole: "source",
+      projectRole: "item",
     });
   }
 
@@ -613,13 +617,14 @@ export async function createProjectFromCaptureAction(formData: FormData) {
       projectId: project.id,
       entityType: "note",
       entityId: noteId,
-      projectRole: "source",
+      projectRole: "item",
     });
   }
 
   analysis.projectCreated = true;
   analysis.projectId = project.id;
   analysis.projectTitle = project.title;
+
   await updateCaptureAnalysisJson({
     id: captureId,
     userId,
@@ -628,6 +633,7 @@ export async function createProjectFromCaptureAction(formData: FormData) {
 
   revalidatePath("/capture");
   revalidatePath("/projects");
+  revalidatePath(`/projects/${project.id}`);
 
   return project;
 }

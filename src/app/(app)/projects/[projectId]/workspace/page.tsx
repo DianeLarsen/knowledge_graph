@@ -42,12 +42,13 @@ export default async function ProjectWorkspacePage({
   }
   const userId = await getCurrentUserId();
 
-  const [items, availableItems, notes, tags, references] = await Promise.all([
+  const [items, availableItems, notes, tags, references, projectTags] = await Promise.all([
     getProjectItemsWithDetailsAction(project.id),
     getAvailableProjectItemsAction(project.id),
     getNotesForUser(userId),
     getTagsForUser(userId),
     getReferencesForUser(userId),
+    getTagsForEntity(userId, "project", project.id),
   ]);
 
   const sources = items.filter((item) => item.projectRole === "source");
@@ -56,7 +57,7 @@ export default async function ProjectWorkspacePage({
   const referenceItems = items.filter(
     (item) => item.projectRole === "reference",
   );
-  const projectTags = await getTagsForEntity(userId, "project", project.id);
+ 
 
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-8">
@@ -82,6 +83,9 @@ export default async function ProjectWorkspacePage({
       </header>
       <ProjectWorkspaceActions
         projectId={project.id}
+        projectTitle={project.title}
+        projectDescription={project.description}
+        isEmptyProject={items.length === 0}
         existingItems={availableItems}
         notes={notes}
         tags={tags}

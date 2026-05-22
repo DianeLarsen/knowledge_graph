@@ -22,6 +22,33 @@ export type AvailableProjectItem = {
   entityType: EntityType;
 };
 
+type AddEntityToProjectInput = {
+  userId: string;
+  projectId: string;
+  entityType: EntityType;
+  entityId: string;
+  projectRole?: NewProjectItem["projectRole"];
+};
+
+export type ProjectItemWithDetails = ProjectItem & {
+  title: string;
+  subtitle: string | null;
+  href: string;
+  status?: string | null;
+  tags: {
+    id: string;
+    name: string;
+  }[];
+};
+
+type CreateProjectInput = {
+  userId: string;
+  title: string;
+  description?: string | null;
+  visibility?: NewProject["visibility"];
+  status?: NewProject["status"];
+};
+
 export async function getUserProjects(userId: string) {
   return db
     .select()
@@ -46,13 +73,15 @@ export async function getProjectById(projectId: string, userId: string) {
   return project ?? null;
 }
 
-type CreateProjectInput = {
-  userId: string;
-  title: string;
-  description?: string | null;
-  visibility?: NewProject["visibility"];
-  status?: NewProject["status"];
-};
+export async function getAllProjectById(projectId: string, userId: string) {
+  const [project] = await db
+    .select()
+    .from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.ownerId, userId)))
+    .limit(1);
+
+  return project ?? null;
+}
 
 export async function createProject(
   userIdOrInput: string | CreateProjectInput,
@@ -123,12 +152,34 @@ export async function updateProject(
   return project ?? null;
 }
 
+export async function updateProjectStatus({
+  userId,
+  projectId,
+  status,
+}: {
+  userId: string;
+  projectId: string;
+  status: "active" | "archived" | "completed";
+}) {
+  const [project] = await db
+    .update(projects)
+    .set({
+      status,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(eq(projects.id, projectId), eq(projects.createdByUserId, userId)),
+    )
+    .returning();
+
+  return project;
+}
+
 export async function archiveProject(projectId: string, userId: string) {
   const [project] = await db
     .update(projects)
     .set({
       status: "archived",
-      deletedAt: new Date(),
       updatedAt: new Date(),
     })
     .where(
@@ -143,13 +194,24 @@ export async function archiveProject(projectId: string, userId: string) {
   return project ?? null;
 }
 
-type AddEntityToProjectInput = {
-  userId: string;
-  projectId: string;
-  entityType: EntityType;
-  entityId: string;
-  projectRole?: NewProjectItem["projectRole"];
-};
+export async function unarchiveProject(projectId: string, userId: string) {
+  const [project] = await db
+    .update(projects)
+    .set({
+      status: "active",
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(projects.id, projectId),
+        eq(projects.ownerId, userId),
+        isNull(projects.deletedAt),
+      ),
+    )
+    .returning();
+
+  return project ?? null;
+}
 
 export async function addEntityToProject(
   userIdOrInput: string | AddEntityToProjectInput,
@@ -237,17 +299,6 @@ export async function getProjectItems(projectId: string, userId: string) {
     .where(eq(projectItems.projectId, projectId))
     .orderBy(desc(projectItems.createdAt));
 }
-
-export type ProjectItemWithDetails = ProjectItem & {
-  title: string;
-  subtitle: string | null;
-  href: string;
-  status?: string | null;
-  tags: {
-    id: string;
-    name: string;
-  }[];
-};
 
 function isDefined<T>(value: T | undefined): value is T {
   return value !== undefined;
@@ -566,4 +617,41 @@ export async function getAvailableProjectItems(
   return availableItems
     .filter((item) => !existingKeys.has(`${item.entityType}:${item.id}`))
     .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+export async function deleteProject(projectId: string, userId: string) {
+  const [project] = await db
+    .update(projects)
+    .set({
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(projects.id, projectId),
+        eq(projects.ownerId, userId),
+        isNull(projects.deletedAt),
+      ),
+    )
+    .returning();
+
+  return project ?? null;
+}
+
+export async function updateProjectItemRole({
+  userId,
+  projectItemId,
+  projectRole,
+}: {
+  userId: string;
+  projectItemId: string;
+  projectRole: "item" | "source" | "working" | "completed" | "reference";
+}) {
+  const [item] = await db
+    .update(projectItems)
+    .set({ projectRole })
+    .where(eq(projectItems.id, projectItemId))
+    .returning();
+
+  return item;
 }

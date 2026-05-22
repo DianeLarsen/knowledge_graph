@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { LinkIcon, CheckSquare, StickyNote, Tags } from "lucide-react";
+import { LinkIcon, CheckSquare, StickyNote, Tags, Zap } from "lucide-react";
 import type { Note, Tag, Reference } from "@/db/schema";
 
 import AddExistingProjectItemForm from "@/components/projects/AddExistingProjectItemForm";
 import NewNoteComposer from "@/components/notes/NewNoteComposer";
 import ProjectTaskComposer from "@/components/projects/ProjectTaskComposer";
+import ProjectStarterPanel from "@/components/projects/ProjectStarterPanel";
 import {
   attachTagToEntityAction,
   removeTagFromEntityAction,
@@ -19,7 +20,7 @@ type ExistingProjectItemOption = {
   entityType: EntityType;
 };
 
-type ActivePanel = "note" | "task" | "tag" | "existing" | null;
+type ActivePanel = "note" | "task" | "tag" | "existing" | "starter" | null;
 
 type ProjectWorkspaceActionsProps = {
   projectId: string;
@@ -30,6 +31,9 @@ type ProjectWorkspaceActionsProps = {
   attachedTagIds?: string[];
   inlineTagIds?: string[];
   onAttachedTagIdsChange?: (tagIds: string[]) => void;
+  projectTitle: string;
+  projectDescription?: string | null;
+  isEmptyProject?: boolean;
 };
 
 export default function ProjectWorkspaceActions({
@@ -41,6 +45,9 @@ export default function ProjectWorkspaceActions({
   attachedTagIds = [],
   inlineTagIds = [],
   onAttachedTagIdsChange,
+  projectTitle,
+  projectDescription,
+  isEmptyProject = false,
 }: ProjectWorkspaceActionsProps) {
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(() => [
@@ -63,6 +70,14 @@ export default function ProjectWorkspaceActions({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {isEmptyProject && (
+            <ActionChip
+              icon={<Zap size={14} />}
+              label="Get Started"
+              isActive={activePanel === "starter"}
+              onClick={() => togglePanel("starter")}
+            />
+          )}
           <ActionChip
             icon={<StickyNote size={14} />}
             label="Note"
@@ -90,7 +105,15 @@ export default function ProjectWorkspaceActions({
           />
         </div>
       </div>
-
+      {activePanel === "starter" && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+          <ProjectStarterPanel
+            projectId={projectId}
+            projectTitle={projectTitle}
+            projectDescription={projectDescription}
+          />
+        </div>
+      )}
       {activePanel === "note" && (
         <div className="mt-4">
           <NewNoteComposer

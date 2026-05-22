@@ -13,6 +13,9 @@ import {
   getUserProjects,
   removeEntityFromProject,
   updateProject,
+  getAllProjectById,
+  unarchiveProject,
+  updateProjectItemRole,
 } from "@/db/queries/projects";
 import { createNote } from "@/db/queries/notes";
 import { createUserTask } from "@/db/queries/tasks";
@@ -86,6 +89,16 @@ export async function archiveProjectAction(projectId: string) {
   revalidatePath(`/projects/${projectId}`);
 }
 
+export async function unarchiveProjectAction(projectId: string) {
+  const userId = await getCurrentUserId();
+
+  await unarchiveProject(projectId, userId);
+
+  revalidatePath("/projects");
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/workspace`);
+}
+
 export async function addEntityToProjectAction(formData: FormData) {
   const userId = await getCurrentUserId();
 
@@ -147,6 +160,12 @@ export async function getProjectByIdAction(projectId: string) {
   const userId = await getCurrentUserId();
 
   return getProjectById(projectId, userId);
+}
+
+export async function getAllProjectByIdAction(projectId: string) {
+  const userId = await getCurrentUserId();
+
+  return getAllProjectById(projectId, userId);
 }
 
 export async function getProjectItemsAction(projectId: string) {
@@ -326,4 +345,22 @@ export async function createProjectEventAction(formData: FormData) {
   revalidatePath(`/projects/${projectId}`);
   revalidatePath(`/projects/${projectId}/workspace`);
   revalidatePath("/calendar");
+}
+
+export async function updateProjectItemRoleAction({
+  projectItemId,
+  projectRole,
+}: {
+  projectItemId: string;
+  projectRole: "item" | "source" | "working" | "completed" | "reference";
+}) {
+  const userId = await getCurrentUserId();
+
+  await updateProjectItemRole({
+    userId,
+    projectItemId,
+    projectRole,
+  });
+
+  revalidatePath("/projects");
 }

@@ -10,20 +10,25 @@ type ProjectListProps = {
 
 export default function ProjectList({ projects }: ProjectListProps) {
   const [search, setSearch] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   const filteredProjects = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    if (!query) return projects;
+    const baseProjects = includeArchived
+      ? projects
+      : projects.filter((project) => project.status !== "archived");
 
-    return projects.filter((project) => {
+    if (!query) return baseProjects;
+
+    return baseProjects.filter((project) => {
       return (
         project.title.toLowerCase().includes(query) ||
         project.description?.toLowerCase().includes(query) ||
         project.status.toLowerCase().includes(query)
       );
     });
-  }, [projects, search]);
+  }, [projects, search, includeArchived]);
 
   return (
     <section className="space-y-4">
@@ -33,7 +38,15 @@ export default function ProjectList({ projects }: ProjectListProps) {
         placeholder="Search projects..."
         className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
       />
-
+      <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+        <input
+          type="checkbox"
+          checked={includeArchived}
+          onChange={(event) => setIncludeArchived(event.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        Include archived
+      </label>
       {filteredProjects.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
           No matching projects. The database remains dramatic.
@@ -58,10 +71,15 @@ export default function ProjectList({ projects }: ProjectListProps) {
                     </p>
                   )}
                 </div>
-
-                <span className="rounded-full border border-gray-300 px-2.5 py-1 text-xs font-medium capitalize text-gray-600 dark:border-gray-700 dark:text-gray-300">
-                  {project.status}
-                </span>
+                {project.status === "archived" ? (
+                  <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                    Archived
+                  </span>
+                ) : (
+                  <span className="rounded-full border border-gray-300 px-2.5 py-1 text-xs font-medium capitalize text-gray-600 dark:border-gray-700 dark:text-gray-300">
+                    {project.status}
+                  </span>
+                )}
               </div>
 
               <p className="mt-3 text-xs text-gray-500 dark:text-gray-500">
