@@ -10,7 +10,7 @@ import {
   suggestWorkspaceProjectTitleAction,
 } from "@/app/actions/workspace";
 import WorkspaceNoteComposer from "@/components/notes/workspace/WorkspaceNoteComposer";
-import TagPanel from "@/components/notes/TagPanel";
+import WorkspaceTagPanel from "@/components/notes/workspace/WorkspaceTagPanel";
 import {
   addUniqueIds,
   getNoteIdsByTag,
@@ -97,20 +97,20 @@ export default function MobileNotesWorkspace({
     }
   }
 
-function openCardsByTag(tagId: string) {
-  const matchingNoteIds = getNoteIdsByTag(dataList, tagId);
+  function openCardsByTag(tagId: string) {
+    const matchingNoteIds = getNoteIdsByTag(dataList, tagId);
 
-  setOpenNoteIds((current) => {
-    const allOpen = areAllIdsIncluded(current, matchingNoteIds);
+    setOpenNoteIds((current) => {
+      const allOpen = areAllIdsIncluded(current, matchingNoteIds);
 
-    return allOpen
-      ? removeIds(current, matchingNoteIds)
-      : addUniqueIds(current, matchingNoteIds);
-  });
+      return allOpen
+        ? removeIds(current, matchingNoteIds)
+        : addUniqueIds(current, matchingNoteIds);
+    });
 
-  setShowTagsPanel(false);
-  setShowNotePicker(false);
-}
+    setShowTagsPanel(false);
+    setShowNotePicker(false);
+  }
 
   return (
     <main className="min-h-screen bg-[rgb(var(--bg))] pb-24 text-[rgb(var(--text))]">
@@ -262,7 +262,7 @@ function openCardsByTag(tagId: string) {
               </button>
             </div>
 
-            <TagPanel
+            <WorkspaceTagPanel
               tags={tags}
               dataList={dataList}
               openNoteIds={openNoteIds}

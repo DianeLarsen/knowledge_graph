@@ -7,11 +7,10 @@ import EditNoteReferencesSection from "@/components/notes/editor/EditNoteReferen
 import EditNoteLinkedCardsSection from "@/components/notes/editor/EditNoteLinkedCardsSection";
 import RichNoteEditor from "@/components/notes/editor/RichNoteEditor";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
-import type { Note, Tag, Reference } from "@/db/schema";
+import type { Reference } from "@/db/schema";
 import { updateNoteAction } from "@/app/actions/notes";
 import { suggestTagsForNoteAction } from "@/app/actions/tagSuggestions";
 import { extractReferenceIdsFromContentJson } from "@/lib/notes/extractReferenceIdsFromContentJson";
-import type { NoteLinkedReference } from "@/lib/types/references/referenceTypes";
 import {
   buildTagColorMap,
   extractTagNamesFromContentJson,
@@ -360,7 +359,14 @@ async function handleSave() {
   const otherTags = getOtherTags({ tags, selectedTagNames, inlineTagNames });
 
   return (
-    <section className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <section
+      className="
+    mx-auto max-w-3xl rounded-2xl
+    border border-[rgb(var(--border))]
+    bg-[rgb(var(--card))]
+    p-6 shadow-md
+  "
+    >
       <div className="relative">
         <h1 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
           Edit Note
@@ -382,14 +388,24 @@ async function handleSave() {
           </button>
         )}
       </div>
-      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <label className="mb-2 block text-sm font-medium text-[rgb(var(--muted-text))]">
         Title
       </label>
 
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        className="mb-4 w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+        className="
+    mb-4 w-full rounded-xl
+    border border-[rgb(var(--border))]
+    bg-[rgb(var(--input))]
+    px-3 py-2
+    text-[rgb(var(--text))]
+    placeholder:text-[rgb(var(--soft-text))]
+    outline-none
+    focus:border-[rgb(var(--border-strong))]
+    focus:ring-2 focus:ring-[rgb(var(--border))]
+  "
       />
       <EditNoteTagsSection
         tags={tags}
@@ -399,7 +415,6 @@ async function handleSave() {
         aiSuggestedTags={aiSuggestedTags}
         selectedTagNameSet={selectedTagNameSet}
         inlineTagNameSet={inlineTagNameSet}
-        newTagName={newTagName}
         showAllTags={showAllTags}
         isSuggestingTags={isSuggestingTags}
         onNewTagNameChange={setNewTagName}
@@ -410,7 +425,7 @@ async function handleSave() {
         normalizeTagName={normalizeTagName}
         handleToggleTag={toggleTag}
       />
-      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <label className="mb-2 block text-sm font-medium text-[rgb(var(--muted-text))]">
         Content
       </label>
 
@@ -522,6 +537,7 @@ async function handleSave() {
           );
           setShowReferenceComposer(false);
         }}
+        inlineReferenceIds={inlineReferenceIds}
       />
 
       <EditNoteLinkedCardsSection
@@ -544,18 +560,16 @@ async function handleSave() {
           type="button"
           onClick={handleCancelEdit}
           className="
-    px-3 py-1.5 text-sm
-    text-gray-500 hover:text-gray-700
-    dark:text-gray-400 dark:hover:text-gray-200
-  "
+  px-3 py-1.5 text-sm
+  text-[rgb(var(--muted-text))]
+  hover:text-[rgb(var(--text))]
+"
         >
           Cancel
         </button>
       )}
       {message && (
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          {message}
-        </p>
+        <p className="mt-2 text-sm text-[rgb(var(--muted-text))]">{message}</p>
       )}
       <ConfirmDialog
         open={!!confirmDialog}

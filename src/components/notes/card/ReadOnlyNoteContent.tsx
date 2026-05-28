@@ -127,28 +127,30 @@ const colorClassMap: Record<TagColor, string[]> = {
   ],
 };
 
+const inlineConnectionSelector =
+  "[data-reference-mark], [data-tag-mark], [data-inline-tag-id], .mention";
+
 export default function ReadOnlyNoteContent({
   content,
   references = [],
   tags = [],
   tagColorMap = {},
 }: ReadOnlyNoteContentProps) {
-  const [preview, setPreview] = useState<
-    | {
-        type: "reference";
-        x: number;
-        y: number;
-        reference: ReadOnlyReference;
-      }
-    | {
-        type: "tag";
-        x: number;
-        y: number;
-        tag: ReadOnlyTag;
-      }
-    | null
-  >(null);
 
+  const [preview, setPreview] = useState<{
+    x: number;
+    y: number;
+    tags: ReadOnlyTag[];
+    references: ReadOnlyReference[];
+  } | null>(null);
+
+const [hoverPreview, setHoverPreview] = useState<{
+  x: number;
+  y: number;
+  tags: ReadOnlyTag[];
+  references: ReadOnlyReference[];
+} | null>(null);
+  
   const contentRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -161,8 +163,7 @@ export default function ReadOnlyNoteContent({
       if (popupRef.current?.contains(target)) return;
 
       const clickedReferenceOrTag =
-        target instanceof Element &&
-        target.closest("[data-reference-mark], [data-tag-mark]");
+        target instanceof Element && target.closest(inlineConnectionSelector);
 
       if (clickedReferenceOrTag) return;
 
@@ -176,6 +177,65 @@ export default function ReadOnlyNoteContent({
     };
   }, [preview]);
 
+function getInlineConnectionsFromTarget(target: HTMLElement) {
+  const foundTags = new Map<string, ReadOnlyTag>();
+  const foundReferences = new Map<string, ReadOnlyReference>();
+
+  let current: HTMLElement | null = target;
+
+  while (current && current !== contentRef.current) {
+    const tagId =
+      current.dataset.tagId ??
+      current.getAttribute("data-inline-tag-id") ??
+      current.getAttribute("data-id");
+
+    const tagName =
+      current.dataset.tagName ??
+      current.getAttribute("data-tag-name") ??
+      current.dataset.label ??
+      current.getAttribute("data-label");
+
+
+    if (
+      (current.matches("[data-tag-mark]") ||
+        current.hasAttribute("data-inline-tag-id") ||
+        current.classList.contains("mention")) &&
+      (tagId || tagName)
+    ) {
+      const tag =
+        tags.find((item) => item.id === tagId) ??
+        tags.find((item) => item.name === tagName) ??
+        (tagId || tagName
+          ? {
+              id: tagId ?? tagName ?? "unknown-tag",
+              name: tagName ?? tagId ?? "unknown",
+            }
+          : null);
+
+      if (tag) {
+        foundTags.set(tag.id, tag);
+      }
+    }
+
+    const referenceId = current.dataset.referenceId;
+
+    if (current.matches("[data-reference-mark]") && referenceId) {
+      const reference = references.find((item) => item.id === referenceId);
+
+      if (reference) {
+        foundReferences.set(reference.id, reference);
+      }
+    }
+
+    current = current.parentElement;
+  }
+
+  return {
+    tags: Array.from(foundTags.values()),
+    references: Array.from(foundReferences.values()),
+  };
+}
+  
   function getTagColorClasses(tagId?: string | null) {
     if (!tagId) return colorClassMap.blue.join(" ");
     return colorClassMap[tagColorMap[tagId] ?? "blue"].join(" ");
@@ -212,7 +272,7 @@ export default function ReadOnlyNoteContent({
       }).configure({
         HTMLAttributes: {
           class:
-            "mention inline cursor-help rounded bg-blue-100 px-1 text-blue-700 align-baseline leading-[inherit] dark:bg-blue-900/40 dark:text-blue-200",
+            "mention inline rounded bg-blue-100 px-1 text-blue-700 align-baseline leading-[inherit] dark:bg-blue-900/40 dark:text-blue-200",
         },
 
         renderText({ node }) {
@@ -225,18 +285,20 @@ export default function ReadOnlyNoteContent({
           const tagId = node.attrs.id ?? "";
           const tagName = node.attrs.tagName || node.attrs.label || "";
 
-          return [
-            "span",
-            {
-              class: `mention inline cursor-help rounded px-1 align-baseline leading-[inherit] ${getTagColorClasses(
-                tagId,
-              )}`,
-              title: tagName ? `#${tagName}` : "Tag",
-              "data-inline-tag-id": tagId,
-              "data-tag-name": tagName,
-            },
-            tagName ? `#${tagName}` : "#tag",
-          ];
+         return [
+           "span",
+           {
+             class: `mention inline rounded px-1 align-baseline leading-[inherit] ${getTagColorClasses(
+               tagId,
+             )}`,
+             "data-inline-tag-id": tagId,
+             "data-tag-id": tagId,
+             "data-id": tagId,
+             "data-tag-name": tagName,
+             "data-label": tagName,
+           },
+           tagName ? `#${tagName}` : "#tag",
+         ];
         },
       }),
     ],
@@ -293,6 +355,19 @@ export default function ReadOnlyNoteContent({
     });
   }, [editor, getReferenceColorClasses]);
 
+  useEffect(() => {
+    if (!editor) return;
+
+    const elements =
+      contentRef.current?.querySelectorAll(
+        "[data-inline-tag-id], [data-tag-mark], [data-reference-mark]",
+      ) ?? [];
+
+    elements.forEach((element) => {
+      element.removeAttribute("title");
+    });
+  }, [editor, content]);
+
   if (!editor) return null;
 
   return (
@@ -302,73 +377,58 @@ export default function ReadOnlyNoteContent({
         onClick={(event) => {
           const target = event.target as HTMLElement;
 
-          const referenceElement = target.closest(
-            "[data-reference-mark]",
-          ) as HTMLElement | null;
+          const clickedInlineMark = target.closest(inlineConnectionSelector);
 
-          if (referenceElement) {
-            event.preventDefault();
-            event.stopPropagation();
+          if (!clickedInlineMark) return;
 
-            const referenceId = referenceElement.dataset.referenceId;
+          event.preventDefault();
+          event.stopPropagation();
 
-            if (!referenceId) return;
+          const connections = getInlineConnectionsFromTarget(target);
 
-            const reference = references.find(
-              (item) => item.id === referenceId,
-            );
-
-            if (!reference) return;
-
-            setPreview({
-              type: "reference",
-              x: event.clientX,
-              y: event.clientY,
-              reference,
-            });
-
+          if (
+            connections.tags.length === 0 &&
+            connections.references.length === 0
+          ) {
             return;
           }
 
-          const tagElement = target.closest(
-            "[data-tag-mark]",
-          ) as HTMLElement | null;
+          setPreview({
+            x: event.clientX,
+            y: event.clientY,
+            tags: connections.tags,
+            references: connections.references,
+          });
+        }}
+        onMouseMove={(event) => {
+          const target = event.target as HTMLElement;
 
-          if (tagElement) {
-            event.preventDefault();
-            event.stopPropagation();
+          const clickedInlineMark = target.closest(inlineConnectionSelector);
 
-            const tagId = tagElement.dataset.tagId;
-            const tagName = tagElement.dataset.tagName;
-
-            const tag =
-              tags.find((item) => item.id === tagId) ??
-              tags.find((item) => item.name === tagName);
-
-            if (!tag && tagName) {
-              setPreview({
-                type: "tag",
-                x: event.clientX,
-                y: event.clientY,
-                tag: {
-                  id: tagId ?? tagName,
-                  name: tagName,
-                },
-              });
-              return;
-            }
-
-            if (!tag) return;
-
-            setPreview({
-              type: "tag",
-              x: event.clientX,
-              y: event.clientY,
-              tag,
-            });
-
+          if (!clickedInlineMark) {
+            setHoverPreview(null);
             return;
           }
+
+          const connections = getInlineConnectionsFromTarget(target);
+
+          if (
+            connections.tags.length === 0 &&
+            connections.references.length === 0
+          ) {
+            setHoverPreview(null);
+            return;
+          }
+
+          setHoverPreview({
+            x: event.clientX,
+            y: event.clientY,
+            tags: connections.tags,
+            references: connections.references,
+          });
+        }}
+        onMouseLeave={() => {
+          setHoverPreview(null);
         }}
         className="
         px-3 text-sm leading-[30px] text-gray-900 dark:text-gray-100
@@ -387,6 +447,7 @@ export default function ReadOnlyNoteContent({
         [&_.mention]:inline
         [&_.mention]:align-baseline
         [&_.mention]:leading-[inherit]
+        [&_.mention]:cursor-pointer
 
         [&_.tag-mark]:inline
         [&_.tag-mark]:align-baseline
@@ -421,11 +482,7 @@ export default function ReadOnlyNoteContent({
         createPortal(
           <div
             ref={popupRef}
-            className={`fixed z-[9999] w-80 rounded-xl border bg-white p-3 text-sm shadow-lg dark:bg-gray-950 ${
-              preview.type === "reference"
-                ? "border-amber-200 dark:border-amber-800"
-                : "border-blue-200 dark:border-blue-800"
-            }`}
+            className="fixed z-[9999] w-80 rounded-xl border border-gray-200 bg-white p-3 text-sm shadow-lg dark:border-gray-800 dark:bg-gray-950"
             style={{
               left: preview.x,
               top: preview.y + 12,
@@ -434,29 +491,16 @@ export default function ReadOnlyNoteContent({
           >
             <div className="mb-2 flex items-start justify-between gap-3">
               <div>
-                {preview.type === "reference" ? (
-                  <>
-                    <p className="font-semibold text-gray-900 dark:text-gray-100">
-                      {preview.reference.title}
-                    </p>
+                <p className="font-semibold text-gray-900 dark:text-gray-100">
+                  Inline connections
+                </p>
 
-                    {preview.reference.author && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {preview.reference.author}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <p className="font-semibold text-gray-900 dark:text-gray-100">
-                      #{preview.tag.name}
-                    </p>
-
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Tagged text
-                    </p>
-                  </>
-                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {preview.tags.length} tag
+                  {preview.tags.length === 1 ? "" : "s"} ·{" "}
+                  {preview.references.length} reference
+                  {preview.references.length === 1 ? "" : "s"}
+                </p>
               </div>
 
               <button
@@ -468,32 +512,118 @@ export default function ReadOnlyNoteContent({
               </button>
             </div>
 
-            {preview.type === "reference" ? (
-              <>
-                {preview.reference.notes && (
-                  <p className="mt-2 text-xs text-gray-700 dark:text-gray-300">
-                    {preview.reference.notes}
-                  </p>
-                )}
+            {preview.tags.length > 0 && (
+              <div className="mt-3">
+                <p className="mb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                  Tags
+                </p>
 
-                <ApaCitationPanel reference={preview.reference} />
+                <div className="flex flex-wrap gap-2">
+                  {preview.tags.map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-200"
+                    >
+                      #{tag.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
-                {preview.reference.url && (
-                  <a
-                    href={preview.reference.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 inline-block text-xs font-semibold text-blue-600 underline dark:text-blue-300"
+            {preview.references.length > 0 && (
+              <div className="mt-3 space-y-3">
+                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                  References
+                </p>
+
+                {preview.references.map((reference) => (
+                  <div
+                    key={reference.id}
+                    className="rounded-lg border border-gray-200 bg-gray-50 p-2 dark:border-gray-800 dark:bg-gray-900"
                   >
-                    Open source
-                  </a>
-                )}
-              </>
-            ) : (
-              <p className="mt-2 text-xs text-gray-700 dark:text-gray-300">
-                This text is connected to the tag{" "}
-                <span className="font-semibold">#{preview.tag.name}</span>.
-              </p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">
+                      {reference.title}
+                    </p>
+
+                    {reference.author && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {reference.author}
+                      </p>
+                    )}
+
+                    {reference.notes && (
+                      <p className="mt-2 text-xs text-gray-700 dark:text-gray-300">
+                        {reference.notes}
+                      </p>
+                    )}
+
+                    <ApaCitationPanel reference={reference} />
+
+                    {reference.url && (
+                      <a
+                        href={reference.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-block text-xs font-semibold text-blue-600 underline dark:text-blue-300"
+                      >
+                        Open source
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>,
+          document.body,
+        )}
+      {typeof document !== "undefined" &&
+        hoverPreview &&
+        !preview &&
+        createPortal(
+          <div
+            className="pointer-events-none fixed z-[9998] max-w-xs rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-gray-800 dark:bg-gray-950"
+            style={{
+              left: hoverPreview.x + 12,
+              top: hoverPreview.y + 12,
+            }}
+          >
+            {hoverPreview.tags.length > 0 && (
+              <div>
+                <p className="font-semibold text-gray-500 dark:text-gray-400">
+                  Tags
+                </p>
+
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {hoverPreview.tags.map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-200"
+                    >
+                      #{tag.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {hoverPreview.references.length > 0 && (
+              <div className={hoverPreview.tags.length > 0 ? "mt-2" : ""}>
+                <p className="font-semibold text-gray-500 dark:text-gray-400">
+                  References
+                </p>
+
+                <div className="mt-1 space-y-1">
+                  {hoverPreview.references.map((reference) => (
+                    <p
+                      key={reference.id}
+                      className="rounded bg-amber-100 px-2 py-0.5 font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-200"
+                    >
+                      {reference.title ?? "Untitled reference"}
+                    </p>
+                  ))}
+                </div>
+              </div>
             )}
           </div>,
           document.body,

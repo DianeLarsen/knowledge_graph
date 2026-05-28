@@ -7,12 +7,15 @@ type RichNoteEditorToolbarProps = {
 export default function RichNoteEditorToolbar({
   editor,
 }: RichNoteEditorToolbarProps) {
+  const buttonClass =
+    "rounded-md border border-[rgb(var(--border))] bg-[rgb(var(--input))] px-2 py-1 text-sm text-[rgb(var(--text))] transition hover:bg-[rgb(var(--card-muted))] disabled:cursor-not-allowed disabled:opacity-50";
+
   return (
-    <div className="flex flex-wrap gap-2 border-b border-gray-200 p-2 dark:border-gray-700">
+    <div className="flex flex-wrap gap-2 border-b border-[rgb(var(--border))] bg-[rgb(var(--card-muted))] p-2">
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleBold().run()}
-        className="rounded-lg border px-2 py-1 text-sm dark:border-gray-700 dark:text-gray-100"
+        className={buttonClass}
       >
         Bold
       </button>
@@ -20,7 +23,7 @@ export default function RichNoteEditorToolbar({
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleItalic().run()}
-        className="rounded-lg border px-2 py-1 text-sm dark:border-gray-700 dark:text-gray-100"
+        className={buttonClass}
       >
         Italic
       </button>
@@ -28,7 +31,7 @@ export default function RichNoteEditorToolbar({
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleHighlight().run()}
-        className="rounded-lg border px-2 py-1 text-sm dark:border-gray-700 dark:text-gray-100"
+        className={buttonClass}
       >
         Highlight
       </button>

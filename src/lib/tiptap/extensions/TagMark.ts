@@ -41,12 +41,13 @@ export const TagMark = Mark.create({
         "data-tag-mark": "",
         "data-inline-tag-id": tagId,
         "data-tag-id": tagId,
+        "data-id": tagId,
         "data-tag-name": tagName,
+        "data-label": tagName,
         "data-tag-color": color,
         class: `tag-mark rounded px-1 underline decoration-dotted underline-offset-2 ${colorClassMap[
           color
         ].join(" ")}`,
-        title: tagName ? `Tag: #${tagName}` : "Tagged text",
       }),
       0,
     ];

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import TagPill from "@/components/notes/TagPill";
+import TagPill from "@/components/tags/TagPill";
 import type { NoteCardTag, NoteDetails } from "./noteCardTypes";
 
 type InlineTagInfo = {
@@ -64,21 +64,21 @@ export default function NoteCardTags({
     return () => observer.disconnect();
   }, [tags]);
 
-const sortedTags = [...tags].sort((a, b) => {
-  const aIsInline =
-    inlineTags.ids.has(a.id) || inlineTags.names.has(a.name.toLowerCase());
+  const sortedTags = [...tags].sort((a, b) => {
+    const aIsInline =
+      inlineTags.ids.has(a.id) || inlineTags.names.has(a.name.toLowerCase());
 
-  const bIsInline =
-    inlineTags.ids.has(b.id) || inlineTags.names.has(b.name.toLowerCase());
+    const bIsInline =
+      inlineTags.ids.has(b.id) || inlineTags.names.has(b.name.toLowerCase());
 
-  if (aIsInline && !bIsInline) return -1;
-  if (!aIsInline && bIsInline) return 1;
+    if (aIsInline && !bIsInline) return -1;
+    if (!aIsInline && bIsInline) return 1;
 
-  return a.name.localeCompare(b.name);
-});
+    return a.name.localeCompare(b.name);
+  });
 
-const visibleTags = sortedTags.slice(0, visibleCount);
-const hiddenTags = sortedTags.slice(visibleCount);
+  const visibleTags = sortedTags.slice(0, visibleCount);
+  const hiddenTags = sortedTags.slice(visibleCount);
 
   if (tags.length === 0) {
     return (

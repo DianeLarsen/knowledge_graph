@@ -3,6 +3,7 @@
 import type { Tag } from "@/db/schema";
 import { colorClassMap } from "@/lib/tagColorClasses";
 import type { TagColor } from "@/lib/types/tags/tagColors";
+import TagCreateInput from "@/components/tags/TagCreateInput";
 
 type AiSuggestedTag = {
   name: string;
@@ -17,7 +18,7 @@ type EditNoteTagsSectionProps = {
   aiSuggestedTags: AiSuggestedTag[];
   selectedTagNameSet: Set<string>;
   inlineTagNameSet: Set<string>;
-  newTagName: string;
+
   showAllTags: boolean;
   isSuggestingTags: boolean;
   onNewTagNameChange: (value: string) => void;
@@ -30,13 +31,13 @@ type EditNoteTagsSectionProps = {
 };
 
 export default function EditNoteTagsSection({
+  tags,
   currentTags,
   selectedNewTagNames,
   otherTags,
   aiSuggestedTags,
   selectedTagNameSet,
   inlineTagNameSet,
-  newTagName,
   showAllTags,
   isSuggestingTags,
   onNewTagNameChange,
@@ -100,7 +101,7 @@ export default function EditNoteTagsSection({
   return (
     <div className="mb-4">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <p className="text-sm font-medium text-[rgb(var(--muted-text))]">
           Tags
         </p>
 
@@ -118,7 +119,14 @@ export default function EditNoteTagsSection({
         </p>
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-3 dark:border-gray-700 dark:bg-gray-950/40">
+      <div
+        className="
+    rounded-2xl
+    border border-[rgb(var(--border))]
+    bg-[rgb(var(--card-muted))]
+    p-3 shadow-sm
+  "
+      >
         <div className="flex flex-wrap gap-2">
           {currentTags.length > 0 || selectedNewTagNames.length > 0 ? (
             <>
@@ -138,14 +146,14 @@ export default function EditNoteTagsSection({
               ))}
             </>
           ) : (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-[rgb(var(--soft-text))]">
               No tags attached yet.
             </p>
           )}
         </div>
 
         {aiSuggestedTags.length > 0 && (
-          <div className="mt-3 border-t border-gray-200 pt-3 dark:border-gray-700">
+          <div className="mt-3 border-t border-[rgb(var(--border))]">
             <p className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
               Suggested
             </p>
@@ -189,31 +197,25 @@ export default function EditNoteTagsSection({
           </div>
         )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-200 pt-3 dark:border-gray-700">
-          <div className="flex w-44 items-center rounded-full border border-gray-300 bg-white px-2 py-1 dark:border-gray-700 dark:bg-gray-950">
-            <span className="text-xs text-gray-400">#</span>
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[rgb(var(--border))]">
+          <TagCreateInput
+            tags={tags}
+            linkedTagNames={selectedTagNameSet}
+            existingTagActionLabel="Link existing tag"
+            onCreateTag={(tagName) => {
+              onNewTagNameChange(tagName);
+              onAddCardLevelTag();
+            }}
+            onUseExistingTag={(tag) => {
+              const normalizedExistingTagName = normalizeTagName(tag.name);
 
-            <input
-              value={newTagName}
-              onChange={(event) => onNewTagNameChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  onAddCardLevelTag();
-                }
-              }}
-              placeholder="add tag"
-              className="min-w-0 flex-1 bg-transparent px-1 text-xs text-gray-700 outline-none placeholder:text-gray-400 dark:text-gray-100"
-            />
-          </div>
+              if (selectedTagNameSet.has(normalizedExistingTagName)) {
+                return;
+              }
 
-          <button
-            type="button"
-            onClick={onAddCardLevelTag}
-            className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-semibold text-gray-600 transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 dark:hover:border-blue-500 dark:hover:bg-blue-900/30 dark:hover:text-blue-200"
-          >
-            Add
-          </button>
+              handleToggleTag(tag.name);
+            }}
+          />
 
           <button
             type="button"
@@ -225,7 +227,7 @@ export default function EditNoteTagsSection({
         </div>
 
         {showAllTags && (
-          <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-200 pt-3 dark:border-gray-700">
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-[rgb(var(--border))]">
             {otherTags.length > 0 ? (
               otherTags.map((tag) => renderTagButton(tag, "other"))
             ) : (

@@ -35,9 +35,7 @@ export const ReferenceMark = Mark.create({
         "data-reference-title": referenceTitle,
         class:
           "reference-mark rounded bg-amber-50 px-1 text-amber-800 underline decoration-dotted underline-offset-2 dark:bg-amber-900/30 dark:text-amber-200",
-        title:
-          referenceTitle || "Reference: click for APA reference and citation",
-      }),
+         }),
       0,
     ];
   },

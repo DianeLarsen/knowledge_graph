@@ -51,7 +51,7 @@ export function useRichNoteEditor({
           },
         }).configure({
           HTMLAttributes: {
-            class: "inline-flex cursor-help rounded px-1",
+            class: "inline-flex rounded px-1",
           },
           deleteTriggerWithBackspace: true,
           renderText({ node }) {
@@ -67,7 +67,7 @@ export function useRichNoteEditor({
             return [
               "span",
               {
-                class: "mention inline-flex cursor-help rounded px-1",
+                class: "mention inline-flex rounded px-1",
                 title: tagName ? `#${tagName}` : "Tag",
                 "data-inline-tag-id": tagId,
                 "data-tag-name": tagName,
