@@ -33,7 +33,7 @@ export const TagMark = Mark.create({
     const tagName = HTMLAttributes.tagName ?? "";
     const color = (HTMLAttributes.color as TagColor | undefined) ?? "blue";
 
-    const { class: safeAttributes } = HTMLAttributes;
+    const { class: _ignoredClass, ...safeAttributes } = HTMLAttributes;
 
     return [
       "span",
@@ -46,7 +46,7 @@ export const TagMark = Mark.create({
         class: `tag-mark rounded px-1 underline decoration-dotted underline-offset-2 ${colorClassMap[
           color
         ].join(" ")}`,
-        title: tagName ? `#${tagName}` : "Tagged text",
+        title: tagName ? `Tag: #${tagName}` : "Tagged text",
       }),
       0,
     ];

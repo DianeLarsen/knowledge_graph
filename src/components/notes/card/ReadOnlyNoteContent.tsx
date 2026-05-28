@@ -7,10 +7,14 @@ import Link from "@tiptap/extension-link";
 import Mention from "@tiptap/extension-mention";
 import { TagMark } from "@/lib/tiptap/extensions/TagMark";
 import { ReferenceMark } from "@/lib/tiptap/extensions/ReferenceMark";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { TagColor } from "@/lib/types/tags/tagColors";
 import ApaCitationPanel from "@/components/references/ApaCitationPanel";
 import { createPortal } from "react-dom";
+import {
+  getReferenceColorByIndex,
+  referenceColorClassMap,
+} from "@/lib/referenceColorClasses";
 
 type ReadOnlyReference = {
   id: string;
@@ -129,7 +133,7 @@ export default function ReadOnlyNoteContent({
   tags = [],
   tagColorMap = {},
 }: ReadOnlyNoteContentProps) {
-   const [preview, setPreview] = useState<
+  const [preview, setPreview] = useState<
     | {
         type: "reference";
         x: number;
@@ -143,11 +147,11 @@ export default function ReadOnlyNoteContent({
         tag: ReadOnlyTag;
       }
     | null
-    >(null);
-  
+  >(null);
+
   const contentRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     if (!preview) return;
 
@@ -212,12 +216,14 @@ export default function ReadOnlyNoteContent({
         },
 
         renderText({ node }) {
-          return node.attrs.label || "🏷";
+          const tagName = node.attrs.tagName || node.attrs.label;
+
+          return tagName ? `#${tagName}` : "#tag";
         },
 
         renderHTML({ node }) {
           const tagId = node.attrs.id ?? "";
-          const tagName = node.attrs.tagName ?? "";
+          const tagName = node.attrs.tagName || node.attrs.label || "";
 
           return [
             "span",
@@ -229,7 +235,7 @@ export default function ReadOnlyNoteContent({
               "data-inline-tag-id": tagId,
               "data-tag-name": tagName,
             },
-            "🏷",
+            tagName ? `#${tagName}` : "#tag",
           ];
         },
       }),
@@ -238,6 +244,20 @@ export default function ReadOnlyNoteContent({
     content: getInitialEditorContent(content),
     immediatelyRender: false,
   });
+
+  const getReferenceColorClasses = useCallback(
+    (referenceId?: string | null) => {
+      if (!referenceId) return referenceColorClassMap.slate.join(" ");
+
+      const index = references.findIndex(
+        (reference) => reference.id === referenceId,
+      );
+      const color = getReferenceColorByIndex(index >= 0 ? index : 0);
+
+      return referenceColorClassMap[color].join(" ");
+    },
+    [references],
+  );
 
   useEffect(() => {
     if (!editor) return;
@@ -255,6 +275,23 @@ export default function ReadOnlyNoteContent({
       element.classList.add(...colorClassMap[color]);
     });
   }, [editor, tagColorMap]);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const allColorClasses = Object.values(referenceColorClassMap).flat();
+
+    const elements =
+      contentRef.current?.querySelectorAll("[data-reference-mark]") ?? [];
+
+    elements.forEach((element) => {
+      const referenceId = element.getAttribute("data-reference-id");
+      const classes = getReferenceColorClasses(referenceId).split(" ");
+
+      element.classList.remove(...allColorClasses);
+      element.classList.add(...classes);
+    });
+  }, [editor, getReferenceColorClasses]);
 
   if (!editor) return null;
 
@@ -372,15 +409,10 @@ export default function ReadOnlyNoteContent({
 
         [&_.reference-mark]:cursor-pointer
         [&_.reference-mark]:rounded
-        [&_.reference-mark]:bg-amber-50
         [&_.reference-mark]:px-1
-        [&_.reference-mark]:text-amber-800
         [&_.reference-mark]:underline
         [&_.reference-mark]:decoration-dotted
         [&_.reference-mark]:underline-offset-2
-        dark:[&_.reference-mark]:bg-amber-900/30
-        dark:[&_.reference-mark]:text-amber-200
-        
       "
       />
 

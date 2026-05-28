@@ -145,6 +145,8 @@ export default function TaskColumn({
       {isCreating && status !== "archived" && (
         <NewTaskForm
           status={status}
+          startOpen
+          hideToggle
           onCreateTask={async (input) => {
             await onCreateTask(input);
             setIsCreating(false);

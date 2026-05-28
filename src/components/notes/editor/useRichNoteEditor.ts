@@ -11,7 +11,7 @@ import { ReferenceMark } from "@/lib/tiptap/extensions/ReferenceMark";
 import type {
   MentionSuggestionItem,
   MentionSuggestionProps,
-} from "@/lib/types/editorTypes";
+} from "@/components/notes/editor/editorTypes";
 
 type UseRichNoteEditorArgs = {
   initialContent: string | object;
@@ -28,6 +28,7 @@ export function useRichNoteEditor({
   onTagUsed,
   applyInlineTagColors,
 }: UseRichNoteEditorArgs) {
+  const tagSuggestionKey = tags.map((tag) => `${tag.id}:${tag.name}`).join("|");
   return useEditor(
     {
       extensions: [
@@ -52,14 +53,16 @@ export function useRichNoteEditor({
           HTMLAttributes: {
             class: "inline-flex cursor-help rounded px-1",
           },
-
+          deleteTriggerWithBackspace: true,
           renderText({ node }) {
-            return node.attrs.label || "🏷";
+            const tagName = node.attrs.tagName || node.attrs.label;
+
+            return tagName ? `#${tagName}` : "#tag";
           },
 
           renderHTML({ node }) {
             const tagId = node.attrs.id ?? "";
-            const tagName = node.attrs.tagName ?? "";
+            const tagName = node.attrs.tagName || node.attrs.label || "";
 
             return [
               "span",
@@ -69,7 +72,7 @@ export function useRichNoteEditor({
                 "data-inline-tag-id": tagId,
                 "data-tag-name": tagName,
               },
-              "🏷",
+              tagName ? `#${tagName}` : "#tag",
             ];
           },
 
@@ -181,7 +184,7 @@ export function useRichNoteEditor({
                     type: "mention",
                     attrs: {
                       id: props.id,
-                      label: "🏷",
+                      label: tagName,
                       tagName,
                     },
                   },
@@ -208,7 +211,7 @@ export function useRichNoteEditor({
         queueMicrotask(applyInlineTagColors);
       },
     },
-    [tags, initialContent],
+    [tagSuggestionKey],
   );
 }
 

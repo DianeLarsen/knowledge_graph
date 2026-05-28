@@ -8,7 +8,7 @@ import {
   CalendarItem,
   NoteOption,
   TaskOption,
-} from "@/components/calendar/types";
+} from "@/components/calendar/eventTypes";
 
 type EventFormPopupProps = {
   selectedDate: string;

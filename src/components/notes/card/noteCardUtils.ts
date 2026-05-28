@@ -125,3 +125,45 @@ export function getLinkPillClass({
 
   return "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300";
 }
+
+export function noteContentHasInlineTag({
+  contentJson,
+  tagId,
+  tagName,
+}: {
+  contentJson: string | null;
+  tagId: string;
+  tagName: string;
+}) {
+  if (!contentJson) return false;
+
+  try {
+    const parsed = JSON.parse(contentJson) as RichTextNode;
+    const targetName = tagName.toLowerCase();
+
+    function walk(node: RichTextNode): boolean {
+      if (Array.isArray(node.marks)) {
+        const hasTag = node.marks.some((mark) => {
+          if (mark.type !== "tagMark") return false;
+
+          const markTagId = mark.attrs?.tagId;
+          const markTagName = mark.attrs?.tagName?.toLowerCase();
+
+          return markTagId === tagId || markTagName === targetName;
+        });
+
+        if (hasTag) return true;
+      }
+
+      if (Array.isArray(node.content)) {
+        return node.content.some(walk);
+      }
+
+      return false;
+    }
+
+    return walk(parsed);
+  } catch {
+    return false;
+  }
+}

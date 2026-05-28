@@ -93,13 +93,28 @@ export default async function ProjectWorkspacePage({
         attachedTagIds={projectTags.map((tag) => tag.id)}
       />
       <section className="grid gap-4 lg:grid-cols-[1fr_1.5fr_1fr]">
-        <ProjectWorkspaceBoard title="Sources" items={sources} />
-        <ProjectWorkspaceBoard title="Working" items={workingItems} featured />
-        <ProjectWorkspaceBoard title="Completed" items={completed} />
+        <ProjectWorkspaceBoard title="Sources" role="source" items={sources} />
+
+        <ProjectWorkspaceBoard
+          title="Working"
+          role="working"
+          items={workingItems}
+          featured
+        />
+
+        <ProjectWorkspaceBoard
+          title="Completed"
+          role="completed"
+          items={completed}
+        />
       </section>
 
       <section>
-        <ProjectWorkspaceBoard title="References" items={referenceItems} />
+        <ProjectWorkspaceBoard
+          title="References"
+          role="reference"
+          items={referenceItems}
+        />
       </section>
       {preview.previewType && preview.previewId && (
         <ProjectItemPreviewModal

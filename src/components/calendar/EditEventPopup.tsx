@@ -6,14 +6,15 @@ import {
   CalendarItem,
   NoteOption,
   TaskOption,
-} from "@/components/calendar/types";
+} from "@/components/calendar/eventTypes";
 import { useState } from "react";
+
 
 type EditEventPopupProps = {
   event: CalendarItem;
-  items: CalendarItem[];
-  notes: NoteOption[];
-  tasks: TaskOption[];
+  items?: CalendarItem[];
+  notes?: NoteOption[];
+  tasks?: TaskOption[];
   onClose: () => void;
 };
 
@@ -30,14 +31,14 @@ function timesOverlap(
 
 export default function EditEventPopup({
   event,
-  notes,
-  tasks,
+  notes = [],
+  tasks = [],
   onClose,
-  items,
+  items = [],
 }: EditEventPopupProps) {
-  const [startDate, setStartDate] = useState(event.date?.slice(0, 10) ?? "");
+  const [startDate, setStartDate] = useState(event.startDate?.slice(0, 10) ?? "");
   const [endDate, setEndDate] = useState(
-    event.endDate?.slice(0, 10) ?? event.date?.slice(0, 10) ?? "",
+    event.endDate?.slice(0, 10) ?? event.endDate?.slice(0, 10) ?? "",
   );
   const [startTime, setStartTime] = useState(event.startTime ?? "");
   const [endTime, setEndTime] = useState(event.endTime ?? "");
@@ -59,7 +60,7 @@ export default function EditEventPopup({
               Edit Event
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {event.date}
+              {event.startDate}
             </p>
           </div>
 
@@ -84,9 +85,9 @@ export default function EditEventPopup({
           <EventFormFields
             defaultTitle={event.title}
             defaultDescription={event.description}
-            defaultStartDate={event.date?.slice(0, 10) ?? ""}
+            defaultStartDate={event.startDate?.slice(0, 10) ?? ""}
             defaultEndDate={
-              event.endDate?.slice(0, 10) ?? event.date?.slice(0, 10) ?? ""
+              event.endDate?.slice(0, 10) ?? event.endDate?.slice(0, 10) ?? ""
             }
             defaultStartTime={event.startTime}
             defaultEndTime={event.endTime}

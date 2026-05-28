@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import EditNoteForm from "@/components/notes/editor/EditNoteForm";
 import type { Reference } from "@/db/schema";
@@ -40,27 +40,39 @@ export default function NoteCard({
     references = [],
   } = data;
 
-  const inlineTags = getInlineTagInfo(note.contentJson);
+  const inlineTags = useMemo(() => {
+    return getInlineTagInfo(note.contentJson);
+  }, [note.contentJson]);
 
-  const sortedTags = [...tags].sort((a, b) => {
-    const aLinked =
-      inlineTags.ids.has(a.id) || inlineTags.names.has(a.name.toLowerCase());
-    const bLinked =
-      inlineTags.ids.has(b.id) || inlineTags.names.has(b.name.toLowerCase());
+  const sortedTags = useMemo(() => {
+    return [...tags].sort((a, b) => {
+      const aLinked =
+        inlineTags.ids.has(a.id) || inlineTags.names.has(a.name.toLowerCase());
 
-    if (aLinked && !bLinked) return -1;
-    if (!aLinked && bLinked) return 1;
+      const bLinked =
+        inlineTags.ids.has(b.id) || inlineTags.names.has(b.name.toLowerCase());
 
-    return a.name.localeCompare(b.name);
-  });
+      if (aLinked && !bLinked) return -1;
+      if (!aLinked && bLinked) return 1;
 
-  const tagColorMap = new Map<string, TagColor>();
+      return a.name.localeCompare(b.name);
+    });
+  }, [tags, inlineTags]);
 
-  sortedTags.forEach((tag) => {
-    tagColorMap.set(tag.id, tag.color ?? "blue");
-  });
+  const tagColorMap = useMemo(() => {
+    const map: Record<string, TagColor> = {};
 
+    sortedTags.forEach((tag) => {
+      map[tag.id] = tag.color ?? "blue";
+      map[tag.name.toLowerCase()] = tag.color ?? "blue";
+    });
 
+    return map;
+  }, [sortedTags]);
+
+  const linkedNoteIds = useMemo(() => {
+    return outgoingLinks.map((link) => link.targetId);
+  }, [outgoingLinks]);
 
   return (
     <div
@@ -88,11 +100,7 @@ export default function NoteCard({
           onClose={onClose}
         />
 
-        <NoteCardTags
-          tags={tags}
-          tagStats={tagStats}
-          inlineTags={inlineTags}
-        />
+        <NoteCardTags tags={tags} tagStats={tagStats} inlineTags={inlineTags} />
 
         <NoteCardTitle title={note.title} compact={compact} />
 
@@ -102,7 +110,7 @@ export default function NoteCard({
           references={references}
           tagColorMap={tagColorMap}
           compact={compact}
-          />
+        />
 
         <NoteCardDetails
           noteId={note.id}
@@ -135,7 +143,7 @@ export default function NoteCard({
                 router.refresh();
               }}
               availableNotes={allNotes}
-              linkedNoteIds={outgoingLinks.map((link) => link.targetId)}
+              linkedNoteIds={linkedNoteIds}
             />
           </div>
         </div>

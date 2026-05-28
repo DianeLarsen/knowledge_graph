@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import EditTaskModal from "@/components/tasks/EditTaskModal";
-import TaskDetailsModal from "@/components/tasks/TaskDetailsModal";
 import { QuickTag, QuickReference, QuickNote } from "@/lib/types/quickTypes";
 import type { Project, Task } from "@/db/schema";
+import TaskDetailsPanel from "./TaskDetailsPanel";
 
 export type EditTaskInput = {
   title: string;
@@ -178,7 +178,8 @@ export default function TaskCard({
         />
       )}
       {isDetailsOpen && (
-        <TaskDetailsModal
+        <TaskDetailsPanel
+          variant="modal"
           task={task}
           userId={userId}
           projects={projects}
@@ -189,7 +190,6 @@ export default function TaskCard({
           linkedNoteIds={linkedNoteIds}
           linkedReferenceIds={linkedReferenceIds}
           onClose={() => setIsDetailsOpen(false)}
-          onEditTask={onEditTask}
         />
       )}
     </>

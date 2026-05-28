@@ -500,7 +500,7 @@ export async function getProjectItemsWithDetails(
         title: event?.title ?? "Missing event",
         subtitle: event?.startDate ?? "Event",
         status: event?.status ?? null,
-        href: `/calendar#${item.entityId}`,
+        href: `/calendar/${item.entityId}`,
         tags: tagsByEntity.get(`event:${item.entityId}`) ?? [],
       };
     }
@@ -639,17 +639,27 @@ export async function deleteProject(projectId: string, userId: string) {
 }
 
 export async function updateProjectItemRole({
+  userId,
   projectItemId,
   projectRole,
 }: {
+  userId: string;
   projectItemId: string;
-  projectRole: "item" | "source" | "working" | "completed" | "reference";
+  projectRole: ProjectItem["projectRole"];
 }) {
-  const [item] = await db
+  const [updatedItem] = await db
     .update(projectItems)
-    .set({ projectRole })
-    .where(eq(projectItems.id, projectItemId))
+    .set({
+      projectRole,
+    })
+    .where(
+      and(
+        eq(projectItems.id, projectItemId),
+        eq(projectItems.addedByUserId, userId),
+        isNull(projectItems.removedAt),
+      ),
+    )
     .returning();
 
-  return item;
+  return updatedItem ?? null;
 }

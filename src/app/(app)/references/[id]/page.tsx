@@ -3,7 +3,7 @@ import { ArrowLeft, Library } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import ReferenceCard from "@/components/references/ReferenceCard";
-import PageQuickActions from "@/components/shared/PageQuickActions";
+import PageQuickActions from "@/components/shared/quick-actions/PageQuickActions";
 import { getCurrentUserId } from "@/db/queries/users";
 import {
   getReferenceById,
@@ -27,16 +27,10 @@ export default async function ReferenceDetailsPage({
   params,
   searchParams,
 }: ReferenceDetailsPageProps) {
-const userId = await getCurrentUserId();
-console.log("UserId:", userId)
-if (!userId) {
-  redirect("/sign-in");
-}
+  const userId = await getCurrentUserId();
 
   const { id } = await params;
   const { from } = await searchParams;
-
-
 
   const reference = await getReferenceById(id, userId);
 

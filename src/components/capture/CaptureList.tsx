@@ -15,7 +15,7 @@ import type {
   QuickNote,
 } from "@/lib/types/quickTypes";
 import type { Project } from "@/db/schema";
-import PageQuickActions from "../shared/PageQuickActions";
+import PageQuickActions from "../shared/quick-actions/PageQuickActions";
 import { getCapturesByUserId } from "@/db/queries/captures";
 
 type CaptureWithQuickActions = Awaited<

@@ -1,12 +1,20 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import { ExternalLink, Trash2 } from "lucide-react";
 import ApaCitationPanel from "./ApaCitationPanel";
 import type { NoteLinkedReference } from "@/lib/types/references/referenceTypes";
+import {
+  referenceColorClassMap,
+  type ReferenceColor,
+} from "@/lib/referenceColorClasses";
 
 type LinkedReferenceCardProps = {
   reference: NoteLinkedReference;
   noteId?: string;
   canRemove?: boolean;
   onRemoveAction?: (formData: FormData) => Promise<unknown>;
+  referenceColor?: ReferenceColor;
 };
 
 export default function LinkedReferenceCard({
@@ -14,11 +22,17 @@ export default function LinkedReferenceCard({
   noteId,
   canRemove = false,
   onRemoveAction,
+  referenceColor = "slate",
 }: LinkedReferenceCardProps) {
-  const isAnchored = !!reference.quote || !!reference.summary;
 
+  const isAnchored = !!reference.quote || !!reference.summary;
+  const referenceColorClasses =
+    referenceColorClassMap[referenceColor].join(" ");
+  const router = useRouter();
   return (
-    <div className="group rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-3 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:hover:border-slate-700">
+    <div
+      className={`group rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-3 shadow-sm ring-1 transition hover:border-slate-300 hover:shadow-md dark:hover:border-slate-700 ${referenceColorClasses}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -27,11 +41,7 @@ export default function LinkedReferenceCard({
             </p>
 
             <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                isAnchored
-                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                  : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-              }`}
+              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${referenceColorClasses}`}
             >
               {isAnchored ? "Anchored" : "General"}
             </span>
@@ -54,6 +64,7 @@ export default function LinkedReferenceCard({
           <form
             action={async (formData) => {
               await onRemoveAction(formData);
+              router.refresh();
             }}
           >
             <input type="hidden" name="noteId" value={noteId} />

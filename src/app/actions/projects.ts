@@ -21,6 +21,7 @@ import { createNote } from "@/db/queries/notes";
 import { createUserTask } from "@/db/queries/tasks";
 import { createUserReference } from "@/db/queries/references";
 import { createUserEvent } from "@/db/queries/calendar";
+import type { ProjectItem } from "@/db/schema";
 
 import type { EntityType, NewProject, NewProjectItem } from "@/db/schema";
 
@@ -120,9 +121,17 @@ export async function addEntityToProjectAction(formData: FormData) {
     projectRole,
   });
 
+if (!item) {
+  throw new Error("Could not add item to project.");
+}
+
   revalidatePath("/projects");
   revalidatePath(`/projects/${projectId}`);
   revalidatePath(`/projects/${projectId}/workspace`);
+
+  if (entityType === "task") {
+    revalidatePath(`/tasks/${entityId}`);
+  }
 
   return item;
 }
@@ -352,13 +361,17 @@ export async function updateProjectItemRoleAction({
   projectRole,
 }: {
   projectItemId: string;
-  projectRole: "item" | "source" | "working" | "completed" | "reference";
+  projectRole: ProjectItem["projectRole"];
 }) {
+  const userId = await getCurrentUserId();
 
-  await updateProjectItemRole({
+  const updatedItem = await updateProjectItemRole({
+    userId,
     projectItemId,
     projectRole,
   });
 
   revalidatePath("/projects");
+
+  return updatedItem;
 }

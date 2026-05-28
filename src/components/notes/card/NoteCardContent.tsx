@@ -14,7 +14,7 @@ export default function NoteCardContent({
   note: Note;
   tags: NoteCardTag[];
   references: NoteLinkedReference[];
-  tagColorMap: Map<string, TagColor>;
+  tagColorMap: Record<string, TagColor>;
   compact: boolean;
 }) {
   return (
@@ -78,7 +78,7 @@ export default function NoteCardContent({
               name: tag.name,
               color: tag.color,
             }))}
-            tagColorMap={Object.fromEntries(tagColorMap)}
+            tagColorMap={tagColorMap}
           />
         </div>
       </div>

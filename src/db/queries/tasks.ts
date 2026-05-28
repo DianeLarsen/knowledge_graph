@@ -1,6 +1,6 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, ne, isNull } from "drizzle-orm";
 import { db } from "../index";
-import { tasks, entityTags, entityLinks, type NewTask } from "../schema";
+import { tasks, entityTags, entityLinks, projectItems, projects, type NewTask } from "../schema";
 import { getEmbedding, cosineSimilarity } from "@/lib/ai/embeddings";
 import { getCurrentUserId } from "./users";
 
@@ -78,6 +78,7 @@ export async function getTaskById(id: string, userId: string) {
         eq(tasks.id, id),
         eq(tasks.ownerType, "user"),
         eq(tasks.ownerId, userId),
+        isNull(tasks.deletedAt),
       ),
     );
 
@@ -256,4 +257,86 @@ export async function getTaskQuickActionState(userId: string) {
   }
 
   return stateByTaskId;
+}
+
+export async function getTagIdsForTask(userId: string, taskId: string) {
+  const rows = await db
+    .select({
+      tagId: entityTags.tagId,
+    })
+    .from(entityTags)
+    .where(
+      and(
+        eq(entityTags.appliedByUserId, userId),
+        eq(entityTags.entityType, "task"),
+        eq(entityTags.entityId, taskId),
+      ),
+    );
+
+  return rows.map((row) => row.tagId);
+}
+
+export async function getLinkedNoteIdsForTask(userId: string, taskId: string) {
+  const rows = await db
+    .select({
+      noteId: entityLinks.targetId,
+    })
+    .from(entityLinks)
+    .where(
+      and(
+        eq(entityLinks.createdByUserId, userId),
+        eq(entityLinks.sourceType, "task"),
+        eq(entityLinks.sourceId, taskId),
+        eq(entityLinks.targetType, "note"),
+      ),
+    );
+
+  return rows.map((row) => row.noteId);
+}
+
+export async function getLinkedReferenceIdsForTask(
+  userId: string,
+  taskId: string,
+) {
+  const rows = await db
+    .select({
+      referenceId: entityLinks.targetId,
+    })
+    .from(entityLinks)
+    .where(
+      and(
+        eq(entityLinks.createdByUserId, userId),
+        eq(entityLinks.sourceType, "task"),
+        eq(entityLinks.sourceId, taskId),
+        eq(entityLinks.targetType, "reference"),
+      ),
+    );
+
+  return rows.map((row) => row.referenceId);
+}
+
+export async function getLinkedProjectIdsForTask(
+  userId: string,
+  taskId: string,
+) {
+  const rows = await db
+    .select({
+      projectId: projectItems.projectId,
+    })
+    .from(projectItems)
+    .innerJoin(
+      projects,
+      and(
+        eq(projectItems.projectId, projects.id),
+        eq(projects.ownerId, userId),
+      ),
+    )
+    .where(
+      and(
+        eq(projectItems.entityType, "task"),
+        eq(projectItems.entityId, taskId),
+      ),
+    );
+
+  return rows.map((row) => row.projectId);
 }

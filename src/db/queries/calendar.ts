@@ -1,6 +1,14 @@
 import { and, asc, eq, gte, isNotNull, lte, ne, or, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { events, tasks, type NewEvent } from "@/db/schema";
+import {
+  entityTags,
+  entityLinks,
+  projectItems,
+  projects,
+  events,
+  tasks,
+  type NewEvent,
+} from "@/db/schema";
 
 export async function getEventsInRange(
   userId: string,
@@ -143,4 +151,89 @@ export async function getEventsByUserId(userId: string) {
       ),
     )
     .orderBy(asc(events.startDate));
+}
+
+export async function getTagIdsForEvent(userId: string, eventId: string) {
+  const rows = await db
+    .select({
+      tagId: entityTags.tagId,
+    })
+    .from(entityTags)
+    .where(
+      and(
+        eq(entityTags.appliedByUserId, userId),
+        eq(entityTags.entityType, "event"),
+        eq(entityTags.entityId, eventId),
+      ),
+    );
+
+  return rows.map((row) => row.tagId);
+}
+
+export async function getLinkedNoteIdsForEvent(
+  userId: string,
+  eventId: string,
+) {
+  const rows = await db
+    .select({
+      noteId: entityLinks.targetId,
+    })
+    .from(entityLinks)
+    .where(
+      and(
+        eq(entityLinks.createdByUserId, userId),
+        eq(entityLinks.sourceType, "event"),
+        eq(entityLinks.sourceId, eventId),
+        eq(entityLinks.targetType, "note"),
+      ),
+    );
+
+  return rows.map((row) => row.noteId);
+}
+
+export async function getLinkedReferenceIdsForEvent(
+  userId: string,
+  eventId: string,
+) {
+  const rows = await db
+    .select({
+      referenceId: entityLinks.targetId,
+    })
+    .from(entityLinks)
+    .where(
+      and(
+        eq(entityLinks.createdByUserId, userId),
+        eq(entityLinks.sourceType, "event"),
+        eq(entityLinks.sourceId, eventId),
+        eq(entityLinks.targetType, "reference"),
+      ),
+    );
+
+  return rows.map((row) => row.referenceId);
+}
+
+export async function getLinkedProjectIdsForEvent(
+  userId: string,
+  eventId: string,
+) {
+  const rows = await db
+    .select({
+      projectId: projectItems.projectId,
+    })
+    .from(projectItems)
+    .innerJoin(
+      projects,
+      and(
+        eq(projectItems.projectId, projects.id),
+        eq(projects.ownerId, userId),
+      ),
+    )
+    .where(
+      and(
+        eq(projectItems.entityType, "event"),
+        eq(projectItems.entityId, eventId),
+      ),
+    );
+
+  return rows.map((row) => row.projectId);
 }

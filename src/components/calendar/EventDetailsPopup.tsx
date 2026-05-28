@@ -1,8 +1,6 @@
 // src/components/calendar/EventDetailsPopup.tsx
 
-import {
-  CalendarItem,
-} from "@/components/calendar/types";
+import { CalendarItem } from "@/components/calendar/eventTypes";
 
 type EventDetailsPopupProps = {
   date: string;
@@ -39,7 +37,6 @@ export default function EventDetailsPopup({
   );
   const laidOutTimedItems = layoutTimedItems(timedItems);
   const hours = Array.from({ length: 17 }, (_, index) => index + 6);
-
 
   function timeToMinutes(time?: string | null) {
     if (!time) return null;

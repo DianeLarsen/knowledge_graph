@@ -49,6 +49,8 @@ type PageQuickActionsProps = {
   tagSuggestionText?: string;
   sourceTitle?: string;
   sourceContent?: string;
+  linkedProjectIds?: string[];
+  onLinkedProjectIdsChange?: (projectIds: string[]) => void;
 };
 
 type QuickActionSectionProps = {
@@ -130,6 +132,8 @@ export default function PageQuickActions({
   tagSuggestionText = "",
   sourceTitle = "",
   sourceContent = "",
+  linkedProjectIds = [],
+  onLinkedProjectIdsChange,
 }: PageQuickActionsProps) {
   const [open, setOpen] = useState(false);
   const [isSuggestingCreates, setIsSuggestingCreates] = useState(false);
@@ -140,8 +144,6 @@ export default function PageQuickActions({
   const [linkSuggestions, setLinkSuggestions] = useState<QuickLinkSuggestion[]>(
     [],
   );
-
-
 
   async function handleSuggestCreates() {
     if (isSuggestingCreates) return;
@@ -234,11 +236,14 @@ export default function PageQuickActions({
         <QuickActionSection
           title="Project"
           description="Add this item to an existing project or start a new one."
+          count={linkedProjectIds.length}
         >
           <QuickProjectActions
             entityType={entityType}
             entityId={entityId}
             projects={projects}
+            linkedProjectIds={linkedProjectIds}
+            onLinkedProjectIdsChange={onLinkedProjectIdsChange}
           />
         </QuickActionSection>
 

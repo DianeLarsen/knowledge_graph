@@ -1,7 +1,7 @@
 // app/notes/[id]/page.tsx
 
 import NoteCard from "@/components/notes/card/NoteCard";
-import PageQuickActions from "@/components/shared/PageQuickActions";
+import PageQuickActions from "@/components/shared/quick-actions/PageQuickActions";
 import { getNoteDetailsById, getNotesForUser } from "@/db/queries/notes";
 import { getReferencesForUser } from "@/db/queries/references";
 import { getTagsForUser } from "@/db/queries/tags";
@@ -9,6 +9,7 @@ import { getUserProjectsAction } from "@/app/actions/projects";
 import Link from "next/link";
 import { getTasksByUserId } from "@/db/queries/tasks";
 import { getEventsByUserId } from "@/db/queries/calendar";
+import { notFound } from "next/navigation";
 
 type NoteDetailsPageProps = {
   params: Promise<{
@@ -28,13 +29,7 @@ export default async function NoteDetailsPage({
   const data = await getNoteDetailsById(id);
 
   if (!data) {
-    return (
-      <main className="min-h-screen bg-gray-50 px-6 py-8 dark:bg-gray-950">
-        <div className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <p className="text-gray-600 dark:text-gray-300">Note not found.</p>
-        </div>
-      </main>
-    );
+    notFound();
   }
   const projects = await getUserProjectsAction();
   const userId = data.note.createdByUserId;

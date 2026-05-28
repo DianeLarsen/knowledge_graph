@@ -1,5 +1,14 @@
-import { Tag, Reference } from "@/db/schema";
+import type { Note, Tag, Reference } from "@/db/schema";
 import { TagColor } from "@/lib/types/tags/tagColors";
+import type { NoteLinkedReference } from "@/lib/types/references/referenceTypes";
+
+
+export type InlineMentionRange = {
+  from: number;
+  to: number;
+  tagId?: string;
+  tagName?: string;
+};
 
 export type MentionSuggestionItem = {
   id: string;
@@ -27,12 +36,11 @@ export type ContextMenuState = {
   y: number;
   from: number;
   to: number;
-  hasTagMark: boolean;
-  hasReferenceMark: boolean;
-  tagName?: string;
-  referenceTitle?: string;
   tags: ContextMenuTag[];
   references: ContextMenuReference[];
+  hasTagMark: boolean;
+  hasReferenceMark: boolean;
+  mode?: "full" | "removeOnly";
 } | null;
 
 export type RichNoteEditorProps = {
@@ -48,4 +56,34 @@ export type RichNoteEditorProps = {
   tagColorMap?: Record<string, TagColor>;
   inlineReferenceIds: string[];
   selectedReferenceIds: string[];
+  openConfirmDialog: (options: {
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+      variant?: "danger" | "default";
+    onConfirm: () => void;
+  }) => void;
+};
+
+export type AiSuggestedTag = {
+  name: string;
+  exists: boolean;
+};
+
+export type LinkedNoteSummary = {
+  id: string;
+  title: string;
+};
+
+export type EditNoteFormProps = {
+  note: Note;
+  tags: Tag[];
+  noteTags: Tag[];
+  references: Reference[];
+  noteReferences: NoteLinkedReference[];
+  availableNotes: LinkedNoteSummary[];
+  linkedNoteIds: string[];
+  onCancel?: () => void;
+  onSave?: (updatedNote: Note) => void;
 };

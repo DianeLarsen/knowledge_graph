@@ -7,6 +7,17 @@ import { createNoteAction } from "@/app/actions/notes";
 import { useRouter } from "next/navigation";
 import ReferenceComposer from "../references/ReferenceComposer";
 import { extractReferenceIdsFromContentJson } from "@/lib/notes/extractReferenceIdsFromContentJson";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import {
+  buildTagColorMap,
+  extractTagNamesFromContentJson,
+  getFinalReferenceIds,
+  getFinalTagNames,
+  normalizeTagName,
+} from "@/components/notes/editor/utils/editNoteFormUtils";
+import { useConfirmDialog } from "@/components/notes/editor/utils/confirmDialogUtils";
+import type { ContextMenuState } from "@/components/notes/editor/editorTypes";
+import { sameStringSetRaw } from "@/components/notes/editor/utils/editStateUtils";
 
 type NewNoteComposerProps = {
   notes: Note[];
@@ -44,9 +55,18 @@ export default function NewNoteComposer({
     useState<Reference[]>(references);
   const [showReferenceComposer, setShowReferenceComposer] = useState(false);
   const [editorResetKey, setEditorResetKey] = useState(0);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    variant?: "danger" | "default";
+    onConfirm: () => void;
+    onCancel?: () => void;
+  } | null>(null);
 
   const inlineReferenceIds = extractReferenceIdsFromContentJson(contentJson);
-
+  const tagColorMap = buildTagColorMap(tags);
   const router = useRouter();
   const titleMissing = savedMessage.includes("card title");
 
@@ -81,66 +101,71 @@ export default function NewNoteComposer({
     );
   }
 
-  async function handleSave() {
-    if (isSaving || hasSaved) return;
+async function handleSave() {
+  if (isSaving || hasSaved) return;
 
-    const trimmedTitle = title.trim();
-    const trimmedContent = content.trim();
+  const trimmedTitle = title.trim();
+  const trimmedContent = content.trim();
 
-    if (!trimmedTitle) {
-      setSavedMessage("Add a card title before saving.");
-      return;
-    }
-
-    if (!trimmedContent) {
-      setSavedMessage("Add some card content before saving.");
-      return;
-    }
-
-    const inlineReferenceIds = extractReferenceIdsFromContentJson(contentJson);
-
-    const finalReferenceIds = Array.from(
-      new Set([...selectedReferenceIds, ...inlineReferenceIds]),
-    );
-
-    if (finalReferenceIds.length === 0) {
-      setSavedMessage("Add at least one reference before saving.");
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      setSavedMessage("");
-
-      await createNoteAction({
-        title: trimmedTitle,
-        content: trimmedContent,
-        contentJson,
-        selectedTagIds,
-        newTagName,
-        linkedNoteIds,
-        inlineTagNames,
-        selectedReferenceIds: finalReferenceIds,
-        projectId,
-        projectRole,
-      });
-
-      setHasSaved(true);
-      setSavedMessage("Card saved.");
-
-      router.refresh();
-    } catch (error) {
-      console.error(error);
-
-      setSavedMessage(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong. Card was not saved.",
-      );
-    } finally {
-      setIsSaving(false);
-    }
+  if (!trimmedTitle) {
+    setSavedMessage("Add a card title before saving.");
+    return;
   }
+
+  if (!trimmedContent) {
+    setSavedMessage("Add some card content before saving.");
+    return;
+  }
+
+  const finalReferenceIds = getFinalReferenceIds({
+    selectedReferenceIds,
+    inlineReferenceIds,
+  });
+
+  if (finalReferenceIds.length === 0) {
+    setSavedMessage("Add at least one reference before saving.");
+    return;
+  }
+
+  const finalInlineTagNames = getFinalTagNames({
+    selectedTagNames: inlineTagNames,
+    contentJson,
+  });
+
+  try {
+    setIsSaving(true);
+    setSavedMessage("");
+
+    await createNoteAction({
+      title: trimmedTitle,
+      content: trimmedContent,
+      contentJson,
+      selectedTagIds,
+      newTagName,
+      linkedNoteIds,
+      inlineTagNames: finalInlineTagNames,
+      selectedReferenceIds: finalReferenceIds,
+      projectId,
+      projectRole,
+    });
+
+    setHasSaved(true);
+    setSavedMessage("Card saved.");
+
+    router.refresh();
+  } catch (error) {
+    console.error(error);
+
+    setSavedMessage(
+      error instanceof Error
+        ? error.message
+        : "Something went wrong. Card was not saved.",
+    );
+  } finally {
+    setIsSaving(false);
+  }
+}
+
   function toggleReference(referenceId: string) {
     setSelectedReferenceIds((current) =>
       current.includes(referenceId)
@@ -199,8 +224,14 @@ export default function NewNoteComposer({
               tags={tags}
               references={availableReferences}
               onTagUsed={(tagName) => {
+                const normalizedName = normalizeTagName(tagName);
+
+                if (!normalizedName) return;
+
                 setInlineTagNames((current) =>
-                  current.includes(tagName) ? current : [...current, tagName],
+                  current.includes(normalizedName)
+                    ? current
+                    : [...current, normalizedName],
                 );
               }}
               onReferenceUsed={(referenceId) => {
@@ -213,16 +244,32 @@ export default function NewNoteComposer({
               onChange={({ plainText, json }) => {
                 setContent(plainText);
                 setContentJson(json);
+
+                const nextInlineTagNames =
+                  extractTagNamesFromContentJson(json).map(normalizeTagName);
+
+                setInlineTagNames(nextInlineTagNames);
               }}
               getReferenceLabel={getReferenceLabel}
-              onReferenceRemoved={() => {}}
+              onReferenceRemoved={(referenceId) => {
+                setSelectedReferenceIds((current) =>
+                  current.filter((id) => id !== referenceId),
+                );
+              }}
               onTagRemoved={(tagName) => {
+                if (!tagName) return;
+
                 setInlineTagNames((current) =>
-                  current.filter((name) => name !== tagName),
+                  current.filter(
+                    (name) =>
+                      normalizeTagName(name) !== normalizeTagName(tagName),
+                  ),
                 );
               }}
               inlineReferenceIds={inlineReferenceIds}
               selectedReferenceIds={selectedReferenceIds}
+              tagColorMap={tagColorMap}
+              openConfirmDialog={useConfirmDialog}
             />
           </div>
           {savedMessage && (
@@ -413,6 +460,22 @@ export default function NewNoteComposer({
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={!!confirmDialog}
+        title={confirmDialog?.title ?? ""}
+        message={confirmDialog?.message ?? ""}
+        confirmLabel={confirmDialog?.confirmLabel}
+        cancelLabel={confirmDialog?.cancelLabel}
+        variant={confirmDialog?.variant}
+        onCancel={() => {
+          confirmDialog?.onCancel?.();
+          setConfirmDialog(null);
+        }}
+        onConfirm={() => {
+          confirmDialog?.onConfirm();
+          setConfirmDialog(null);
+        }}
+      />
     </aside>
   );
 }

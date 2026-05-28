@@ -168,7 +168,7 @@ export async function removeReferenceFromNoteAction(formData: FormData) {
     sourceId: noteId,
     targetType: "reference",
     targetId: referenceId,
-    relationshipType: "uses",
+    relationshipType: "references",
   });
 
   revalidateReferenceWorkflows(noteId);

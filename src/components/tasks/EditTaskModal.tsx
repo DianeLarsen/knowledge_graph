@@ -41,7 +41,7 @@ export default function EditTaskModal({
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl dark:bg-gray-900">
+      <div className="w-full max-w-md rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 text-[rgb(var(--text))] shadow-xl">
         <h3 className="mb-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
           Edit Task
         </h3>
@@ -50,7 +50,7 @@ export default function EditTaskModal({
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+            className="w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm text-[rgb(var(--text))]"
           />
 
           <textarea

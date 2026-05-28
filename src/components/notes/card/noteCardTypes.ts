@@ -2,6 +2,39 @@ import { Note, Reference, Tag, type RelationshipType } from "@/db/schema";
 import { TagColor } from "@/lib/types/tags/tagColors";
 import type { NoteLinkedReference } from "@/lib/types/references/referenceTypes";
 
+type LinkedNotePreviewDetails = {
+  id: string;
+  title: string | null;
+  content: string | null;
+  contentJson: string | null;
+  updatedAt: Date | string | null;
+};
+
+export type LinkedTaskSummary = {
+  id: string;
+  title: string | null;
+  description: string | null;
+  status: "todo" | "in_progress" | "awaiting" | "done" | "archived" | null;
+  priority: "low" | "medium" | "high" | null;
+};
+
+export type LinkedEventSummary = {
+  id: string;
+  title: string | null;
+  description: string | null;
+  startDate: Date | string | null;
+  endDate: Date | string | null;
+  allDay: boolean | null;
+  status: "planned" | "done" | "cancelled" | null;
+  location: string | null;
+};
+
+export type LinkedProjectSummary = {
+  id: string;
+  title: string | null;
+  description: string | null;
+};
+
 export type LinkedNoteSummary = {
   id: string;
   title: string;
@@ -11,46 +44,40 @@ export type NoteCardTag = Tag & {
   color: TagColor | null;
 };
 
-export type LinkedTaskSummary = {
-  id: string;
-  title: string;
-  status: "todo" | "in_progress" | "awaiting" | "done" | "archived";
-};
-
-export type LinkedEventSummary = {
-  id: string;
-  title: string;
-  startDate: string;
-  endDate: string | null;
-  status: "planned" | "done" | "cancelled";
-};
-
 export type OutgoingLink = {
   id: string;
   relationshipType: RelationshipType;
   label: string | null;
+  metadata?: string | null;
   sourceType: string;
   sourceId: string;
   targetType: string;
   targetId: string;
+
   targetTitle: string | null;
-  targetContent: string | null;
+
+  targetNote?: LinkedNotePreviewDetails | null;
   targetTask?: LinkedTaskSummary | null;
   targetEvent?: LinkedEventSummary | null;
+  targetProject?: LinkedProjectSummary | null;
 };
 
 export type Backlink = {
   id: string;
   relationshipType: RelationshipType;
   label: string | null;
+  metadata?: string | null;
   sourceType: string;
   sourceId: string;
   targetType: string;
   targetId: string;
+
   sourceTitle: string | null;
-  sourceContent: string | null;
+
+  sourceNote?: LinkedNotePreviewDetails | null;
   sourceTask?: LinkedTaskSummary | null;
   sourceEvent?: LinkedEventSummary | null;
+  sourceProject?: LinkedProjectSummary | null;
 };
 
 export type SharedTagNote = {

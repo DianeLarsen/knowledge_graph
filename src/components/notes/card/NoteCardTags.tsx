@@ -64,8 +64,21 @@ export default function NoteCardTags({
     return () => observer.disconnect();
   }, [tags]);
 
-  const visibleTags = tags.slice(0, visibleCount);
-  const hiddenTags = tags.slice(visibleCount);
+const sortedTags = [...tags].sort((a, b) => {
+  const aIsInline =
+    inlineTags.ids.has(a.id) || inlineTags.names.has(a.name.toLowerCase());
+
+  const bIsInline =
+    inlineTags.ids.has(b.id) || inlineTags.names.has(b.name.toLowerCase());
+
+  if (aIsInline && !bIsInline) return -1;
+  if (!aIsInline && bIsInline) return 1;
+
+  return a.name.localeCompare(b.name);
+});
+
+const visibleTags = sortedTags.slice(0, visibleCount);
+const hiddenTags = sortedTags.slice(visibleCount);
 
   if (tags.length === 0) {
     return (

@@ -2,49 +2,35 @@
 
 import { useState } from "react";
 
-import { Note, Tag, Reference } from "@/db/schema";
+import EditNoteTagsSection from "@/components/notes/editor/EditNoteTagsSection";
+import EditNoteReferencesSection from "@/components/notes/editor/EditNoteReferencesSection";
+import EditNoteLinkedCardsSection from "@/components/notes/editor/EditNoteLinkedCardsSection";
 import RichNoteEditor from "@/components/notes/editor/RichNoteEditor";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import type { Note, Tag, Reference } from "@/db/schema";
 import { updateNoteAction } from "@/app/actions/notes";
-import ReferenceComposer from "@/components/references/ReferenceComposer";
+import { suggestTagsForNoteAction } from "@/app/actions/tagSuggestions";
 import { extractReferenceIdsFromContentJson } from "@/lib/notes/extractReferenceIdsFromContentJson";
 import type { NoteLinkedReference } from "@/lib/types/references/referenceTypes";
-import { colorClassMap } from "@/lib/tagColorClasses";
-import { TagColor } from "@/lib/types/tags/tagColors";
-import { suggestTagsForNoteAction } from "@/app/actions/tagSuggestions";
+import {
+  buildTagColorMap,
+  extractTagNamesFromContentJson,
+  normalizeTagName,
+  removeInlineTagMarksFromContentJson,
+  sameStringSetRaw,
+  sameStringSetNormalized,
+  getInitialSelectedReferenceIds,
+  getInitialSelectedTagNames,
+  getInitialInlineTagNames,
+  getOtherTags,
+  getCurrentTags,
+  getSelectedNewTagNames,
+  buildAiSuggestedTags,
+  getFinalReferenceIds,
+  getFinalTagNames,
+} from "@/components/notes/editor/utils/editNoteFormUtils";
+import type {AiSuggestedTag, EditNoteFormProps} from "./editorTypes";
 
-type EditorJsonMark = {
-  type?: string;
-  attrs?: {
-    tagName?: string;
-  };
-};
-
-type EditorJsonNode = {
-  marks?: EditorJsonMark[];
-  content?: EditorJsonNode[];
-};
-
-type AiSuggestedTag = {
-  name: string;
-  exists: boolean;
-};
-
-type LinkedNoteSummary = {
-  id: string;
-  title: string;
-};
-
-type EditNoteFormProps = {
-  note: Note;
-  tags: Tag[];
-  noteTags: Tag[];
-  references: Reference[];
-  noteReferences: NoteLinkedReference[];
-  availableNotes: LinkedNoteSummary[];
-  linkedNoteIds: string[];
-  onCancel?: () => void;
-  onSave?: (updatedNote: Note) => void;
-};
 
 export default function EditNoteForm({
   note,
@@ -63,30 +49,98 @@ export default function EditNoteForm({
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [showAllTags, setShowAllTags] = useState(false);
-  const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>(
-    noteReferences.map((reference) => reference.id),
-  );
+const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>(
+  getInitialSelectedReferenceIds(noteReferences),
+);
 
   const [newTagName, setNewTagName] = useState("");
   const [availableReferences, setAvailableReferences] =
     useState<Reference[]>(references);
   const [showReferenceComposer, setShowReferenceComposer] = useState(false);
-  const [selectedTagNames, setSelectedTagNames] = useState<string[]>(
-    noteTags.map((tag) =>
-      tag.name
-        .trim()
-        .replace(/^#+/, "")
-        .toLowerCase()
-        .replace(/[^a-z0-9\s_-]/g, "")
-        .replace(/[\s-]+/g, "_")
-        .replace(/_+/g, "_")
-        .replace(/^_+|_+$/g, ""),
-    ),
-  );
+const [selectedTagNames, setSelectedTagNames] = useState<string[]>(
+  getInitialSelectedTagNames(noteTags),
+);
   const [selectedLinkedNoteIds, setSelectedLinkedNoteIds] =
     useState<string[]>(linkedNoteIds);
   const [isSuggestingTags, setIsSuggestingTags] = useState(false);
   const [aiSuggestedTags, setAiSuggestedTags] = useState<AiSuggestedTag[]>([]);
+
+const [inlineTagNames, setInlineTagNames] = useState<string[]>(
+  getInitialInlineTagNames(note.contentJson ?? ""),
+);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    variant?: "danger" | "default";
+    onConfirm: () => void;
+    onCancel?: () => void;
+  } | null>(null);
+
+  const hasUnsavedChanges =
+    title !== note.title ||
+    content !== (note.content ?? "") ||
+    contentJson !== (note.contentJson ?? "") ||
+    !sameStringSetRaw(
+      selectedReferenceIds,
+      noteReferences.map((reference) => reference.id),
+    ) ||
+    !sameStringSetRaw(selectedLinkedNoteIds, linkedNoteIds) ||
+    !sameStringSetNormalized(
+      selectedTagNames,
+      noteTags.map((tag) => tag.name),
+      normalizeTagName,
+    );
+
+  function handleCancelEdit() {
+    if (!onCancel) return;
+
+    if (!hasUnsavedChanges) {
+      onCancel();
+      return;
+    }
+
+    openConfirmDialog({
+      title: "Discard changes?",
+      message:
+        "You have unsaved changes. Keep editing, or discard your changes and close?",
+      confirmLabel: "Discard changes",
+      cancelLabel: "Keep editing",
+      variant: "danger",
+      onConfirm: () => {
+        onCancel();
+      },
+    });
+  }
+
+  function openConfirmDialog({
+    title,
+    message,
+    confirmLabel,
+    cancelLabel,
+    variant = "default",
+    onConfirm,
+    onCancel,
+  }: {
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    variant?: "danger" | "default";
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }) {
+    setConfirmDialog({
+      title,
+      message,
+      confirmLabel,
+      cancelLabel,
+      variant,
+      onConfirm,
+      onCancel,
+    });
+  }
 
   function toggleLinkedNote(noteId: string) {
     setSelectedLinkedNoteIds((current) =>
@@ -98,8 +152,74 @@ export default function EditNoteForm({
 
   function toggleTag(tagName: string) {
     const normalizedName = normalizeTagName(tagName);
-
+    console.log("Toggling tag:", tagName, "Normalized:", normalizedName);
     if (!normalizedName) return;
+
+    const isSelected = selectedTagNameSet.has(normalizedName);
+    console.log("Is selected:", isSelected);
+    const isInlineLinked = inlineTagNameSet.has(normalizedName);
+    console.log("set of names after click:", Array.from(inlineTagNameSet));
+    console.log("Is inline linked:", isInlineLinked);
+
+    if (isSelected && isInlineLinked) {
+      openConfirmDialog({
+        title: "Remove inline tag?",
+        message: `#${normalizedName} is used inside the note text.\n\nRemove the tagged text completely, or keep the text and only remove the tag connection?`,
+        confirmLabel: "Remove text",
+        cancelLabel: "Keep text",
+        variant: "danger",
+        onConfirm: () => {
+          const updatedContentJson = removeInlineTagMarksFromContentJson({
+            contentJson,
+            tagName: normalizedName,
+            mode: "removeText",
+          });
+
+          setContentJson(updatedContentJson);
+
+          const updatedInlineTagNames =
+            extractTagNamesFromContentJson(updatedContentJson).map(
+              normalizeTagName,
+            );
+
+          setInlineTagNames(updatedInlineTagNames);
+
+          setSelectedTagNames((current) =>
+            current.filter((name) => normalizeTagName(name) !== normalizedName),
+          );
+
+          setMessage(
+            `Removed tagged text and detached #${normalizedName}. Save the note to keep this change.`,
+          );
+        },
+        onCancel: () => {
+          const updatedContentJson = removeInlineTagMarksFromContentJson({
+            contentJson,
+            tagName: normalizedName,
+            mode: "keepText",
+          });
+
+          setContentJson(updatedContentJson);
+
+          const updatedInlineTagNames =
+            extractTagNamesFromContentJson(updatedContentJson).map(
+              normalizeTagName,
+            );
+
+          setInlineTagNames(updatedInlineTagNames);
+
+          setSelectedTagNames((current) =>
+            current.filter((name) => normalizeTagName(name) !== normalizedName),
+          );
+
+          setMessage(
+            `Removed inline #${normalizedName} but kept the text. Save the note to keep this change.`,
+          );
+        },
+      });
+
+      return;
+    }
 
     setSelectedTagNames((current) => {
       const currentSet = new Set(current.map(normalizeTagName));
@@ -111,42 +231,6 @@ export default function EditNoteForm({
   }
 
   const inlineReferenceIds = extractReferenceIdsFromContentJson(contentJson);
-
-  function extractTagNamesFromContentJson(contentJson: string | null) {
-    if (!contentJson) return [];
-
-    try {
-      const parsed = JSON.parse(contentJson) as EditorJsonNode;
-      const tagNames = new Set<string>();
-
-      function walk(node: EditorJsonNode) {
-        node.marks?.forEach((mark) => {
-          if (mark.type === "tagMark" && mark.attrs?.tagName) {
-            tagNames.add(mark.attrs.tagName);
-          }
-        });
-
-        node.content?.forEach(walk);
-      }
-
-      walk(parsed);
-
-      return Array.from(tagNames);
-    } catch {
-      return [];
-    }
-  }
-
-  function normalizeTagName(value: string) {
-    return value
-      .trim()
-      .replace(/^#+/, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9\s_-]/g, "")
-      .replace(/[\s-]+/g, "_")
-      .replace(/_+/g, "_")
-      .replace(/^_+|_+$/g, "");
-  }
 
   async function handleSuggestTags() {
     if (isSuggestingTags) return;
@@ -161,24 +245,12 @@ export default function EditNoteForm({
         availableTags: tags.map((tag) => ({ name: tag.name })),
       });
 
-      const existingSuggestions = result.existingTagNames.map((name) => ({
-        name: normalizeTagName(name),
-        exists: true,
-      }));
-
-      const newSuggestions = result.newTagNames.map((name) => ({
-        name: normalizeTagName(name),
-        exists: false,
-      }));
-
-      const suggestions = [...existingSuggestions, ...newSuggestions]
-        .filter((tag) => tag.name)
-        .filter(
-          (tag, index, array) =>
-            array.findIndex((item) => item.name === tag.name) === index,
-        );
-
-      setAiSuggestedTags(suggestions);
+      setAiSuggestedTags(
+        buildAiSuggestedTags({
+          existingTagNames: result.existingTagNames,
+          newTagNames: result.newTagNames,
+        }),
+      );
     } catch (error) {
       console.error(error);
       setMessage("Could not suggest tags.");
@@ -187,54 +259,50 @@ export default function EditNoteForm({
     }
   }
 
-  async function handleSave() {
-    if (isSaving) return;
+async function handleSave() {
+  if (isSaving) return;
 
-    const finalReferenceIds = Array.from(
-      new Set([...selectedReferenceIds, ...inlineReferenceIds]),
-    );
+  const finalReferenceIds = getFinalReferenceIds({
+    selectedReferenceIds,
+    inlineReferenceIds,
+  });
 
-    if (finalReferenceIds.length === 0) {
-      setMessage("Add at least one reference before saving.");
-      return;
-    }
-    try {
-      setIsSaving(true);
-      setMessage("");
-
-      const inlineTagNamesFromContent =
-        extractTagNamesFromContentJson(contentJson);
-
-      const finalTagNames = Array.from(
-        new Set(
-          [...selectedTagNames, ...inlineTagNamesFromContent]
-            .map(normalizeTagName)
-            .filter(Boolean),
-        ),
-      );
-
-      const updatedNote = await updateNoteAction({
-        id: note.id,
-        title,
-        content,
-        contentJson,
-        inlineTagNames: finalTagNames,
-        selectedReferenceIds: finalReferenceIds,
-        linkedNoteIds: selectedLinkedNoteIds,
-      });
-
-      if (updatedNote) {
-        onSave?.(updatedNote);
-      }
-
-      setMessage("Note saved.");
-    } catch (error) {
-      console.error(error);
-      setMessage("Something went wrong. Note was not saved.");
-    } finally {
-      setIsSaving(false);
-    }
+  if (finalReferenceIds.length === 0) {
+    setMessage("Add at least one reference before saving.");
+    return;
   }
+
+  try {
+    setIsSaving(true);
+    setMessage("");
+
+    const finalTagNames = getFinalTagNames({
+      selectedTagNames,
+      contentJson,
+    });
+
+    const updatedNote = await updateNoteAction({
+      id: note.id,
+      title,
+      content,
+      contentJson,
+      inlineTagNames: finalTagNames,
+      selectedReferenceIds: finalReferenceIds,
+      linkedNoteIds: selectedLinkedNoteIds,
+    });
+
+    if (updatedNote) {
+      onSave?.(updatedNote);
+    }
+
+    setMessage("Note saved.");
+  } catch (error) {
+    console.error(error);
+    setMessage("Something went wrong. Note was not saved.");
+  } finally {
+    setIsSaving(false);
+  }
+}
 
   function toggleReference(referenceId: string) {
     setSelectedReferenceIds((current) =>
@@ -279,86 +347,17 @@ export default function EditNoteForm({
     );
   }
 
-  const tagColorMap: Record<string, TagColor> = Object.fromEntries(
-    tags.flatMap((tag) => {
-      const color = (tag.color ?? "blue") as TagColor;
-
-      return [
-        [tag.id, color],
-        [tag.name.toLowerCase(), color],
-      ];
-    }),
-  );
-
-  const inlineTagNameSet = new Set(
-    extractTagNamesFromContentJson(contentJson).map(normalizeTagName),
-  );
+  const tagColorMap = buildTagColorMap(tags);
 
   const selectedTagNameSet = new Set(selectedTagNames.map(normalizeTagName));
+  const inlineTagNameSet = new Set(inlineTagNames.map(normalizeTagName));
 
-  const currentTags = tags.filter((tag) =>
-    selectedTagNameSet.has(normalizeTagName(tag.name)),
-  );
-  const selectedNewTagNames = selectedTagNames.filter(
-    (tagName) =>
-      !tags.some(
-        (tag) => normalizeTagName(tag.name) === normalizeTagName(tagName),
-      ),
-  );
-  const otherTags = tags.filter((tag) => {
-    const tagName = normalizeTagName(tag.name);
-
-    return !selectedTagNameSet.has(tagName) && !inlineTagNameSet.has(tagName);
+  const currentTags = getCurrentTags({ tags, selectedTagNames });
+  const selectedNewTagNames = getSelectedNewTagNames({
+    tags,
+    selectedTagNames,
   });
-
-  function renderTagButton(
-    tag: Tag,
-    variant: "current" | "suggested" | "other",
-  ) {
-    const tagName = normalizeTagName(tag.name);
-    const selected = selectedTagNameSet.has(tagName);
-    const isInlineLinked = inlineTagNameSet.has(tagName);
-
-    const color = (tag.color ?? "blue") as TagColor;
-    const inlineColorClasses = colorClassMap[color].join(" ");
-
-    const currentClasses = isInlineLinked
-      ? `border-current ${inlineColorClasses}`
-      : "border-blue-400 bg-blue-100 text-blue-800 dark:border-blue-500 dark:bg-blue-900/40 dark:text-blue-200";
-
-    const suggestedClasses =
-      "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200";
-
-    const otherClasses =
-      "border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700";
-
-    const className =
-      variant === "current"
-        ? currentClasses
-        : variant === "suggested"
-          ? suggestedClasses
-          : otherClasses;
-
-    return (
-      <button
-        key={tag.id}
-        type="button"
-        onClick={() => toggleTag(tag.name)}
-        className={`rounded-full border px-3 py-1 text-sm transition ${className}`}
-        title={
-          selected
-            ? isInlineLinked
-              ? "Linked inline and saved on this card"
-              : "Saved on this card"
-            : variant === "suggested"
-              ? "Used inline but not saved as a card tag yet"
-              : "Available tag"
-        }
-      >
-        #{tag.name}
-      </button>
-    );
-  }
+  const otherTags = getOtherTags({ tags, selectedTagNames, inlineTagNames });
 
   return (
     <section className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -369,7 +368,7 @@ export default function EditNoteForm({
         {onCancel && (
           <button
             type="button"
-            onClick={onCancel}
+            onClick={handleCancelEdit}
             className="
               absolute right-2 top-2 z-10
               rounded-full border border-gray-300 bg-white px-2 py-0.5
@@ -392,144 +391,25 @@ export default function EditNoteForm({
         onChange={(e) => setTitle(e.target.value)}
         className="mb-4 w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
       />
-      <div className="mb-4">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Tags
-          </p>
-
-          <button
-            type="button"
-            onClick={handleSuggestTags}
-            disabled={isSuggestingTags}
-            className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200 dark:hover:bg-amber-900/50"
-          >
-            {isSuggestingTags ? "Thinking..." : "Suggest tags"}
-          </button>
-          <p className="mt-1 text-xs text-gray-400">
-            Suggested count: {aiSuggestedTags.length}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-3 dark:border-gray-700 dark:bg-gray-950/40">
-          <div className="flex flex-wrap gap-2">
-            {currentTags.length > 0 || selectedNewTagNames.length > 0 ? (
-              <>
-                {currentTags.map((tag) => renderTagButton(tag, "current"))}
-
-                {selectedNewTagNames.map((tagName) => (
-                  <button
-                    key={`selected-new-${tagName}`}
-                    type="button"
-                    onClick={() => toggleTag(tagName)}
-                    className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-sm text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200"
-                    title="New tag selected for this card"
-                  >
-                    #{tagName}
-                    <span className="ml-1 text-xs opacity-70">new</span>
-                  </button>
-                ))}
-              </>
-            ) : (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                No tags attached yet.
-              </p>
-            )}
-          </div>
-
-          {aiSuggestedTags.length > 0 && (
-            <div className="mt-3 border-t border-gray-200 pt-3 dark:border-gray-700">
-              <p className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                Suggested
-              </p>
-
-              <div className="flex flex-wrap gap-2">
-                {aiSuggestedTags.map((tag) => {
-                  const alreadySelected = selectedTagNameSet.has(
-                    normalizeTagName(tag.name),
-                  );
-
-                  return (
-                    <button
-                      key={`${tag.exists ? "existing" : "new"}-${tag.name}`}
-                      type="button"
-                      onClick={() => addSuggestedTag(tag.name)}
-                      disabled={alreadySelected}
-                      className={`
-                  rounded-full border px-3 py-1 text-xs font-medium transition
-                  ${
-                    alreadySelected
-                      ? "cursor-default border-gray-300 bg-gray-100 text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500"
-                      : tag.exists
-                        ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200"
-                        : "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200"
-                  }
-                `}
-                      title={
-                        tag.exists
-                          ? "Suggested existing tag"
-                          : "Suggested new tag"
-                      }
-                    >
-                      #{tag.name}
-                      {!tag.exists && (
-                        <span className="ml-1 opacity-70">new</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-200 pt-3 dark:border-gray-700">
-            <div className="flex w-44 items-center rounded-full border border-gray-300 bg-white px-2 py-1 dark:border-gray-700 dark:bg-gray-950">
-              <span className="text-xs text-gray-400">#</span>
-
-              <input
-                value={newTagName}
-                onChange={(event) => setNewTagName(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    addCardLevelTag();
-                  }
-                }}
-                placeholder="add tag"
-                className="min-w-0 flex-1 bg-transparent px-1 text-xs text-gray-700 outline-none placeholder:text-gray-400 dark:text-gray-100"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={addCardLevelTag}
-              className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-semibold text-gray-600 transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 dark:hover:border-blue-500 dark:hover:bg-blue-900/30 dark:hover:text-blue-200"
-            >
-              Add
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowAllTags((current) => !current)}
-              className="ml-auto text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
-            >
-              {showAllTags ? "Hide all" : `Browse all (${otherTags.length})`}
-            </button>
-          </div>
-
-          {showAllTags && (
-            <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-200 pt-3 dark:border-gray-700">
-              {otherTags.length > 0 ? (
-                otherTags.map((tag) => renderTagButton(tag, "other"))
-              ) : (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  No other tags available.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      <EditNoteTagsSection
+        tags={tags}
+        currentTags={currentTags}
+        selectedNewTagNames={selectedNewTagNames}
+        otherTags={otherTags}
+        aiSuggestedTags={aiSuggestedTags}
+        selectedTagNameSet={selectedTagNameSet}
+        inlineTagNameSet={inlineTagNameSet}
+        newTagName={newTagName}
+        showAllTags={showAllTags}
+        isSuggestingTags={isSuggestingTags}
+        onNewTagNameChange={setNewTagName}
+        onAddCardLevelTag={addCardLevelTag}
+        onAddSuggestedTag={addSuggestedTag}
+        onToggleShowAllTags={() => setShowAllTags((current) => !current)}
+        onSuggestTags={handleSuggestTags}
+        normalizeTagName={normalizeTagName}
+        handleToggleTag={toggleTag}
+      />
       <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
         Content
       </label>
@@ -538,7 +418,17 @@ export default function EditNoteForm({
         initialContent={contentJson || content}
         tags={tags}
         references={availableReferences}
-        onTagUsed={() => {}}
+        onTagUsed={(tagName) => {
+          const normalizedName = normalizeTagName(tagName);
+
+          if (!normalizedName) return;
+
+          setSelectedTagNames((current) =>
+            current.some((name) => normalizeTagName(name) === normalizedName)
+              ? current
+              : [...current, normalizedName],
+          );
+        }}
         onReferenceUsed={(referenceId) => {
           setSelectedReferenceIds((current) =>
             current.includes(referenceId) ? current : [...current, referenceId],
@@ -547,6 +437,57 @@ export default function EditNoteForm({
         onChange={({ plainText, json }) => {
           setContent(plainText);
           setContentJson(json);
+
+          const nextInlineTagNames =
+            extractTagNamesFromContentJson(json).map(normalizeTagName);
+
+          const previousInlineSet = new Set(
+            inlineTagNames.map(normalizeTagName),
+          );
+          const nextInlineSet = new Set(nextInlineTagNames);
+
+          const removedInlineTags = Array.from(previousInlineSet).filter(
+            (tagName) => tagName && !nextInlineSet.has(tagName),
+          );
+
+          setInlineTagNames(nextInlineTagNames);
+
+          setSelectedTagNames((current) => {
+            const nextSelected = new Set(current.map(normalizeTagName));
+
+            nextInlineTagNames.forEach((tagName) => {
+              if (tagName) {
+                nextSelected.add(tagName);
+              }
+            });
+
+            return Array.from(nextSelected);
+          });
+
+          const removableTag = removedInlineTags.find((tagName) =>
+            selectedTagNameSet.has(tagName),
+          );
+
+          if (removableTag) {
+            openConfirmDialog({
+              title: "Remove tag from note?",
+              message: `No other text is tagged with #${removableTag}.\n\nRemove #${removableTag} from this note's tag list too?`,
+              confirmLabel: "Remove tag",
+              cancelLabel: "Keep tag",
+              variant: "danger",
+              onConfirm: () => {
+                setSelectedTagNames((current) =>
+                  current.filter(
+                    (name) => normalizeTagName(name) !== removableTag,
+                  ),
+                );
+
+                setMessage(
+                  `Removed #${removableTag} from this note's tag list. Save the note to keep this change.`,
+                );
+              },
+            });
+          }
         }}
         getReferenceLabel={getReferenceLabel}
         onReferenceRemoved={() => {}}
@@ -562,107 +503,33 @@ export default function EditNoteForm({
         inlineReferenceIds={inlineReferenceIds}
         selectedReferenceIds={selectedReferenceIds}
         tagColorMap={tagColorMap}
+        openConfirmDialog={openConfirmDialog}
       />
-      <section className="mb-4">
-        <h3 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-          References
-        </h3>
+      <EditNoteReferencesSection
+        references={availableReferences}
+        selectedReferenceIds={selectedReferenceIds}
+        showReferenceComposer={showReferenceComposer}
+        onToggleReference={toggleReference}
+        onToggleReferenceComposer={() =>
+          setShowReferenceComposer((current) => !current)
+        }
+        onReferenceCreated={(reference) => {
+          setAvailableReferences((current) => [reference, ...current]);
+          setSelectedReferenceIds((current) =>
+            current.includes(reference.id)
+              ? current
+              : [...current, reference.id],
+          );
+          setShowReferenceComposer(false);
+        }}
+      />
 
-        <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-gray-200 p-2 dark:border-gray-700">
-          {availableReferences.length > 0 ? (
-            availableReferences.map((reference) => {
-              const selected = selectedReferenceIds.includes(reference.id);
-
-              return (
-                <button
-                  key={reference.id}
-                  type="button"
-                  onClick={() => toggleReference(reference.id)}
-                  className={`block w-full rounded-lg px-3 py-2 text-left text-sm ${
-                    selected
-                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
-                      : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                  }`}
-                >
-                  <span className="block font-medium">{reference.title}</span>
-                  {reference.author && (
-                    <span className="block text-xs opacity-75">
-                      {reference.author}
-                    </span>
-                  )}
-                </button>
-              );
-            })
-          ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              No references yet.
-            </p>
-          )}
-        </div>
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => setShowReferenceComposer((current) => !current)}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-          >
-            {showReferenceComposer
-              ? "Hide new reference form"
-              : "Add new reference"}
-          </button>
-
-          {showReferenceComposer && (
-            <div className="mt-3">
-              <ReferenceComposer
-                onReferenceCreated={(reference) => {
-                  setAvailableReferences((current) => [reference, ...current]);
-                  setSelectedReferenceIds((current) =>
-                    current.includes(reference.id)
-                      ? current
-                      : [...current, reference.id],
-                  );
-                  setShowReferenceComposer(false);
-                }}
-              />
-            </div>
-          )}
-        </div>
-        <section className="mb-4">
-          <h3 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-            Linked Cards
-          </h3>
-
-          <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-gray-200 p-2 dark:border-gray-700">
-            {availableNotes.filter((item) => item.id !== note.id).length > 0 ? (
-              availableNotes
-                .filter((item) => item.id !== note.id)
-                .map((linkedNote) => {
-                  const selected = selectedLinkedNoteIds.includes(
-                    linkedNote.id,
-                  );
-
-                  return (
-                    <button
-                      key={linkedNote.id}
-                      type="button"
-                      onClick={() => toggleLinkedNote(linkedNote.id)}
-                      className={`block w-full rounded-lg px-3 py-2 text-left text-sm ${
-                        selected
-                          ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200"
-                          : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                      }`}
-                    >
-                      {linkedNote.title}
-                    </button>
-                  );
-                })
-            ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                No other cards available to link.
-              </p>
-            )}
-          </div>
-        </section>
-      </section>
+      <EditNoteLinkedCardsSection
+        currentNoteId={note.id}
+        availableNotes={availableNotes}
+        selectedLinkedNoteIds={selectedLinkedNoteIds}
+        onToggleLinkedNote={toggleLinkedNote}
+      />
 
       <button
         type="button"
@@ -675,7 +542,7 @@ export default function EditNoteForm({
       {onCancel && (
         <button
           type="button"
-          onClick={onCancel}
+          onClick={handleCancelEdit}
           className="
     px-3 py-1.5 text-sm
     text-gray-500 hover:text-gray-700
@@ -690,6 +557,22 @@ export default function EditNoteForm({
           {message}
         </p>
       )}
+      <ConfirmDialog
+        open={!!confirmDialog}
+        title={confirmDialog?.title ?? ""}
+        message={confirmDialog?.message ?? ""}
+        confirmLabel={confirmDialog?.confirmLabel}
+        cancelLabel={confirmDialog?.cancelLabel}
+        variant={confirmDialog?.variant}
+        onCancel={() => {
+          confirmDialog?.onCancel?.();
+          setConfirmDialog(null);
+        }}
+        onConfirm={() => {
+          confirmDialog?.onConfirm();
+          setConfirmDialog(null);
+        }}
+      />
     </section>
   );
 }

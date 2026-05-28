@@ -53,8 +53,9 @@ export default function TagPill({
   }, []);
 
   const linkedColorClass = tagPillColorClasses[color];
-const activeClass =
-  "border-blue-500 bg-blue-100 text-blue-800 ring-2 ring-blue-300 dark:border-blue-500 dark:bg-blue-950 dark:text-blue-100 dark:ring-blue-800";
+  const activeClass =
+    "border-blue-500 bg-blue-100 text-blue-800 ring-2 ring-blue-300 dark:border-blue-500 dark:bg-blue-950 dark:text-blue-100 dark:ring-blue-800";
+  
   return (
     <span
       ref={ref}

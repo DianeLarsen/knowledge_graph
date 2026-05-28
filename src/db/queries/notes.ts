@@ -541,6 +541,37 @@ export async function updateNote(
   });
 }
 
+export async function updateNoteContentOnly({
+  userId,
+  noteId,
+  content,
+  contentJson,
+}: {
+  userId: string;
+  noteId: string;
+  content: string;
+  contentJson: string;
+}) {
+  const [updatedNote] = await db
+    .update(notes)
+    .set({
+      content,
+      contentJson,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(notes.id, noteId),
+        eq(notes.ownerType, "user"),
+        eq(notes.ownerId, userId),
+        isNull(notes.deletedAt),
+      ),
+    )
+    .returning();
+
+  return updatedNote ?? null;
+}
+
 export async function deleteNote(id: string, userId: string) {
   const result = await db
     .update(notes)

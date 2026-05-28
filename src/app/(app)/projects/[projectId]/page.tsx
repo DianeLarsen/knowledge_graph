@@ -42,7 +42,7 @@ export default async function ProjectDetailPage({ params }: ProjectPageProps) {
   const { projectId } = await params;
 
   const project = await getAllProjectByIdAction(projectId);
-console.log(project)
+
   if (!project) {
     notFound();
   }

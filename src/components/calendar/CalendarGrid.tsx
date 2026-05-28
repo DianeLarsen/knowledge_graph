@@ -1,9 +1,5 @@
 // src/components/calendar/CalendarGrid.tsx
-import {
-  CalendarItem,
-
-} from "@/components/calendar/types";
-
+import { CalendarItem } from "@/components/calendar/eventTypes";
 
 type CalendarGridProps = {
   year: number;

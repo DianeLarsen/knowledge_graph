@@ -10,6 +10,8 @@ type AddToProjectFormProps = {
   entityId: string;
   projects: Project[];
   defaultProjectRole?: "source" | "working" | "completed" | "reference";
+  linkedProjectIds?: string[];
+  onLinkedProjectIdsChange?: (projectIds: string[]) => void;
 };
 
 export default function AddToProjectForm({
@@ -17,11 +19,21 @@ export default function AddToProjectForm({
   entityId,
   projects,
   defaultProjectRole = "working",
+  linkedProjectIds = [],
+  onLinkedProjectIdsChange,
 }: AddToProjectFormProps) {
   const [isPending, startTransition] = useTransition();
 
-  if (projects.length === 0) {
-    return null;
+  const availableProjects = projects.filter(
+    (project) => !linkedProjectIds.includes(project.id),
+  );
+
+  if (availableProjects.length === 0) {
+    return (
+      <p className="text-xs text-[rgb(var(--muted))]">
+        Already added to all available projects.
+      </p>
+    );
   }
 
   return (
@@ -29,6 +41,14 @@ export default function AddToProjectForm({
       action={(formData) => {
         startTransition(async () => {
           await addEntityToProjectAction(formData);
+
+          const projectId = String(formData.get("projectId") ?? "");
+
+          if (projectId) {
+            onLinkedProjectIdsChange?.([
+              ...new Set([...linkedProjectIds, projectId]),
+            ]);
+          }
         });
       }}
       className="flex flex-wrap items-center gap-2"
@@ -38,9 +58,9 @@ export default function AddToProjectForm({
 
       <select
         name="projectId"
-        className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        className="rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-2 py-1 text-xs text-[rgb(var(--text))]"
       >
-        {projects.map((project) => (
+        {availableProjects.map((project) => (
           <option key={project.id} value={project.id}>
             {project.title}
           </option>
@@ -50,7 +70,7 @@ export default function AddToProjectForm({
       <select
         name="projectRole"
         defaultValue={defaultProjectRole}
-        className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        className="rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-2 py-1 text-xs text-[rgb(var(--text))]"
       >
         <option value="working">Working</option>
         <option value="source">Source</option>
