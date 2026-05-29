@@ -100,7 +100,12 @@ export default function NoteCard({
           onClose={onClose}
         />
 
-        <NoteCardTags tags={tags} tagStats={tagStats} inlineTags={inlineTags} />
+        <NoteCardTags
+          tags={tags}
+          tagStats={tagStats}
+          inlineTags={inlineTags}
+          currentNoteId={note.id}
+        />
 
         <NoteCardTitle title={note.title} compact={compact} />
 

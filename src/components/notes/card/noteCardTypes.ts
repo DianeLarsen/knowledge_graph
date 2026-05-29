@@ -100,11 +100,16 @@ export type NoteDetails = {
   note: Note;
   tags: NoteCardTag[];
   tagStats?: {
-    tag: NoteCardTag;
+    tag: Tag;
     stats: {
       tagId: string;
       tagName: string;
       noteCount: number;
+      notes?: {
+        id: string;
+        title: string;
+        content?: string | null;
+      }[];
     } | null;
   }[];
   outgoingLinks: OutgoingLink[];

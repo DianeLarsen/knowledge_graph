@@ -339,7 +339,32 @@ export async function getTagStats(tagId: string, userId: string) {
     )
     .groupBy(tags.id);
 
-  return result ?? null;
+  if (!result) return null;
+
+  const taggedNotes = await db
+    .select({
+      id: notes.id,
+      title: notes.title,
+      content: notes.content,
+    })
+    .from(entityTags)
+    .innerJoin(
+      notes,
+      and(
+        eq(entityTags.entityType, "note"),
+        eq(entityTags.entityId, notes.id),
+        eq(notes.ownerType, "user"),
+        eq(notes.ownerId, userId),
+        isNull(notes.deletedAt),
+      ),
+    )
+    .where(eq(entityTags.tagId, tagId))
+    .orderBy(notes.title);
+
+  return {
+    ...result,
+    notes: taggedNotes,
+  };
 }
 
 export async function removeTagFromEntity({

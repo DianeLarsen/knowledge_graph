@@ -3,11 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { TagColor } from "@/lib/types/tags/tagColors";
 import { tagPillColorClasses } from "@/lib/tagColorClasses";
+import { createPortal } from "react-dom";
+import MiniNotePreviewCard from "@/components/notes/card/MiniNotePreviewCard";
 
 type TagStats = {
   tagId: string;
   tagName: string;
   noteCount: number;
+  notes?: {
+    id: string;
+    title: string;
+  }[];
 } | null;
 
 type TagPillProps = {
@@ -23,6 +29,7 @@ type TagPillProps = {
   color?: TagColor;
   size?: "sm" | "md" | "card";
   active?: boolean;
+  currentNoteId?: string;
 };
 
 export default function TagPill({
@@ -34,16 +41,45 @@ export default function TagPill({
   color = "blue",
   size = "md",
   active = false,
+  currentNoteId,
 }: TagPillProps) {
   const [open, setOpen] = useState(false);
+  const [popupPosition, setPopupPosition] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
+  const [pinned, setPinned] = useState(false);
+  const [previewNote, setPreviewNote] = useState<{
+    id: string;
+    title: string;
+    content?: string | null;
+  } | null>(null);
+
   const ref = useRef<HTMLSpanElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [popupHeight, setPopupHeight] = useState(0);
+  const [hoverSuppressed, setHoverSuppressed] = useState(false);
+  const otherLinkedNotes =
+    stats?.notes?.filter((note) => note.id !== currentNoteId) ?? [];
+  useEffect(() => {
+    if (!open || !popupRef.current) return;
+
+    setPopupHeight(popupRef.current.offsetHeight);
+  }, [open, previewNote, otherLinkedNotes.length]);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
+   function handleClickOutside(event: MouseEvent) {
+     const target = event.target as Node;
+
+     const clickedPill = ref.current?.contains(target) ?? false;
+     const clickedPopup = popupRef.current?.contains(target) ?? false;
+     const clickedPreview = previewRef.current?.contains(target) ?? false;
+
+     if (!clickedPill && !clickedPopup && !clickedPreview) {
+       closePopup();
+     }
+   }
 
     document.addEventListener("mousedown", handleClickOutside);
 
@@ -52,28 +88,56 @@ export default function TagPill({
     };
   }, []);
 
+function openPopup() {
+  if (hoverSuppressed) return;
+
+  const rect = ref.current?.getBoundingClientRect();
+  if (!rect) return;
+
+  setPopupPosition({
+    left: rect.left,
+    top: rect.bottom + 8,
+  });
+
+  setOpen(true);
+}
+
+  function closePopup() {
+    setOpen(false);
+    setPinned(false);
+    setPreviewNote(null);
+  }
+
   const linkedColorClass = tagPillColorClasses[color];
   const activeClass =
     "border-blue-500 bg-blue-100 text-blue-800 ring-2 ring-blue-300 dark:border-blue-500 dark:bg-blue-950 dark:text-blue-100 dark:ring-blue-800";
-  
+
+
+
   return (
     <span
       ref={ref}
       className="relative inline-flex align-middle"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={openPopup}
+      onMouseLeave={() => {
+        setHoverSuppressed(false);
+
+        if (!pinned) setOpen(false);
+      }}
     >
       <button
         type="button"
-        onClick={() => {
-          if (onOpenCardsByTag) {
-            onOpenCardsByTag(tag.id);
+        onClick={(event) => {
+          event.stopPropagation();
+
+          if (pinned && open) {
+            setHoverSuppressed(true);
+            closePopup();
             return;
           }
 
-          if (linked) {
-            onJumpToInlineTag?.(tag.id);
-          }
+          openPopup();
+          setPinned(true);
         }}
         className={`
   inline-flex items-center rounded-full border font-medium shadow-sm transition
@@ -100,23 +164,83 @@ ${
         </span>
       </button>
 
-      {open && (
-        <span
-          className="
-            absolute left-0 top-full z-50 mt-2 w-48 rounded-xl border border-gray-200
-            bg-white p-3 text-left shadow-lg
-            dark:border-gray-700 dark:bg-gray-900
-          "
-        >
-          <p className="font-semibold text-gray-900 dark:text-gray-100">
-            #{tag.name}
-          </p>
+      {typeof document !== "undefined" &&
+        open &&
+        popupPosition &&
+        createPortal(
+          <>
+            <div
+              ref={popupRef}
+              className="
+        pointer-events-auto fixed z-[9999] w-48 rounded-xl
+        border border-[rgb(var(--border))]
+        bg-[rgb(var(--card))]
+        p-3 text-left shadow-lg
+      "
+              style={{
+                left: popupPosition.left,
+                top: popupPosition.top,
+              }}
+            >
+              <p className="font-semibold text-[rgb(var(--text))]">
+                #{tag.name}
+              </p>
 
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-            Cards with this tag: {stats?.noteCount ?? 0}
-          </p>
-        </span>
-      )}
+              {otherLinkedNotes.length === 0 ? (
+                <p className="mt-2 text-sm text-[rgb(var(--muted-text))]">
+                  {(stats?.noteCount ?? 0) <= 1
+                    ? "Only linked to this card."
+                    : `Cards with this tag: ${stats?.noteCount ?? 0}. Card list not loaded yet.`}
+                </p>
+              ) : (
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs font-semibold text-[rgb(var(--muted-text))]">
+                    Also linked to:
+                  </p>
+
+                  {otherLinkedNotes.map((note) => (
+                    <button
+                      key={note.id}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setPinned(true);
+                        setPreviewNote(note);
+                      }}
+                      className="
+      block w-full rounded-lg px-2 py-1
+      text-left text-sm text-[rgb(var(--text))]
+      hover:bg-[rgb(var(--card-muted))]
+    "
+                    >
+                      {note.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {previewNote && (
+              <div
+                ref={previewRef}
+                className="fixed z-[10000]"
+                style={{
+                  left: popupPosition.left,
+                  top: popupPosition.top + popupHeight + 64,
+                }}
+              >
+                <MiniNotePreviewCard
+                  noteId={previewNote.id}
+                  title={previewNote.title}
+                  content={previewNote.content}
+                  relationshipLabel="Shared tag"
+                  tagName={tag.name}
+                  onClose={() => setPreviewNote(null)}
+                />
+              </div>
+            )}
+          </>,
+          document.body,
+        )}
     </span>
   );
 }
