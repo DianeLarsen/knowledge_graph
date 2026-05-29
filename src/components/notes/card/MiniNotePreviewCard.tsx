@@ -8,6 +8,7 @@ type MiniNotePreviewCardProps = {
   noteId?: string;
   onClose?: () => void;
   onOpen?: (noteId: string) => void;
+  onLink?: (noteId: string) => void;
 };
 
 export default function MiniNotePreviewCard({
@@ -18,6 +19,7 @@ export default function MiniNotePreviewCard({
   noteId,
   onClose,
   onOpen,
+  onLink,
 }: MiniNotePreviewCardProps) {
   return (
     <div
@@ -81,10 +83,17 @@ export default function MiniNotePreviewCard({
         >
           Close
         </button>
-
+        {noteId && onLink && (
+          <button
+            type="button"
+            onClick={() => onLink(noteId)}
+            className="rounded-full border border-purple-200 px-3 py-1 text-[10px] font-semibold text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-200 dark:hover:bg-purple-950/40"
+          >
+            Link note
+          </button>
+        )}
         {noteId && onOpen && (
           <Link
-            type="button"
             href={`/notes/${noteId}`}
             className="rounded-full bg-purple-600 px-3 py-1 text-[10px] font-semibold text-white hover:bg-purple-700"
           >

@@ -15,6 +15,7 @@ import {
   getReferenceColorByIndex,
   referenceColorClassMap,
 } from "@/lib/referenceColorClasses";
+import { NoteLinkMark } from "@/lib/tiptap/extensions/NoteLinkMark";
 
 type ReadOnlyReference = {
   id: string;
@@ -31,6 +32,11 @@ type ReadOnlyReference = {
 type ReadOnlyTag = {
   id: string;
   name: string;
+};
+
+type ReadOnlyNoteLink = {
+  id: string;
+  title: string;
 };
 
 type ReadOnlyNoteContentProps = {
@@ -128,7 +134,7 @@ const colorClassMap: Record<TagColor, string[]> = {
 };
 
 const inlineConnectionSelector =
-  "[data-reference-mark], [data-tag-mark], [data-inline-tag-id], .mention";
+  "[data-reference-mark], [data-tag-mark], [data-inline-tag-id], [data-note-link-mark], [data-note-link-id], .mention";
 
 export default function ReadOnlyNoteContent({
   content,
@@ -136,21 +142,22 @@ export default function ReadOnlyNoteContent({
   tags = [],
   tagColorMap = {},
 }: ReadOnlyNoteContentProps) {
-
   const [preview, setPreview] = useState<{
     x: number;
     y: number;
     tags: ReadOnlyTag[];
     references: ReadOnlyReference[];
+    noteLinks: ReadOnlyNoteLink[];
   } | null>(null);
 
-const [hoverPreview, setHoverPreview] = useState<{
-  x: number;
-  y: number;
-  tags: ReadOnlyTag[];
-  references: ReadOnlyReference[];
-} | null>(null);
-  
+  const [hoverPreview, setHoverPreview] = useState<{
+    x: number;
+    y: number;
+    tags: ReadOnlyTag[];
+    references: ReadOnlyReference[];
+    noteLinks: ReadOnlyNoteLink[];
+  } | null>(null);
+
   const contentRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -177,65 +184,77 @@ const [hoverPreview, setHoverPreview] = useState<{
     };
   }, [preview]);
 
-function getInlineConnectionsFromTarget(target: HTMLElement) {
-  const foundTags = new Map<string, ReadOnlyTag>();
-  const foundReferences = new Map<string, ReadOnlyReference>();
+  function getInlineConnectionsFromTarget(target: HTMLElement) {
+    const foundTags = new Map<string, ReadOnlyTag>();
+    const foundReferences = new Map<string, ReadOnlyReference>();
+    const foundNoteLinks = new Map<string, ReadOnlyNoteLink>();
+    let current: HTMLElement | null = target;
 
-  let current: HTMLElement | null = target;
+    while (current && current !== contentRef.current) {
+      const tagId =
+        current.dataset.tagId ??
+        current.getAttribute("data-inline-tag-id") ??
+        current.getAttribute("data-id");
 
-  while (current && current !== contentRef.current) {
-    const tagId =
-      current.dataset.tagId ??
-      current.getAttribute("data-inline-tag-id") ??
-      current.getAttribute("data-id");
+      const tagName =
+        current.dataset.tagName ??
+        current.getAttribute("data-tag-name") ??
+        current.dataset.label ??
+        current.getAttribute("data-label");
 
-    const tagName =
-      current.dataset.tagName ??
-      current.getAttribute("data-tag-name") ??
-      current.dataset.label ??
-      current.getAttribute("data-label");
+      if (
+        (current.matches("[data-tag-mark]") ||
+          current.hasAttribute("data-inline-tag-id") ||
+          current.classList.contains("mention")) &&
+        (tagId || tagName)
+      ) {
+        const tag =
+          tags.find((item) => item.id === tagId) ??
+          tags.find((item) => item.name === tagName) ??
+          (tagId || tagName
+            ? {
+                id: tagId ?? tagName ?? "unknown-tag",
+                name: tagName ?? tagId ?? "unknown",
+              }
+            : null);
 
-
-    if (
-      (current.matches("[data-tag-mark]") ||
-        current.hasAttribute("data-inline-tag-id") ||
-        current.classList.contains("mention")) &&
-      (tagId || tagName)
-    ) {
-      const tag =
-        tags.find((item) => item.id === tagId) ??
-        tags.find((item) => item.name === tagName) ??
-        (tagId || tagName
-          ? {
-              id: tagId ?? tagName ?? "unknown-tag",
-              name: tagName ?? tagId ?? "unknown",
-            }
-          : null);
-
-      if (tag) {
-        foundTags.set(tag.id, tag);
+        if (tag) {
+          foundTags.set(tag.id, tag);
+        }
       }
+      const noteLinkId = current.dataset.noteLinkId;
+      const noteLinkTitle = current.dataset.noteLinkTitle;
+
+      if (
+        (current.matches("[data-note-link-mark]") ||
+          current.hasAttribute("data-note-link-id")) &&
+        noteLinkId
+      ) {
+        foundNoteLinks.set(noteLinkId, {
+          id: noteLinkId,
+          title: noteLinkTitle ?? "Untitled note",
+        });
+      }
+      const referenceId = current.dataset.referenceId;
+
+      if (current.matches("[data-reference-mark]") && referenceId) {
+        const reference = references.find((item) => item.id === referenceId);
+
+        if (reference) {
+          foundReferences.set(reference.id, reference);
+        }
+      }
+
+      current = current.parentElement;
     }
 
-    const referenceId = current.dataset.referenceId;
-
-    if (current.matches("[data-reference-mark]") && referenceId) {
-      const reference = references.find((item) => item.id === referenceId);
-
-      if (reference) {
-        foundReferences.set(reference.id, reference);
-      }
-    }
-
-    current = current.parentElement;
+    return {
+      tags: Array.from(foundTags.values()),
+      references: Array.from(foundReferences.values()),
+      noteLinks: Array.from(foundNoteLinks.values()),
+    };
   }
 
-  return {
-    tags: Array.from(foundTags.values()),
-    references: Array.from(foundReferences.values()),
-  };
-}
-  
   function getTagColorClasses(tagId?: string | null) {
     if (!tagId) return colorClassMap.blue.join(" ");
     return colorClassMap[tagColorMap[tagId] ?? "blue"].join(" ");
@@ -247,7 +266,7 @@ function getInlineConnectionsFromTarget(target: HTMLElement) {
       StarterKit.configure({
         link: false,
       }),
-
+      NoteLinkMark,
       Highlight,
       TagMark,
       ReferenceMark,
@@ -285,20 +304,20 @@ function getInlineConnectionsFromTarget(target: HTMLElement) {
           const tagId = node.attrs.id ?? "";
           const tagName = node.attrs.tagName || node.attrs.label || "";
 
-         return [
-           "span",
-           {
-             class: `mention inline rounded px-1 align-baseline leading-[inherit] ${getTagColorClasses(
-               tagId,
-             )}`,
-             "data-inline-tag-id": tagId,
-             "data-tag-id": tagId,
-             "data-id": tagId,
-             "data-tag-name": tagName,
-             "data-label": tagName,
-           },
-           tagName ? `#${tagName}` : "#tag",
-         ];
+          return [
+            "span",
+            {
+              class: `mention inline rounded px-1 align-baseline leading-[inherit] ${getTagColorClasses(
+                tagId,
+              )}`,
+              "data-inline-tag-id": tagId,
+              "data-tag-id": tagId,
+              "data-id": tagId,
+              "data-tag-name": tagName,
+              "data-label": tagName,
+            },
+            tagName ? `#${tagName}` : "#tag",
+          ];
         },
       }),
     ],
@@ -388,7 +407,8 @@ function getInlineConnectionsFromTarget(target: HTMLElement) {
 
           if (
             connections.tags.length === 0 &&
-            connections.references.length === 0
+            connections.references.length === 0 &&
+            connections.noteLinks.length === 0
           ) {
             return;
           }
@@ -398,6 +418,7 @@ function getInlineConnectionsFromTarget(target: HTMLElement) {
             y: event.clientY,
             tags: connections.tags,
             references: connections.references,
+            noteLinks: connections.noteLinks,
           });
         }}
         onMouseMove={(event) => {
@@ -414,7 +435,8 @@ function getInlineConnectionsFromTarget(target: HTMLElement) {
 
           if (
             connections.tags.length === 0 &&
-            connections.references.length === 0
+            connections.references.length === 0 &&
+            connections.noteLinks.length === 0
           ) {
             setHoverPreview(null);
             return;
@@ -425,6 +447,7 @@ function getInlineConnectionsFromTarget(target: HTMLElement) {
             y: event.clientY,
             tags: connections.tags,
             references: connections.references,
+            noteLinks: connections.noteLinks,
           });
         }}
         onMouseLeave={() => {
@@ -474,6 +497,18 @@ function getInlineConnectionsFromTarget(target: HTMLElement) {
         [&_.reference-mark]:underline
         [&_.reference-mark]:decoration-dotted
         [&_.reference-mark]:underline-offset-2
+
+        [&_.note-link-mark]:cursor-pointer
+        [&_.note-link-mark]:rounded
+        [&_.note-link-mark]:px-1
+        [&_.note-link-mark]:font-semibold
+        [&_.note-link-mark]:underline
+        [&_.note-link-mark]:decoration-dotted
+        [&_.note-link-mark]:underline-offset-2
+        [&_.note-link-mark]:bg-purple-100
+        [&_.note-link-mark]:text-purple-700
+        dark:[&_.note-link-mark]:bg-purple-900/40
+        dark:[&_.note-link-mark]:text-purple-200
       "
       />
 
@@ -499,7 +534,9 @@ function getInlineConnectionsFromTarget(target: HTMLElement) {
                   {preview.tags.length} tag
                   {preview.tags.length === 1 ? "" : "s"} ·{" "}
                   {preview.references.length} reference
-                  {preview.references.length === 1 ? "" : "s"}
+                  {preview.references.length === 1 ? "" : "s"} ·{" "}
+                  {preview.noteLinks.length} note link
+                  {preview.noteLinks.length === 1 ? "" : "s"}
                 </p>
               </div>
 
@@ -530,7 +567,25 @@ function getInlineConnectionsFromTarget(target: HTMLElement) {
                 </div>
               </div>
             )}
+            {preview.noteLinks.length > 0 && (
+              <div className="mt-3">
+                <p className="mb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                  Note links
+                </p>
 
+                <div className="space-y-2">
+                  {preview.noteLinks.map((note) => (
+                    <a
+                      key={note.id}
+                      href={`/notes/${note.id}`}
+                      className="block rounded-lg border border-purple-200 bg-purple-50 p-2 text-xs font-semibold text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950/30 dark:text-purple-200 dark:hover:bg-purple-900/40"
+                    >
+                      {note.title}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
             {preview.references.length > 0 && (
               <div className="mt-3 space-y-3">
                 <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
@@ -620,6 +675,31 @@ function getInlineConnectionsFromTarget(target: HTMLElement) {
                       className="rounded bg-amber-100 px-2 py-0.5 font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-200"
                     >
                       {reference.title ?? "Untitled reference"}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+            {hoverPreview.noteLinks.length > 0 && (
+              <div
+                className={
+                  hoverPreview.tags.length > 0 ||
+                  hoverPreview.references.length > 0
+                    ? "mt-2"
+                    : ""
+                }
+              >
+                <p className="font-semibold text-gray-500 dark:text-gray-400">
+                  Note links
+                </p>
+
+                <div className="mt-1 space-y-1">
+                  {hoverPreview.noteLinks.map((note) => (
+                    <p
+                      key={note.id}
+                      className="rounded bg-purple-100 px-2 py-0.5 font-semibold text-purple-700 dark:bg-purple-900/40 dark:text-purple-200"
+                    >
+                      {note.title}
                     </p>
                   ))}
                 </div>

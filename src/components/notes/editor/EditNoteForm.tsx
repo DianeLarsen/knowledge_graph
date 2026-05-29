@@ -519,6 +519,7 @@ async function handleSave() {
         selectedReferenceIds={selectedReferenceIds}
         tagColorMap={tagColorMap}
         openConfirmDialog={openConfirmDialog}
+        availableNotes={availableNotes}
       />
       <EditNoteReferencesSection
         references={availableReferences}

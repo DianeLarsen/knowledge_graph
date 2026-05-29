@@ -129,3 +129,47 @@ export type NoteCardProps = {
   userId: string;
   compactTagLimit?: number;
 };
+
+export type LinkedItemPreview =
+  | {
+      x: number;
+      y: number;
+      type: "note";
+      id?: string;
+      title: string;
+      content?: string | null;
+      relationshipLabel?: string;
+      tagName?: string;
+    }
+  | {
+      x: number;
+      y: number;
+      type: "task";
+      id?: string;
+      title: string;
+      description?: string | null;
+      status?: string | null;
+      priority?: string | null;
+    }
+  | {
+      x: number;
+      y: number;
+      type: "event";
+      id?: string;
+      title: string;
+      description?: string | null;
+      status?: string | null;
+      dateLabel?: string | null;
+      location?: string | null;
+    }
+  | {
+      x: number;
+      y: number;
+      type: "project";
+      id?: string;
+      title: string;
+      description?: string | null;
+      role?: string | null;
+      itemCount?: number | null;
+    }
+  | null;

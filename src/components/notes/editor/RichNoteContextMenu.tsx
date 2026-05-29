@@ -6,6 +6,8 @@ import type {
   ContextMenuReference,
   ContextMenuState,
   ContextMenuTag,
+  ContextMenuNoteLink,
+  LinkedNoteSummary,
 } from "@/components/notes/editor/editorTypes";
 import { useState } from "react";
 import { Search } from "lucide-react";
@@ -27,6 +29,9 @@ type RichNoteContextMenuProps = {
   onRemoveTag: (tag: ContextMenuTag) => void;
   onRemoveReference: (reference: ContextMenuReference) => void;
   onRemoveReferenceEverywhere: (reference: ContextMenuReference) => void;
+  availableNotes: LinkedNoteSummary[];
+  onLinkSelectionToNote: (note: LinkedNoteSummary) => void;
+  onRemoveNoteLink: (noteLink: ContextMenuNoteLink) => void;
 };
 
 export default function RichNoteContextMenu({
@@ -46,29 +51,39 @@ export default function RichNoteContextMenu({
   onRemoveTag,
   onRemoveReference,
   onRemoveReferenceEverywhere,
+  availableNotes,
+  onLinkSelectionToNote,
+  onRemoveNoteLink,
 }: RichNoteContextMenuProps) {
-const [openSections, setOpenSections] = useState({
-  tags: false,
-  references: false,
-});
+  const [openSections, setOpenSections] = useState({
+    tags: false,
+    references: false,
+    notes: false,
+  });
   const [referenceSearch, setReferenceSearch] = useState("");
   const [tagSearch, setTagSearch] = useState("");
 
-function toggleSection(section: keyof typeof openSections) {
-  setOpenSections((current) => ({
-    ...current,
-    [section]: !current[section],
-  }));
-}
-const filteredReferences = references.filter((reference) => {
-  const label = getReferenceLabel(reference).toLowerCase();
+  const [noteSearch, setNoteSearch] = useState("");
+  function toggleSection(section: keyof typeof openSections) {
+    setOpenSections((current) => ({
+      ...current,
+      [section]: !current[section],
+    }));
+  }
 
-  return label.includes(referenceSearch.toLowerCase());
-});
+  const filteredNotes = availableNotes.filter((note) =>
+    note.title.toLowerCase().includes(noteSearch.toLowerCase()),
+  );
+
+  const filteredReferences = references.filter((reference) => {
+    const label = getReferenceLabel(reference).toLowerCase();
+
+    return label.includes(referenceSearch.toLowerCase());
+  });
   const filteredTags = tags.filter((tag) =>
     tag.name.toLowerCase().includes(tagSearch.toLowerCase()),
   );
-  
+
   function SectionHeader({
     section,
     label,
@@ -130,7 +145,17 @@ const filteredReferences = references.filter((reference) => {
                 Remove tag {tag.tagName ? `#${tag.tagName}` : ""}
               </button>
             ))}
-
+            {contextMenu.noteLinks.map((noteLink) => (
+              <button
+                key={noteLink.noteId || noteLink.noteTitle}
+                type="button"
+                onClick={() => onRemoveNoteLink(noteLink)}
+                className="block w-full rounded-lg px-3 py-2 text-left text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-900/30"
+              >
+                Remove note link{" "}
+                {noteLink.noteTitle ? `(${noteLink.noteTitle})` : ""}
+              </button>
+            ))}
             {contextMenu.references.map((reference) => (
               <div
                 key={reference.referenceId || reference.referenceTitle}
@@ -399,11 +424,81 @@ const filteredReferences = references.filter((reference) => {
                 )}
               </div>
             )}
+            {availableNotes.length > 0 && (
+              <div className="mt-2 border-t border-gray-200 pt-2 dark:border-gray-700">
+                <SectionHeader
+                  section="notes"
+                  label={
+                    contextMenu.hasNoteLinkMark
+                      ? "Change note link"
+                      : "Link selected text to note"
+                  }
+                  count={
+                    availableNotes.filter(
+                      (note) =>
+                        !contextMenu.noteLinks.some(
+                          (inlineNote) => inlineNote.noteId === note.id,
+                        ),
+                    ).length
+                  }
+                />
+
+                {openSections.notes && (
+                  <div className="max-h-40 overflow-y-auto pr-1">
+                    <div className="sticky top-0 z-10 bg-white px-2 pb-2 pt-1 dark:bg-gray-900">
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+
+                        <label htmlFor="note-search" className="sr-only">
+                          Search notes
+                        </label>
+
+                        <input
+                          type="text"
+                          value={noteSearch}
+                          onChange={(event) =>
+                            setNoteSearch(event.target.value)
+                          }
+                          placeholder="Search notes..."
+                          id="note-search"
+                          className="
+                w-full rounded-lg border border-gray-300 bg-white
+                py-1.5 pl-7 pr-2
+                text-xs text-gray-800 outline-none
+                placeholder:text-gray-400
+                focus:border-blue-400 focus:ring-2 focus:ring-blue-100
+                dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100
+                dark:placeholder:text-gray-500
+                dark:focus:border-blue-500 dark:focus:ring-blue-900/40
+              "
+                        />
+                      </div>
+                    </div>
+
+                    {filteredNotes
+                      .filter(
+                        (note) =>
+                          !contextMenu.noteLinks.some(
+                            (inlineNote) => inlineNote.noteId === note.id,
+                          ),
+                      )
+                      .map((note) => (
+                        <button
+                          key={note.id}
+                          type="button"
+                          onClick={() => onLinkSelectionToNote(note)}
+                          className="block w-full rounded-lg px-3 py-2 text-left text-gray-800 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800"
+                        >
+                          {note.title}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
     </div>
   );
 }
-
-

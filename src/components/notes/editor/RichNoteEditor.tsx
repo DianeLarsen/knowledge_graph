@@ -11,6 +11,8 @@ import type {
   ContextMenuTag,
   RichNoteEditorProps,
   InlineMentionRange,
+  ContextMenuNoteLink,
+  LinkedNoteSummary,
 } from "@/components/notes/editor/editorTypes";
 import RichNoteEditorToolbar from "@/components/notes/editor/RichNoteEditorToolbar";
 import {
@@ -48,7 +50,10 @@ type InlineHoverTag = {
   id: string;
   name: string;
 };
-
+type InlineHoverNoteLink = {
+  id: string;
+  title: string;
+};
 type InlineHoverReference = {
   id: string;
   title: string;
@@ -103,7 +108,7 @@ function hydrateInitialContent(
 }
 
 const inlineConnectionSelector =
-  "[data-reference-mark], [data-reference-id], [data-tag-mark], [data-inline-tag-id], .mention";
+  "[data-reference-mark], [data-reference-id], [data-tag-mark], [data-inline-tag-id], [data-note-link-mark], [data-note-link-id], .mention";
 
 export default function RichNoteEditor({
   initialContent,
@@ -119,6 +124,9 @@ export default function RichNoteEditor({
   selectedReferenceIds,
   tagColorMap = {},
   openConfirmDialog,
+  availableNotes = [],
+  onNoteLinkUsed,
+  onNoteLinkRemoved,
 }: RichNoteEditorProps) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [selectedText, setSelectedText] = useState("");
@@ -127,6 +135,7 @@ export default function RichNoteEditor({
     y: number;
     tags: InlineHoverTag[];
     references: InlineHoverReference[];
+    noteLinks: InlineHoverNoteLink[];
   } | null>(null);
 
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -273,135 +282,162 @@ export default function RichNoteEditor({
     return null;
   }
 
-function getInlineConnectionsFromTarget(target: HTMLElement) {
-  const foundTags = new Map<string, InlineHoverTag>();
-  const foundReferences = new Map<string, InlineHoverReference>();
+  function getInlineConnectionsFromTarget(target: HTMLElement) {
+    const foundTags = new Map<string, InlineHoverTag>();
+    const foundReferences = new Map<string, InlineHoverReference>();
+    const foundNoteLinks = new Map<string, InlineHoverNoteLink>();
+    let current: HTMLElement | null = target;
 
-  let current: HTMLElement | null = target;
+    while (current && current !== editorWrapperRef.current) {
+      const tagId =
+        current.dataset.tagId ??
+        current.getAttribute("data-inline-tag-id") ??
+        current.getAttribute("data-id");
 
-  while (current && current !== editorWrapperRef.current) {
-    const tagId =
-      current.dataset.tagId ??
-      current.getAttribute("data-inline-tag-id") ??
-      current.getAttribute("data-id");
+      const tagName =
+        current.dataset.tagName ??
+        current.getAttribute("data-tag-name") ??
+        current.dataset.label ??
+        current.getAttribute("data-label");
 
-    const tagName =
-      current.dataset.tagName ??
-      current.getAttribute("data-tag-name") ??
-      current.dataset.label ??
-      current.getAttribute("data-label");
+      if (
+        (current.matches("[data-tag-mark]") ||
+          current.hasAttribute("data-inline-tag-id") ||
+          current.classList.contains("mention")) &&
+        (tagId || tagName)
+      ) {
+        const tag =
+          tags.find((item) => item.id === tagId) ??
+          tags.find((item) => item.name === tagName) ??
+          (tagId || tagName
+            ? {
+                id: tagId ?? tagName ?? "unknown-tag",
+                name: tagName ?? tagId ?? "unknown",
+              }
+            : null);
 
-    if (
-      (current.matches("[data-tag-mark]") ||
-        current.hasAttribute("data-inline-tag-id") ||
-        current.classList.contains("mention")) &&
-      (tagId || tagName)
-    ) {
-      const tag =
-        tags.find((item) => item.id === tagId) ??
-        tags.find((item) => item.name === tagName) ??
-        (tagId || tagName
-          ? {
-              id: tagId ?? tagName ?? "unknown-tag",
-              name: tagName ?? tagId ?? "unknown",
-            }
-          : null);
+        if (tag) {
+          foundTags.set(tag.id, {
+            id: tag.id,
+            name: tag.name,
+          });
+        }
+      }
+      const noteLinkId = current.dataset.noteLinkId;
+      const noteLinkTitle = current.dataset.noteLinkTitle;
 
-      if (tag) {
-        foundTags.set(tag.id, {
-          id: tag.id,
-          name: tag.name,
+      if (
+        (current.matches("[data-note-link-mark]") ||
+          current.hasAttribute("data-note-link-id")) &&
+        noteLinkId
+      ) {
+        foundNoteLinks.set(noteLinkId, {
+          id: noteLinkId,
+          title: noteLinkTitle ?? "Untitled note",
         });
       }
-    }
+      const referenceId = current.dataset.referenceId;
 
-    const referenceId = current.dataset.referenceId;
+      if (
+        (current.matches("[data-reference-mark]") ||
+          current.hasAttribute("data-reference-id")) &&
+        referenceId
+      ) {
+        const reference = references.find((item) => item.id === referenceId);
 
-    if (
-      (current.matches("[data-reference-mark]") ||
-        current.hasAttribute("data-reference-id")) &&
-      referenceId
-    ) {
-      const reference = references.find((item) => item.id === referenceId);
-
-      if (reference) {
-        foundReferences.set(reference.id, {
-          id: reference.id,
-          title: getReferenceLabel(reference),
-        });
+        if (reference) {
+          foundReferences.set(reference.id, {
+            id: reference.id,
+            title: getReferenceLabel(reference),
+          });
+        }
       }
+
+      current = current.parentElement;
     }
 
-    current = current.parentElement;
+    return {
+      tags: Array.from(foundTags.values()),
+      references: Array.from(foundReferences.values()),
+      noteLinks: Array.from(foundNoteLinks.values()),
+    };
   }
-
-  return {
-    tags: Array.from(foundTags.values()),
-    references: Array.from(foundReferences.values()),
-  };
-}
 
   function closeContextMenu() {
     setContextMenu(null);
   }
 
-function getSelectedMarkInfo(from: number, to: number) {
-  const foundTags = new Map<string, ContextMenuTag>();
-  const foundReferences = new Map<string, ContextMenuReference>();
+  function getSelectedMarkInfo(from: number, to: number) {
+    const foundTags = new Map<string, ContextMenuTag>();
+    const foundReferences = new Map<string, ContextMenuReference>();
+    const foundNoteLinks = new Map<string, ContextMenuNoteLink>();
 
-  editor?.state.doc.nodesBetween(from, to, (node) => {
-    node.marks.forEach((mark) => {
-      if (mark.type.name === "tagMark") {
-        const tagId = mark.attrs.tagId as string | undefined;
-        const tagName = mark.attrs.tagName as string | undefined;
-        const key = tagId || tagName;
+    editor?.state.doc.nodesBetween(from, to, (node) => {
+      node.marks.forEach((mark) => {
+        if (mark.type.name === "tagMark") {
+          const tagId = mark.attrs.tagId as string | undefined;
+          const tagName = mark.attrs.tagName as string | undefined;
+          const key = tagId || tagName;
 
-        if (key) {
-          foundTags.set(key, { tagId, tagName });
+          if (key) {
+            foundTags.set(key, { tagId, tagName });
+          }
         }
-      }
+        if (mark.type.name === "noteLinkMark") {
+          const noteId = mark.attrs.noteId as string | undefined;
+          const noteTitle = mark.attrs.noteTitle as string | undefined;
+          const key = noteId || noteTitle;
 
-      if (mark.type.name === "referenceMark") {
-        const referenceId = mark.attrs.referenceId as string | undefined;
-        const referenceTitle = mark.attrs.referenceTitle as string | undefined;
-        const key = referenceId || referenceTitle;
-
-        if (key) {
-          foundReferences.set(key, { referenceId, referenceTitle });
+          if (key) {
+            foundNoteLinks.set(key, { noteId, noteTitle });
+          }
         }
+        if (mark.type.name === "referenceMark") {
+          const referenceId = mark.attrs.referenceId as string | undefined;
+          const referenceTitle = mark.attrs.referenceTitle as
+            | string
+            | undefined;
+          const key = referenceId || referenceTitle;
+
+          if (key) {
+            foundReferences.set(key, { referenceId, referenceTitle });
+          }
+        }
+      });
+    });
+
+    editor?.state.doc.nodesBetween(from, to, (node) => {
+      if (node.type.name !== "mention") return;
+
+      const tagId =
+        typeof node.attrs.id === "string" ? node.attrs.id : undefined;
+
+      const tagName =
+        typeof node.attrs.tagName === "string"
+          ? node.attrs.tagName
+          : typeof node.attrs.label === "string"
+            ? node.attrs.label
+            : undefined;
+
+      const key = tagId || tagName;
+
+      if (key) {
+        foundTags.set(key, { tagId, tagName });
       }
     });
-  });
 
-  editor?.state.doc.nodesBetween(from, to, (node) => {
-    if (node.type.name !== "mention") return;
-
-    const tagId = typeof node.attrs.id === "string" ? node.attrs.id : undefined;
-
-    const tagName =
-      typeof node.attrs.tagName === "string"
-        ? node.attrs.tagName
-        : typeof node.attrs.label === "string"
-          ? node.attrs.label
-          : undefined;
-
-    const key = tagId || tagName;
-
-    if (key) {
-      foundTags.set(key, { tagId, tagName });
-    }
-  });
-
-  const tagMarks = Array.from(foundTags.values());
-  const referenceMarks = Array.from(foundReferences.values());
-
-  return {
-    tags: tagMarks,
-    references: referenceMarks,
-    hasTagMark: tagMarks.length > 0,
-    hasReferenceMark: referenceMarks.length > 0,
-  };
-}
+    const tagMarks = Array.from(foundTags.values());
+    const referenceMarks = Array.from(foundReferences.values());
+    const noteLinkMarks = Array.from(foundNoteLinks.values());
+    return {
+      tags: tagMarks,
+      references: referenceMarks,
+      noteLinks: noteLinkMarks,
+      hasTagMark: tagMarks.length > 0,
+      hasReferenceMark: referenceMarks.length > 0,
+      hasNoteLinkMark: noteLinkMarks.length > 0,
+    };
+  }
 
   function removeSpecificTagFromSelection(tagToRemove: ContextMenuTag) {
     if (!editor || !contextMenu) return;
@@ -501,11 +537,17 @@ function getSelectedMarkInfo(from: number, to: number) {
   ) {
     if (!editor || !contextMenu) return;
 
-    const confirmed = window.confirm(
-      "Remove this inline reference from the selected text? The text will stay.",
-    );
-
-    if (!confirmed) return;
+    openConfirmDialog({
+      title: "Remove inline reference?",
+      message:
+        "Remove this inline reference from the selected text? The text will stay.",
+      confirmLabel: "Remove reference",
+      cancelLabel: "Keep reference",
+      variant: "danger",
+      onConfirm: () => {
+        // move the existing removal code here
+      },
+    });
 
     const { from, to } = contextMenu;
 
@@ -797,11 +839,57 @@ function getSelectedMarkInfo(from: number, to: number) {
       ? ` (${referenceToRemove.referenceTitle})`
       : "";
 
-    const confirmed = window.confirm(
-      `Remove this reference${label} from all linked text in this note? The text will stay.`,
-    );
+    openConfirmDialog({
+      title: "Remove reference everywhere?",
+      message: `Remove this reference${label} from all linked text in this note?\n\nThe text will stay.`,
+      confirmLabel: "Remove everywhere",
+      cancelLabel: "Keep reference",
+      variant: "danger",
+      onConfirm: () => {
+        editor
+          .chain()
+          .focus()
+          .command(({ tr, state }) => {
+            state.doc.descendants((node, pos) => {
+              if (!node.isText) return;
 
-    if (!confirmed) return;
+              node.marks.forEach((mark) => {
+                if (mark.type.name !== "referenceMark") return;
+
+                const sameReference =
+                  (referenceToRemove.referenceId &&
+                    mark.attrs.referenceId === referenceToRemove.referenceId) ||
+                  (referenceToRemove.referenceTitle &&
+                    mark.attrs.referenceTitle ===
+                      referenceToRemove.referenceTitle);
+
+                if (!sameReference) return;
+
+                tr.removeMark(
+                  pos,
+                  pos + node.nodeSize,
+                  state.schema.marks.referenceMark,
+                );
+              });
+            });
+
+            return true;
+          })
+          .run();
+
+        onChange({
+          plainText: editor.getText(),
+          json: JSON.stringify(editor.getJSON()),
+        });
+
+        if (referenceToRemove.referenceId) {
+          onReferenceRemoved?.(referenceToRemove.referenceId);
+        }
+
+        scheduleInlineStyles();
+        closeContextMenu();
+      },
+    });
 
     editor
       .chain()
@@ -846,12 +934,110 @@ function getSelectedMarkInfo(from: number, to: number) {
     closeContextMenu();
   }
 
+  function linkSelectionToNote(note: LinkedNoteSummary) {
+    if (!editor || !contextMenu) return;
+
+    const alreadyHasNoteLink = contextMenu.noteLinks.some(
+      (item) => item.noteId === note.id,
+    );
+
+    if (alreadyHasNoteLink) {
+      closeContextMenu();
+      return;
+    }
+
+    editor
+      .chain()
+      .focus()
+      .setTextSelection({
+        from: contextMenu.from,
+        to: contextMenu.to,
+      })
+      .setMark("noteLinkMark", {
+        noteId: note.id,
+        noteTitle: note.title,
+      })
+      .run();
+
+    onNoteLinkUsed?.(note.id);
+
+    requestAnimationFrame(() => {
+      onChange({
+        plainText: editor.getText(),
+        json: JSON.stringify(editor.getJSON()),
+      });
+    });
+
+    closeContextMenu();
+  }
+  function removeSpecificNoteLinkFromSelection(
+    noteLinkToRemove: ContextMenuNoteLink,
+  ) {
+    if (!editor || !contextMenu) return;
+
+    openConfirmDialog({
+      title: "Remove inline note link?",
+      message:
+        "Remove this inline note link from the selected text? The text will stay.",
+      confirmLabel: "Remove note link",
+      cancelLabel: "Keep note link",
+      variant: "danger",
+      onConfirm: () => {
+        // move existing removal code here
+      },
+    });
+
+    const { from, to } = contextMenu;
+
+    editor
+      .chain()
+      .focus()
+      .command(({ tr, state }) => {
+        state.doc.nodesBetween(from, to, (node, pos) => {
+          if (!node.isText) return;
+
+          node.marks.forEach((mark) => {
+            if (mark.type.name !== "noteLinkMark") return;
+
+            const sameNote =
+              (noteLinkToRemove.noteId &&
+                mark.attrs.noteId === noteLinkToRemove.noteId) ||
+              (noteLinkToRemove.noteTitle &&
+                mark.attrs.noteTitle === noteLinkToRemove.noteTitle);
+
+            if (!sameNote) return;
+
+            const markFrom = Math.max(pos, from);
+            const markTo = Math.min(pos + node.nodeSize, to);
+
+            tr.removeMark(markFrom, markTo, state.schema.marks.noteLinkMark);
+          });
+        });
+
+        return true;
+      })
+      .run();
+
+    onChange({
+      plainText: editor.getText(),
+      json: JSON.stringify(editor.getJSON()),
+    });
+
+    if (noteLinkToRemove.noteId) {
+      onNoteLinkRemoved?.(noteLinkToRemove.noteId);
+    }
+
+    closeContextMenu();
+  }
+
   const hasRemoveActions =
     contextMenu &&
     (contextMenu.hasTagMark ||
       contextMenu.hasReferenceMark ||
+      contextMenu.hasNoteLinkMark ||
       contextMenu.tags.length > 0 ||
-      contextMenu.references.length > 0);
+      contextMenu.references.length > 0 ||
+      contextMenu.noteLinks.length > 0);
 
   return (
     <div
@@ -881,7 +1067,8 @@ function getSelectedMarkInfo(from: number, to: number) {
 
           if (
             connections.tags.length === 0 &&
-            connections.references.length === 0
+            connections.references.length === 0 &&
+            connections.noteLinks.length === 0
           ) {
             setHoverPreview(null);
             return;
@@ -892,6 +1079,7 @@ function getSelectedMarkInfo(from: number, to: number) {
             y: event.clientY,
             tags: connections.tags,
             references: connections.references,
+            noteLinks: connections.noteLinks,
           });
         }}
         onMouseLeave={() => {
@@ -945,6 +1133,8 @@ function getSelectedMarkInfo(from: number, to: number) {
                 references: [],
                 hasTagMark: !!(tagName || tagId),
                 hasReferenceMark: false,
+                noteLinks: [],
+                hasNoteLinkMark: false,
               });
 
               return;
@@ -1027,6 +1217,9 @@ function getSelectedMarkInfo(from: number, to: number) {
             onRemoveTag={removeSpecificTagFromSelection}
             onRemoveReference={removeSpecificReferenceFromSelection}
             onRemoveReferenceEverywhere={removeReferenceEverywhere}
+            availableNotes={availableNotes}
+            onLinkSelectionToNote={linkSelectionToNote}
+            onRemoveNoteLink={removeSpecificNoteLinkFromSelection}
           />
         )}
         {typeof document !== "undefined" &&

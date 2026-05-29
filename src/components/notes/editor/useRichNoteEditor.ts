@@ -12,6 +12,7 @@ import type {
   MentionSuggestionItem,
   MentionSuggestionProps,
 } from "@/components/notes/editor/editorTypes";
+import { NoteLinkMark } from "@/lib/tiptap/extensions/NoteLinkMark";
 
 type UseRichNoteEditorArgs = {
   initialContent: string | object;
@@ -37,6 +38,7 @@ export function useRichNoteEditor({
         }),
         TagMark,
         ReferenceMark,
+        NoteLinkMark,
         Highlight,
         Link.configure({
           openOnClick: false,

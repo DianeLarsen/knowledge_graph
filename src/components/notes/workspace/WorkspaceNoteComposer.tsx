@@ -7,6 +7,7 @@ import { createNoteAction } from "@/app/actions/notes";
 import { useRouter } from "next/navigation";
 import ReferenceComposer from "@/components/references/ReferenceComposer";
 import { extractReferenceIdsFromContentJson } from "@/lib/notes/extractReferenceIdsFromContentJson";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 
 type NewNoteComposerProps = {
   notes: Note[];
@@ -48,9 +49,23 @@ export default function WorkspaceNoteComposer({
   const [showLinkedCards, setShowLinkedCards] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
+  const [inlineNoteLinkIds, setInlineNoteLinkIds] = useState<string[]>([]);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    variant?: "danger" | "default";
+    onConfirm: () => void;
+    onCancel?: () => void;
+  } | null>(null);
 
   const inlineReferenceIds = extractReferenceIdsFromContentJson(contentJson);
 
+  const availableNotes = notes.map((note) => ({
+    id: note.id,
+    title: note.title || "Untitled note",
+  }));
   const router = useRouter();
   const titleMissing = savedMessage.includes("card title");
 
@@ -96,7 +111,38 @@ export default function WorkspaceNoteComposer({
     setSelectedReferenceIds([]);
     setShowReferenceComposer(false);
     setEditorResetKey((current) => current + 1);
+    setInlineNoteLinkIds([]);
   }
+  function hasUnsavedComposerWork() {
+  return (
+    title.trim().length > 0 ||
+    content.trim().length > 0 ||
+    contentJson.trim().length > 0 ||
+    selectedTagIds.length > 0 ||
+    newTagName.trim().length > 0 ||
+    linkedNoteIds.length > 0 ||
+    inlineNoteLinkIds.length > 0 ||
+    inlineTagNames.length > 0 ||
+    selectedReferenceIds.length > 0
+  );
+}
+
+function confirmResetComposer() {
+  if (!hasUnsavedComposerWork()) {
+    resetComposer();
+    return;
+  }
+
+  openConfirmDialog({
+    title: "Clear this card?",
+    message:
+      "This will clear the title, content, tags, references, and linked cards you have selected. Nothing will be saved.",
+    confirmLabel: "Clear form",
+    cancelLabel: "Keep editing",
+    variant: "danger",
+    onConfirm: resetComposer,
+  });
+}
 
   function toggleLinkedNote(noteId: string) {
     setLinkedNoteIds((current) =>
@@ -128,6 +174,9 @@ export default function WorkspaceNoteComposer({
       new Set([...selectedReferenceIds, ...inlineReferenceIds]),
     );
 
+    const finalLinkedNoteIds = Array.from(
+      new Set([...linkedNoteIds, ...inlineNoteLinkIds]),
+    );
     try {
       setIsSaving(true);
       setSavedMessage("");
@@ -138,7 +187,7 @@ export default function WorkspaceNoteComposer({
         contentJson,
         selectedTagIds,
         newTagName,
-        linkedNoteIds,
+        linkedNoteIds: finalLinkedNoteIds,
         inlineTagNames,
         selectedReferenceIds: finalReferenceIds,
         projectId,
@@ -161,6 +210,7 @@ export default function WorkspaceNoteComposer({
       setIsSaving(false);
     }
   }
+
   function toggleReference(referenceId: string) {
     setSelectedReferenceIds((current) =>
       current.includes(referenceId)
@@ -168,6 +218,7 @@ export default function WorkspaceNoteComposer({
         : [...current, referenceId],
     );
   }
+
   function getReferenceLabel(reference: Reference) {
     return (
       reference.title?.trim() ||
@@ -176,6 +227,34 @@ export default function WorkspaceNoteComposer({
       "Untitled reference"
     );
   }
+
+   function openConfirmDialog({
+     title,
+     message,
+     confirmLabel,
+     cancelLabel,
+     variant = "default",
+     onConfirm,
+     onCancel,
+   }: {
+     title: string;
+     message: string;
+     confirmLabel?: string;
+     cancelLabel?: string;
+     variant?: "danger" | "default";
+     onConfirm: () => void;
+     onCancel?: () => void;
+   }) {
+     setConfirmDialog({
+       title,
+       message,
+       confirmLabel,
+       cancelLabel,
+       variant,
+       onConfirm,
+       onCancel,
+     });
+   }
 
   return (
     <aside
@@ -243,6 +322,18 @@ export default function WorkspaceNoteComposer({
               }}
               inlineReferenceIds={inlineReferenceIds}
               selectedReferenceIds={selectedReferenceIds}
+              availableNotes={availableNotes}
+              onNoteLinkUsed={(noteId) => {
+                setInlineNoteLinkIds((current) =>
+                  current.includes(noteId) ? current : [...current, noteId],
+                );
+              }}
+              onNoteLinkRemoved={(noteId) => {
+                setInlineNoteLinkIds((current) =>
+                  current.filter((id) => id !== noteId),
+                );
+              }}
+              openConfirmDialog={openConfirmDialog}
             />
           </div>
           {savedMessage && (
@@ -257,73 +348,6 @@ export default function WorkspaceNoteComposer({
             </p>
           )}
         </section>
-
-        {/* <section className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-[rgb(var(--text))]">
-              References
-            </h3>
-
-            <button
-              type="button"
-              onClick={() => setShowReferenceComposer((current) => !current)}
-              className="rounded-full border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-1.5 text-xs font-semibold text-[rgb(var(--text))] shadow-sm hover:bg-slate-200 dark:hover:bg-slate-800"
-            >
-              {showReferenceComposer ? "Hide form" : "+ Reference"}
-            </button>
-          </div>
-
-          <div className="max-h-[420px] space-y-2 overflow-y-auto rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-2">
-            {availableReferences.length > 0 ? (
-              availableReferences.map((reference) => {
-                const selected = selectedReferenceIds.includes(reference.id);
-
-                return (
-                  <button
-                    key={reference.id}
-                    type="button"
-                    onClick={() => toggleReference(reference.id)}
-                    className={`block w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
-                      selected
-                        ? "border-blue-400 bg-blue-100 text-blue-900 shadow-sm dark:border-blue-700 dark:bg-blue-950 dark:text-blue-100"
-                        : "border-transparent text-[rgb(var(--text))] hover:border-[rgb(var(--border))] hover:bg-slate-200 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <span className="block font-medium">
-                      {getReferenceLabel(reference)}
-                    </span>
-
-                    {reference.author && (
-                      <span className="block text-xs text-[rgb(var(--muted))]">
-                        {reference.author}
-                      </span>
-                    )}
-                  </button>
-                );
-              })
-            ) : (
-              <p className="text-sm text-[rgb(var(--muted))]">
-                No references yet.
-              </p>
-            )}
-          </div>
-
-          {showReferenceComposer && (
-            <div className="mt-3 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3">
-              <ReferenceComposer
-                onReferenceCreated={(reference) => {
-                  setAvailableReferences((current) => [reference, ...current]);
-                  setSelectedReferenceIds((current) =>
-                    current.includes(reference.id)
-                      ? current
-                      : [...current, reference.id],
-                  );
-                  setShowReferenceComposer(false);
-                }}
-              />
-            </div>
-          )}
-        </section> */}
       </div>
 
       <div className="mt-3 space-y-3">
@@ -501,7 +525,8 @@ export default function WorkspaceNoteComposer({
                 Link Existing Cards
               </h3>
               <p className="text-xs text-[rgb(var(--muted))]">
-                {linkedNoteIds.length} selected
+                {new Set([...linkedNoteIds, ...inlineNoteLinkIds]).size}{" "}
+                selected
               </p>
             </div>
 
@@ -544,7 +569,7 @@ export default function WorkspaceNoteComposer({
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end sm:items-start">
         <button
           type="button"
-          onClick={resetComposer}
+          onClick={confirmResetComposer}
           className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-5 py-2.5 text-sm font-semibold text-[rgb(var(--text))] shadow-sm hover:bg-slate-200 dark:hover:bg-slate-800"
         >
           Clear Form
@@ -575,6 +600,22 @@ export default function WorkspaceNoteComposer({
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={!!confirmDialog}
+        title={confirmDialog?.title ?? ""}
+        message={confirmDialog?.message ?? ""}
+        confirmLabel={confirmDialog?.confirmLabel}
+        cancelLabel={confirmDialog?.cancelLabel}
+        variant={confirmDialog?.variant}
+        onCancel={() => {
+          confirmDialog?.onCancel?.();
+          setConfirmDialog(null);
+        }}
+        onConfirm={() => {
+          confirmDialog?.onConfirm();
+          setConfirmDialog(null);
+        }}
+      />
     </aside>
   );
 }

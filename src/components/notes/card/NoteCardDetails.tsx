@@ -4,25 +4,32 @@ import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.
 import LinkedReferenceCard from "@/components/references/LinkedReferenceCard";
 import { removeReferenceFromNoteAction } from "@/app/actions/references";
 import { getRelationshipLabel } from "@/lib/entityRelationships";
-import type {
-  Backlink,
-  NoteDetails,
-  OutgoingLink,
-  SharedTagNote,
-} from "./noteCardTypes";
 import {
   getEventDateLabel,
   getEventStatusLabel,
   getLinkedItemLabel,
   getLinkPillClass,
+  getPopupPosition,
   getTaskStatusLabel,
+  isOutgoingLink,
+  filterBacklinks,
+  filterOutgoingLinks,
+  filterSharedTags,
 } from "./noteCardUtils";
 import { getReferenceColorByIndex } from "@/lib/referenceColorClasses";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import MiniNotePreviewCard from "@/components/notes/card/MiniNotePreviewCard";
 import TaskPreviewCard from "@/components/tasks/TaskPreviewCard";
 import EventPreviewCard from "@/components/calendar/EventPreviewCard";
 import ProjectPreviewCard from "@/components/projects/ProjectPreviewCard";
+import { createEntityLinkAction } from "@/app/actions/entityLinks";
+import type {
+  Backlink,
+  LinkedItemPreview,
+  NoteDetails,
+  OutgoingLink,
+  SharedTagNote,
+} from "./noteCardTypes";
 
 type NoteCardDetailsProps = {
   noteId: string;
@@ -36,50 +43,6 @@ type NoteCardDetailsProps = {
   onOpenNote?: (noteId: string) => void;
   router: AppRouterInstance;
 };
-
-type LinkedItemPreview =
-  | {
-      x: number;
-      y: number;
-      type: "note";
-      id?: string;
-      title: string;
-      content?: string | null;
-      relationshipLabel?: string;
-      tagName?: string;
-    }
-  | {
-      x: number;
-      y: number;
-      type: "task";
-      id?: string;
-      title: string;
-      description?: string | null;
-      status?: string | null;
-      priority?: string | null;
-    }
-  | {
-      x: number;
-      y: number;
-      type: "event";
-      id?: string;
-      title: string;
-      description?: string | null;
-      status?: string | null;
-      dateLabel?: string | null;
-      location?: string | null;
-    }
-  | {
-      x: number;
-      y: number;
-      type: "project";
-      id?: string;
-      title: string;
-      description?: string | null;
-      role?: string | null;
-      itemCount?: number | null;
-    }
-  | null;
 
 export default function NoteCardDetails({
   noteId,
@@ -96,6 +59,25 @@ export default function NoteCardDetails({
   const [linkedItemPreview, setLinkedItemPreview] =
     useState<LinkedItemPreview>(null);
   const [isPreviewPinned, setIsPreviewPinned] = useState(false);
+  const [linkedSearch, setLinkedSearch] = useState("");
+const previewRef = useRef<HTMLDivElement | null>(null);
+  const normalizedLinkedSearch = linkedSearch.trim().toLowerCase();
+
+  const filteredOutgoingLinks = useMemo(() => {
+    return filterOutgoingLinks(outgoingLinks, normalizedLinkedSearch);
+  }, [outgoingLinks, normalizedLinkedSearch]);
+
+  const filteredBacklinks = useMemo(() => {
+    return filterBacklinks(backlinks, normalizedLinkedSearch);
+  }, [backlinks, normalizedLinkedSearch]);
+
+  const filteredSharedTags = useMemo(() => {
+    return filterSharedTags(sharedTags, normalizedLinkedSearch);
+  }, [sharedTags, normalizedLinkedSearch]);
+
+  function closeLinkedItemPreview() {
+    closeLinkedItemPreview();
+  }
 
   function getPreviewPosition(
     event:
@@ -170,10 +152,6 @@ export default function NoteCardDetails({
   function hideLinkedItemPreview() {
     if (isPreviewPinned) return;
     setLinkedItemPreview(null);
-  }
-
-  function isOutgoingLink(link: OutgoingLink | Backlink): link is OutgoingLink {
-    return "targetTitle" in link;
   }
 
   function showTaskPreview({
@@ -272,6 +250,54 @@ export default function NoteCardDetails({
       itemCount: null,
     });
   }
+
+  async function linkCurrentNoteToPreviewNote(targetNoteId: string) {
+    if (!targetNoteId || targetNoteId === noteId) return;
+
+    const formData = new FormData();
+
+    formData.set("sourceType", "note");
+    formData.set("sourceId", noteId);
+    formData.set("targetType", "note");
+    formData.set("targetId", targetNoteId);
+    formData.set("relationshipType", "related");
+
+    await createEntityLinkAction(formData);
+
+    closeLinkedItemPreview();
+    router.refresh();
+  }
+
+useEffect(() => {
+  function handleKeyDown(event: KeyboardEvent) {
+    if (event.key !== "Escape") return;
+    if (!linkedItemPreview) return;
+
+    event.preventDefault();
+    closeLinkedItemPreview();
+  }
+
+  window.addEventListener("keydown", handleKeyDown);
+
+  return () => {
+    window.removeEventListener("keydown", handleKeyDown);
+  };
+}, [linkedItemPreview]);
+  
+  useEffect(() => {
+    if (!isPreviewPinned || !linkedItemPreview) return;
+
+    const firstFocusable = previewRef.current?.querySelector<
+      HTMLButtonElement | HTMLAnchorElement
+    >("button, a");
+
+    firstFocusable?.focus();
+  }, [isPreviewPinned, linkedItemPreview]);
+  
+  const popupPosition = linkedItemPreview
+    ? getPopupPosition(linkedItemPreview.x, linkedItemPreview.y)
+    : null;
+
   return (
     <div className="px-4 py-3 text-sm">
       <button
@@ -290,14 +316,35 @@ export default function NoteCardDetails({
 
       {showDetails && (
         <div className="mt-4 space-y-4">
-          {outgoingLinks.length > 0 && (
+          {outgoingLinks.length + backlinks.length + sharedTags.length > 0 && (
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-gray-400">
+                Filter linked cards
+              </label>
+
+              <input
+                type="search"
+                value={linkedSearch}
+                onChange={(event) => setLinkedSearch(event.target.value)}
+                placeholder="Search links, backlinks, or shared tags..."
+                className="
+        w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm
+        text-gray-800 outline-none transition
+        focus:border-blue-400 focus:ring-2 focus:ring-blue-100
+        dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100
+        dark:focus:border-blue-500 dark:focus:ring-blue-950
+      "
+              />
+            </div>
+          )}
+          {filteredOutgoingLinks.length > 0 && (
             <section>
               <h2 className="mb-2 font-semibold text-gray-800 dark:text-gray-200">
                 This note links to
               </h2>
 
               <div className="flex flex-wrap gap-2">
-                {outgoingLinks.map((link) => (
+                {filteredOutgoingLinks.map((link) => (
                   <button
                     type="button"
                     key={link.id}
@@ -434,14 +481,14 @@ export default function NoteCardDetails({
             </section>
           )}
 
-          {backlinks.length > 0 && (
+          {filteredBacklinks.length > 0 && (
             <section>
               <h2 className="mb-2 font-semibold text-gray-800 dark:text-gray-200">
                 Links back here
               </h2>
 
               <div className="flex flex-wrap gap-2">
-                {backlinks.map((link) => (
+                {filteredBacklinks.map((link) => (
                   <button
                     type="button"
                     key={link.id}
@@ -581,18 +628,31 @@ export default function NoteCardDetails({
             </section>
           )}
 
-          {sharedTags.length > 0 && (
+          {filteredSharedTags.length > 0 && (
             <section>
               <h2 className="mb-2 font-semibold text-gray-800 dark:text-gray-200">
                 Related by tag
               </h2>
 
               <div className="flex flex-wrap gap-2">
-                {sharedTags.map((related) => (
+                {filteredSharedTags.map((related) => (
                   <button
                     type="button"
                     key={`${related.id}-${related.sharedTagId}`}
-                    onClick={() => onOpenNote?.(related.id)}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setIsPreviewPinned(true);
+
+                      showLinkedNotePreview({
+                        event,
+                        title: related.title,
+                        relationshipLabel: "Related by shared tag",
+                        tagName: related.sharedTagName,
+                        content: related.content,
+                        noteId: related.id,
+                        force: true,
+                      });
+                    }}
                     className="
                       rounded-full border border-gray-200 bg-gray-50 px-3 py-1
                       text-xs text-gray-700 hover:bg-gray-100
@@ -605,6 +665,7 @@ export default function NoteCardDetails({
                         title: related.title,
                         relationshipLabel: "Related by shared tag",
                         tagName: related.sharedTagName,
+                        content: related.content,
                         noteId: related.id,
                       })
                     }
@@ -615,6 +676,7 @@ export default function NoteCardDetails({
                         title: related.title,
                         relationshipLabel: "Related by shared tag",
                         tagName: related.sharedTagName,
+                        content: related.content,
                         noteId: related.id,
                       })
                     }
@@ -630,6 +692,14 @@ export default function NoteCardDetails({
             </section>
           )}
 
+          {normalizedLinkedSearch &&
+            filteredOutgoingLinks.length === 0 &&
+            filteredBacklinks.length === 0 &&
+            filteredSharedTags.length === 0 && (
+              <p className="rounded-lg border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                No linked cards match that filter.
+              </p>
+            )}
           {references.length > 0 && (
             <section>
               <h2 className="mb-2 font-semibold text-[rgb(var(--text))]">
@@ -652,12 +722,14 @@ export default function NoteCardDetails({
           )}
         </div>
       )}
+
       {linkedItemPreview && (
         <div
+          ref={previewRef}
           className="fixed z-[9999]"
           style={{
-            left: linkedItemPreview.x + 12,
-            top: linkedItemPreview.y + 12,
+            left: popupPosition?.left,
+            top: popupPosition?.top,
           }}
         >
           {linkedItemPreview.type === "note" && (
@@ -667,15 +739,12 @@ export default function NoteCardDetails({
               relationshipLabel={linkedItemPreview.relationshipLabel}
               tagName={linkedItemPreview.tagName}
               noteId={linkedItemPreview.id}
-              onClose={() => {
-                setIsPreviewPinned(false);
-                setLinkedItemPreview(null);
-              }}
+              onClose={closeLinkedItemPreview}
               onOpen={(noteId) => {
                 onOpenNote?.(noteId);
-                setIsPreviewPinned(false);
-                setLinkedItemPreview(null);
+                closeLinkedItemPreview();
               }}
+              onLink={linkCurrentNoteToPreviewNote}
             />
           )}
 
@@ -685,15 +754,11 @@ export default function NoteCardDetails({
               description={linkedItemPreview.description}
               status={linkedItemPreview.status}
               priority={linkedItemPreview.priority}
-              onClose={() => {
-                setIsPreviewPinned(false);
-                setLinkedItemPreview(null);
-              }}
+              onClose={closeLinkedItemPreview}
               onOpen={() => {
                 if (linkedItemPreview.id)
                   router.push(`/tasks/${linkedItemPreview.id}`);
-                setIsPreviewPinned(false);
-                setLinkedItemPreview(null);
+                closeLinkedItemPreview();
               }}
             />
           )}
@@ -705,15 +770,11 @@ export default function NoteCardDetails({
               status={linkedItemPreview.status}
               dateLabel={linkedItemPreview.dateLabel}
               location={linkedItemPreview.location}
-              onClose={() => {
-                setIsPreviewPinned(false);
-                setLinkedItemPreview(null);
-              }}
+              onClose={closeLinkedItemPreview}
               onOpen={() => {
                 if (linkedItemPreview.id)
                   router.push(`/calendar/${linkedItemPreview.id}`);
-                setIsPreviewPinned(false);
-                setLinkedItemPreview(null);
+                closeLinkedItemPreview();
               }}
             />
           )}
@@ -724,15 +785,11 @@ export default function NoteCardDetails({
               description={linkedItemPreview.description}
               role={linkedItemPreview.role}
               itemCount={linkedItemPreview.itemCount}
-              onClose={() => {
-                setIsPreviewPinned(false);
-                setLinkedItemPreview(null);
-              }}
+              onClose={closeLinkedItemPreview}
               onOpen={() => {
                 if (linkedItemPreview.id)
                   router.push(`/projects/${linkedItemPreview.id}`);
-                setIsPreviewPinned(false);
-                setLinkedItemPreview(null);
+                closeLinkedItemPreview();
               }}
             />
           )}

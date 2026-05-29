@@ -31,6 +31,11 @@ export type ContextMenuReference = {
   referenceTitle?: string;
 };
 
+export type ContextMenuNoteLink = {
+  noteId?: string;
+  noteTitle?: string;
+};
+
 export type ContextMenuState = {
   x: number;
   y: number;
@@ -41,6 +46,8 @@ export type ContextMenuState = {
   hasTagMark: boolean;
   hasReferenceMark: boolean;
   mode?: "full" | "removeOnly";
+  noteLinks: ContextMenuNoteLink[];
+  hasNoteLinkMark: boolean;
 } | null;
 
 export type RichNoteEditorProps = {
@@ -61,9 +68,12 @@ export type RichNoteEditorProps = {
     message: string;
     confirmLabel?: string;
     cancelLabel?: string;
-      variant?: "danger" | "default";
+    variant?: "danger" | "default";
     onConfirm: () => void;
   }) => void;
+  availableNotes?: LinkedNoteSummary[];
+  onNoteLinkUsed?: (noteId: string) => void;
+  onNoteLinkRemoved?: (noteId: string) => void;
 };
 
 export type AiSuggestedTag = {

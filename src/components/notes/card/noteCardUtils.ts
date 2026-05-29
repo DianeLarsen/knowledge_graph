@@ -1,6 +1,12 @@
 import { type RelationshipType } from "@/db/schema";
 import { getRelationshipLabel } from "@/lib/entityRelationships";
-import type { LinkedEventSummary, LinkedTaskSummary } from "./noteCardTypes";
+import type {
+  LinkedEventSummary,
+  LinkedTaskSummary,
+  Backlink,
+  OutgoingLink,
+  SharedTagNote,
+} from "./noteCardTypes";
 
 type RichTextNode = {
   type?: string;
@@ -166,4 +172,76 @@ export function noteContentHasInlineTag({
   } catch {
     return false;
   }
+}
+
+export function isOutgoingLink(
+  link: OutgoingLink | Backlink,
+): link is OutgoingLink {
+  return "targetTitle" in link;
+}
+
+export function getPopupPosition(x: number, y: number) {
+  const CARD_WIDTH = 320;
+  const CARD_HEIGHT = 260;
+  const GAP = 12;
+  const PADDING = 16;
+
+  if (typeof window === "undefined") {
+    return {
+      left: x + GAP,
+      top: y + GAP,
+    };
+  }
+
+  let left = x + GAP;
+  let top = y + GAP;
+
+  if (left + CARD_WIDTH > window.innerWidth - PADDING) {
+    left = x - CARD_WIDTH - GAP;
+  }
+
+  if (top + CARD_HEIGHT > window.innerHeight - PADDING) {
+    top = window.innerHeight - CARD_HEIGHT - PADDING;
+  }
+
+  left = Math.max(PADDING, left);
+  top = Math.max(PADDING, top);
+
+  return { left, top };
+}
+export function filterOutgoingLinks(
+  outgoingLinks: OutgoingLink[],
+  search: string,
+) {
+  if (!search) return outgoingLinks;
+
+  return outgoingLinks.filter((link) => {
+    const title = link.targetTitle ?? "";
+    const label = getLinkedItemLabel(link);
+    const type = link.targetType;
+
+    return `${title} ${label} ${type}`.toLowerCase().includes(search);
+  });
+}
+
+export function filterBacklinks(backlinks: Backlink[], search: string) {
+  if (!search) return backlinks;
+
+  return backlinks.filter((link) => {
+    const title = link.sourceTitle ?? "";
+    const label = getRelationshipLabel(link.relationshipType);
+    const type = link.sourceType;
+
+    return `${title} ${label} ${type}`.toLowerCase().includes(search);
+  });
+}
+
+export function filterSharedTags(sharedTags: SharedTagNote[], search: string) {
+  if (!search) return sharedTags;
+
+  return sharedTags.filter((related) => {
+    return `${related.title} ${related.sharedTagName}`
+      .toLowerCase()
+      .includes(search);
+  });
 }
