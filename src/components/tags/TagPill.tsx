@@ -135,7 +135,13 @@ function openPopup() {
             closePopup();
             return;
           }
-
+          if (onOpenCardsByTag) {
+            onOpenCardsByTag(tag.id);
+            return;
+          }
+          if (linked) {
+            onJumpToInlineTag?.(tag.id);
+          }
           openPopup();
           setPinned(true);
         }}
@@ -188,9 +194,22 @@ ${
 
               {otherLinkedNotes.length === 0 ? (
                 <p className="mt-2 text-sm text-[rgb(var(--muted-text))]">
-                  {(stats?.noteCount ?? 0) <= 1
-                    ? "Only linked to this card."
-                    : `Cards with this tag: ${stats?.noteCount ?? 0}. Card list not loaded yet.`}
+                  {onOpenCardsByTag ? (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onOpenCardsByTag(tag.id);
+                      }}
+                      className="text-blue-500 hover:text-blue-700"
+                    >
+                      Open {stats?.noteCount ?? 0} card{stats?.noteCount !== 1 ? "s" : ""} with this tag
+                    </button>
+                  ) : (stats?.noteCount ?? 0) <= 1 ? (
+                    "Only linked to this card."
+                  ) : (
+                    `Cards with this tag: ${stats?.noteCount ?? 0}. Card list not loaded yet.`
+                  )}
                 </p>
               ) : (
                 <div className="mt-2 space-y-1">
